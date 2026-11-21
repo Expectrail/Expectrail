@@ -1,0 +1,99 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "model": "hand-written",
+ "offer": "signals-reach-evidence-menu-control",
+ "error": null,
+ "probes": [],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c1",
+    "origin": "AUTO_DIFF",
+    "statement": "A second jump press in the air lifts the player more than 27 px higher than a single press.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "max_rise_px",
+     "comparator": "gt",
+     "toleranceAbs": 27,
+     "left": "jump-l40-x1",
+     "right": "jump-l40-x2"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jump-l40-x1",
+    "right": "jump-l40-x2"
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c2",
+    "origin": "AUTO_DIFF",
+    "statement": "Eight jump presses lift the player no more than 27 px higher than two presses.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "max_rise_px",
+     "comparator": "lte",
+     "toleranceAbs": 27,
+     "left": "jump-l40-x2",
+     "right": "jump-l40-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jump-l40-x2",
+    "right": "jump-l40-x8"
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [],
+ "usage": {
+  "model": "hand-written",
+  "promptTokens": null,
+  "completionTokens": null
+ },
+ "promptSha256": "b2deb317e813fa6eb0bfc036a75b9b467d0fab98a86dff266535f8427e5432f3",
+ "candidate": "withheld",
+ "reportSha256": "29a13ffaf433209099c3cdde979019a18901fffdc41b2b243230085c391294ab"
+}

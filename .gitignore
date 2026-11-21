@@ -56,3 +56,4 @@ _bmad/render/
 !/tools/jit_rehearsal_check.py
 !/tools/metamorphic_public.py
 !/tools/metamorphic_outside.py
+!/tools/reproduction_ceiling.py

@@ -1,0 +1,1664 @@
+{
+ "candidate": "withheld",
+ "defects": [
+  {
+   "id": "slow-left",
+   "patch": "bench/jit/public/slow-left/defect.patch",
+   "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+   "report": "bench/jit/public/slow-left/report.txt",
+   "reportSha256": "33607609537dcbd60ae8f5e07449d4b696f84494a3559591159873517cf0fbd4",
+   "rounds": [
+    {
+     "answerSha256": "29fac2eb2fdbc647afb164283d985be8b33f6c9791098b6f34c06df6b0dbebf5",
+     "checks": [
+      {
+       "arms": {
+        "clean": {
+         "metrics": [
+          {
+           "left": 300.0,
+           "right": 50.0
+          },
+          {
+           "left": 300.0,
+           "right": 50.0
+          },
+          {
+           "left": 300.0,
+           "right": 50.0
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        },
+        "control": {
+         "metrics": [
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          }
+         ],
+         "runs": [
+          "fail",
+          "fail",
+          "fail"
+         ]
+        },
+        "defect": {
+         "metrics": [
+          {
+           "left": 300.0,
+           "right": 175.0
+          },
+          {
+           "left": 300.0,
+           "right": 175.0
+          },
+          {
+           "left": 300.0,
+           "right": 175.0
+          }
+         ],
+         "runs": [
+          "fail",
+          "fail",
+          "fail"
+         ]
+        },
+        "harmless": {
+         "metrics": [
+          {
+           "left": 300.0,
+           "right": 50.0
+          },
+          {
+           "left": 300.0,
+           "right": 50.0
+          },
+          {
+           "left": 300.0,
+           "right": 50.0
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        }
+       },
+       "claimId": "model.unbound",
+       "class": "player",
+       "clearance": {
+        "clean": 62.5,
+        "defect": -62.5
+       },
+       "control": "fails",
+       "harmless": "pass",
+       "operation": {
+        "comparator": "lt",
+        "left": "jit-right-1s",
+        "right": "jit-right-left-1s",
+        "signal": "player_dx_px",
+        "toleranceAbs": 187.5,
+        "type": "relation"
+       },
+       "probes": [
+        "jit-right-1s",
+        "jit-right-left-1s"
+       ],
+       "reasons": [],
+       "reproduces": true,
+       "routeSha256": {
+        "jit-right-1s": "37f36caedbcc62ca16b5cf14ec82d9cac3046eb7c4f8345afdf4a08a614b96f4",
+        "jit-right-left-1s": "4e6f2e517d17f7896dccee17aa5d60683300745bee87d31a28cddb1df822bbe2"
+       },
+       "specId": "jit-c1",
+       "specSha256": "15c5e0fa034b810d453a6141039020f9462208d9a3d78af3b44c5a1de346052b",
+       "statement": "A second of walking left brings the robot back more than 187.5 px of the way a second of walking right took it."
+      }
+     ],
+     "proposalSha256": "97bf8667e479295175c3238b2a92b78cc29046ab325e941528dff33919922ff9",
+     "round": 1
+    }
+   ],
+   "shape": "a directional magnitude asymmetry"
+  },
+  {
+   "id": "slides-after-stop",
+   "patch": "bench/jit/public/slides-after-stop/defect.patch",
+   "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+   "report": "bench/jit/public/slides-after-stop/report.txt",
+   "reportSha256": "fda86f2c200c12b5a4e205ba24953341acf233f81b3bf7ae507dcc8844b59b7b",
+   "rounds": [
+    {
+     "answerSha256": "bf8ffeb8d4d070dfde642557d552ae5ce8d9d5d8c23ec0ed69abed3ba68ff17d",
+     "checks": [
+      {
+       "arms": {
+        "clean": {
+         "metrics": [
+          {
+           "left": 300.0,
+           "right": 150.0
+          },
+          {
+           "left": 300.0,
+           "right": 150.0
+          },
+          {
+           "left": 300.0,
+           "right": 150.0
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        },
+        "control": {
+         "metrics": [
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          }
+         ],
+         "runs": [
+          "fail",
+          "fail",
+          "fail"
+         ]
+        },
+        "defect": {
+         "metrics": [
+          {
+           "left": 388.74,
+           "right": 399.75
+          },
+          {
+           "left": 388.74,
+           "right": 399.75
+          },
+          {
+           "left": 388.74,
+           "right": 399.75
+          }
+         ],
+         "runs": [
+          "fail",
+          "fail",
+          "fail"
+         ]
+        },
+        "harmless": {
+         "metrics": [
+          {
+           "left": 300.0,
+           "right": 150.0
+          },
+          {
+           "left": 300.0,
+           "right": 150.0
+          },
+          {
+           "left": 300.0,
+           "right": 150.0
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        }
+       },
+       "claimId": "model.unbound",
+       "class": "player",
+       "clearance": {
+        "clean": 75.0,
+        "defect": -86.01
+       },
+       "control": "fails",
+       "harmless": "pass",
+       "operation": {
+        "comparator": "lt",
+        "left": "jit-walk-on",
+        "right": "jit-walk-let-go",
+        "signal": "player_dx_px",
+        "toleranceAbs": 75,
+        "type": "relation"
+       },
+       "probes": [
+        "jit-walk-on",
+        "jit-walk-let-go"
+       ],
+       "reasons": [],
+       "reproduces": true,
+       "routeSha256": {
+        "jit-walk-let-go": "cf93faf0cb51a8bdc19465e58c6050939cd24969421d2e3a496778c8384a7dd0",
+        "jit-walk-on": "b0c5dc472705c7335e46f0191cd8065190e8e5c27c405865d1ceae2302570d0b"
+       },
+       "specId": "jit-c1",
+       "specSha256": "8cbf80bc2cd5943066561b449ee4b21f4c85ecb06ef67377f980637fce2140ef",
+       "statement": "Letting go after half a second of walking leaves the robot more than 75 px short of where a whole second of walking takes it."
+      }
+     ],
+     "proposalSha256": "6ec4d24223096db7ec67bf9a020d17b39ee8c2690fb392feda881fe30d7f6cc6",
+     "round": 1
+    }
+   ],
+   "shape": "a decay after release"
+  },
+  {
+   "id": "air-jump",
+   "patch": "bugs/reported/air-jump.patch",
+   "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "report": "bench/jit/known/air-jump/report.txt",
+   "reportSha256": "29a13ffaf433209099c3cdde979019a18901fffdc41b2b243230085c391294ab",
+   "rounds": [
+    {
+     "answerSha256": "6776db21dee733691d69e539b7e8e10eb34fb2ddc782f8e93f8f5967635c2349",
+     "checks": [
+      {
+       "arms": {
+        "clean": {
+         "metrics": [
+          {
+           "left": 57.93,
+           "right": 113.46
+          },
+          {
+           "left": 57.93,
+           "right": 113.46
+          },
+          {
+           "left": 57.93,
+           "right": 113.46
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        },
+        "control": {
+         "metrics": [
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          }
+         ],
+         "runs": [
+          "fail",
+          "fail",
+          "fail"
+         ]
+        },
+        "defect": {
+         "metrics": [
+          {
+           "left": 57.93,
+           "right": 113.46
+          },
+          {
+           "left": 57.93,
+           "right": 113.46
+          },
+          {
+           "left": 57.93,
+           "right": 113.46
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        },
+        "harmless": {
+         "metrics": [
+          {
+           "left": 57.93,
+           "right": 113.46
+          },
+          {
+           "left": 57.93,
+           "right": 113.46
+          },
+          {
+           "left": 57.93,
+           "right": 113.46
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        }
+       },
+       "claimId": "player.jump",
+       "class": "player",
+       "clearance": {
+        "clean": 28.53,
+        "defect": 28.53
+       },
+       "control": "fails",
+       "harmless": "pass",
+       "operation": {
+        "comparator": "gt",
+        "left": "jump-l40-x1",
+        "right": "jump-l40-x2",
+        "signal": "max_rise_px",
+        "toleranceAbs": 27,
+        "type": "relation"
+       },
+       "probes": [
+        "jump-l40-x1",
+        "jump-l40-x2"
+       ],
+       "reasons": [
+        "does not fail the defect 3/3"
+       ],
+       "reproduces": false,
+       "routeSha256": {
+        "jump-l40-x1": "23cc4bf727bccecb97c7210e1b507fcd6d7ab2af571170485b5af7321c63852f",
+        "jump-l40-x2": "ad66e9df192dfa2ae341196ce8c8634a6bc386e4ab1aec4e2cebf7bfd8d5743f"
+       },
+       "specId": "jit-c1",
+       "specSha256": "814da9655f3875e237943af485df4a940a3702eb503b570ac8b875217b04e5af",
+       "statement": "A second jump press in the air lifts the player more than 27 px higher than a single press."
+      },
+      {
+       "arms": {
+        "clean": {
+         "metrics": [
+          {
+           "left": 113.46,
+           "right": 113.61
+          },
+          {
+           "left": 113.46,
+           "right": 113.61
+          },
+          {
+           "left": 113.46,
+           "right": 113.61
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        },
+        "control": {
+         "metrics": [
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          },
+          {
+           "left": 0.0,
+           "right": 0.0
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        },
+        "defect": {
+         "metrics": [
+          {
+           "left": 113.46,
+           "right": 424.49
+          },
+          {
+           "left": 113.46,
+           "right": 424.49
+          },
+          {
+           "left": 113.46,
+           "right": 424.49
+          }
+         ],
+         "runs": [
+          "fail",
+          "fail",
+          "fail"
+         ]
+        },
+        "harmless": {
+         "metrics": [
+          {
+           "left": 113.46,
+           "right": 113.61
+          },
+          {
+           "left": 113.46,
+           "right": 113.61
+          },
+          {
+           "left": 113.46,
+           "right": 113.61
+          }
+         ],
+         "runs": [
+          "pass",
+          "pass",
+          "pass"
+         ]
+        }
+       },
+       "claimId": "player.jump",
+       "class": "player",
+       "clearance": {
+        "clean": 26.85,
+        "defect": -284.03
+       },
+       "control": "passes",
+       "harmless": "pass",
+       "operation": {
+        "comparator": "lte",
+        "left": "jump-l40-x2",
+        "right": "jump-l40-x8",
+        "signal": "max_rise_px",
+        "toleranceAbs": 27,
+        "type": "relation"
+       },
+       "probes": [
+        "jump-l40-x2",
+        "jump-l40-x8"
+       ],
+       "reasons": [
+        "passes the do-nothing control"
+       ],
+       "reproduces": false,
+       "routeSha256": {
+        "jump-l40-x2": "ad66e9df192dfa2ae341196ce8c8634a6bc386e4ab1aec4e2cebf7bfd8d5743f",
+        "jump-l40-x8": "8808601f37e61321def50dfb3a0fdc566b8aa1996b73baad47457e12404ed857"
+       },
+       "specId": "jit-c2",
+       "specSha256": "597b06b965ecd4576e270a7f998a688cc0b07e2579b57e57336d41931dd04670",
+       "statement": "Eight jump presses lift the player no more than 27 px higher than two presses."
+      }
+     ],
+     "compound": {
+      "arms": {
+       "clean": {
+        "runs": [
+         "pass",
+         "pass",
+         "pass"
+        ]
+       },
+       "control": {
+        "runs": [
+         "fail",
+         "fail",
+         "fail"
+        ]
+       },
+       "defect": {
+        "runs": [
+         "fail",
+         "fail",
+         "fail"
+        ]
+       },
+       "harmless": {
+        "runs": [
+         "pass",
+         "pass",
+         "pass"
+        ]
+       }
+      },
+      "control": "fails",
+      "harmless": "pass",
+      "reasons": [],
+      "reproduces": true,
+      "specIds": [
+       "jit-c1",
+       "jit-c2"
+      ]
+     },
+     "proposalSha256": "f87bce50d0b0fc6446c9bbb1f5792d2a783c5f87577783e4a8906c2c35fb28a7",
+     "round": 1
+    }
+   ],
+   "shape": "a bound on an event count"
+  }
+ ],
+ "doNothing": {
+  "enemy": {
+   "mode": "frozen",
+   "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963",
+   "reason": null
+  },
+  "player": {
+   "mode": "frozen",
+   "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+   "reason": null
+  },
+  "projectile": {
+   "mode": "never-made",
+   "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7",
+   "reason": null
+  }
+ },
+ "engines": [
+  {
+   "device": null,
+   "name": "godot",
+   "renderer": "opengl3",
+   "version": "4.7.2.stable.official.ed1daf0bf"
+  }
+ ],
+ "format": "expectrail.reproduction-ceiling/v1",
+ "gameTree": "c2513cb02908c016020205df272f5ff9e3be8cbf6272f41fffd7e0030691a9ba",
+ "harmlessPatchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+ "offer": "signals-reach-evidence-menu-control",
+ "replays": {
+  "clean-jit-right-1s-37f36caedbcc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   }
+  ],
+  "clean-jit-right-left-1s-4e6f2e517d17": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "e3a83c6d4851a17be3200714671f36c38150d7f5bc390dbd60e1aa30d3948657"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "e3a83c6d4851a17be3200714671f36c38150d7f5bc390dbd60e1aa30d3948657"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "e3a83c6d4851a17be3200714671f36c38150d7f5bc390dbd60e1aa30d3948657"
+   }
+  ],
+  "clean-jit-walk-let-go-cf93faf0cb51": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "d17476647298868e452fac60e6c568676ffc4e9d93a8521bb29f0a541966ce31"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "d17476647298868e452fac60e6c568676ffc4e9d93a8521bb29f0a541966ce31"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "d17476647298868e452fac60e6c568676ffc4e9d93a8521bb29f0a541966ce31"
+   }
+  ],
+  "clean-jit-walk-on-b0c5dc472705": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "9e7bbe6b507ccf391886ad79a3a02b82c8e0b05c4f5acbcf9cfbec31e3736aab"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "9e7bbe6b507ccf391886ad79a3a02b82c8e0b05c4f5acbcf9cfbec31e3736aab"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "9e7bbe6b507ccf391886ad79a3a02b82c8e0b05c4f5acbcf9cfbec31e3736aab"
+   }
+  ],
+  "clean-jump-l40-x1-23cc4bf727bc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   }
+  ],
+  "clean-jump-l40-x2-ad66e9df192d": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   }
+  ],
+  "clean-jump-l40-x8-8808601f37e6": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "687c8c8fc96a30779c8e22229e6e8271d758e16cfe01218566e52f090a0b36e7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "687c8c8fc96a30779c8e22229e6e8271d758e16cfe01218566e52f090a0b36e7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": null,
+    "sandbox": null,
+    "trace": "687c8c8fc96a30779c8e22229e6e8271d758e16cfe01218566e52f090a0b36e7"
+   }
+  ],
+  "control-jit-right-1s-37f36caedbcc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "c78ffa80abb0d097f24c158e655f426c5648be61162752a704d255ca431b073c"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "c78ffa80abb0d097f24c158e655f426c5648be61162752a704d255ca431b073c"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "c78ffa80abb0d097f24c158e655f426c5648be61162752a704d255ca431b073c"
+   }
+  ],
+  "control-jit-right-left-1s-4e6f2e517d17": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "760b9a0ac650d71f98599bb7c3728806070e3f4e68b94977e8dd4257992a1c67"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "760b9a0ac650d71f98599bb7c3728806070e3f4e68b94977e8dd4257992a1c67"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "760b9a0ac650d71f98599bb7c3728806070e3f4e68b94977e8dd4257992a1c67"
+   }
+  ],
+  "control-jit-walk-let-go-cf93faf0cb51": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "c78ffa80abb0d097f24c158e655f426c5648be61162752a704d255ca431b073c"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "c78ffa80abb0d097f24c158e655f426c5648be61162752a704d255ca431b073c"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "c78ffa80abb0d097f24c158e655f426c5648be61162752a704d255ca431b073c"
+   }
+  ],
+  "control-jit-walk-on-b0c5dc472705": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "a980f02afcf62a2ad93fff7c52d2e5c8fcf03f976ca31fec71155d4d2550d0f1"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "a980f02afcf62a2ad93fff7c52d2e5c8fcf03f976ca31fec71155d4d2550d0f1"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "a980f02afcf62a2ad93fff7c52d2e5c8fcf03f976ca31fec71155d4d2550d0f1"
+   }
+  ],
+  "control-jump-l40-x1-23cc4bf727bc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d"
+   }
+  ],
+  "control-jump-l40-x2-ad66e9df192d": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036"
+   }
+  ],
+  "control-jump-l40-x8-8808601f37e6": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "sandbox": null,
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89"
+   }
+  ],
+  "defect-jit-right-1s-37f36caedbcc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   }
+  ],
+  "defect-jit-right-left-1s-4e6f2e517d17": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+    "sandbox": null,
+    "trace": "2b34a983f721e4eae595657263ff700754c50fb8983ba88b6996ec2cb5b399b7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+    "sandbox": null,
+    "trace": "2b34a983f721e4eae595657263ff700754c50fb8983ba88b6996ec2cb5b399b7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+    "sandbox": null,
+    "trace": "2b34a983f721e4eae595657263ff700754c50fb8983ba88b6996ec2cb5b399b7"
+   }
+  ],
+  "defect-jit-walk-let-go-cf93faf0cb51": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+    "sandbox": null,
+    "trace": "fa666896be82e5dd6f427929f31ae2a004cb0728bcc4fc9ee809f4e04b76e463"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+    "sandbox": null,
+    "trace": "fa666896be82e5dd6f427929f31ae2a004cb0728bcc4fc9ee809f4e04b76e463"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+    "sandbox": null,
+    "trace": "fa666896be82e5dd6f427929f31ae2a004cb0728bcc4fc9ee809f4e04b76e463"
+   }
+  ],
+  "defect-jit-walk-on-b0c5dc472705": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+    "sandbox": null,
+    "trace": "176ca062c55eb2d1e62fa9b162eabb1b7881a57e2a31ef50b2c1589161578348"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+    "sandbox": null,
+    "trace": "176ca062c55eb2d1e62fa9b162eabb1b7881a57e2a31ef50b2c1589161578348"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+    "sandbox": null,
+    "trace": "176ca062c55eb2d1e62fa9b162eabb1b7881a57e2a31ef50b2c1589161578348"
+   }
+  ],
+  "defect-jump-l40-x1-23cc4bf727bc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   }
+  ],
+  "defect-jump-l40-x2-ad66e9df192d": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   }
+  ],
+  "defect-jump-l40-x8-8808601f37e6": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "9a07c833f3577222f28765cf0f6f7d9d7148c4600a272c9a8f005e93ec67a7c7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "9a07c833f3577222f28765cf0f6f7d9d7148c4600a272c9a8f005e93ec67a7c7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+    "sandbox": null,
+    "trace": "9a07c833f3577222f28765cf0f6f7d9d7148c4600a272c9a8f005e93ec67a7c7"
+   }
+  ],
+  "harmless-jit-right-1s-37f36caedbcc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "130cc864292e85956caedd400d05eb31c092226d5fced2953f42d8eaa5082e8f"
+   }
+  ],
+  "harmless-jit-right-left-1s-4e6f2e517d17": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "e3a83c6d4851a17be3200714671f36c38150d7f5bc390dbd60e1aa30d3948657"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "e3a83c6d4851a17be3200714671f36c38150d7f5bc390dbd60e1aa30d3948657"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "e3a83c6d4851a17be3200714671f36c38150d7f5bc390dbd60e1aa30d3948657"
+   }
+  ],
+  "harmless-jit-walk-let-go-cf93faf0cb51": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "d17476647298868e452fac60e6c568676ffc4e9d93a8521bb29f0a541966ce31"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "d17476647298868e452fac60e6c568676ffc4e9d93a8521bb29f0a541966ce31"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "d17476647298868e452fac60e6c568676ffc4e9d93a8521bb29f0a541966ce31"
+   }
+  ],
+  "harmless-jit-walk-on-b0c5dc472705": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "9e7bbe6b507ccf391886ad79a3a02b82c8e0b05c4f5acbcf9cfbec31e3736aab"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "9e7bbe6b507ccf391886ad79a3a02b82c8e0b05c4f5acbcf9cfbec31e3736aab"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "9e7bbe6b507ccf391886ad79a3a02b82c8e0b05c4f5acbcf9cfbec31e3736aab"
+   }
+  ],
+  "harmless-jump-l40-x1-23cc4bf727bc": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "1bb3de807a40a7340045ea35440b42408d7c4f027c1a8af599bf378c1e665908"
+   }
+  ],
+  "harmless-jump-l40-x2-ad66e9df192d": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "64875ac2109b26ca95b5265e4ec118a72fc844d9bdd6caab942e1bc7a2afcb73"
+   }
+  ],
+  "harmless-jump-l40-x8-8808601f37e6": [
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "687c8c8fc96a30779c8e22229e6e8271d758e16cfe01218566e52f090a0b36e7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "687c8c8fc96a30779c8e22229e6e8271d758e16cfe01218566e52f090a0b36e7"
+   },
+   {
+    "engine": {
+     "device": null,
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "isolation": "auto",
+    "patchSha256": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65",
+    "sandbox": null,
+    "trace": "687c8c8fc96a30779c8e22229e6e8271d758e16cfe01218566e52f090a0b36e7"
+   }
+  ]
+ },
+ "reps": 3
+}
