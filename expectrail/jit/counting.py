@@ -156,6 +156,79 @@ def receipt_document(template, gate, envelope, proof):
     return doc
 
 
+def public_custom_route(folder, pid, sha):
+    """A published custom probe's route, supplied in ``jit-routes`` beside its source record, or None.
+
+    It is used only when its canonical digest is the one the record names for that probe."""
+    from expectrail.jit import bench
+    if sha is None or Path(pid).name != pid or bench.private_name(pid):
+        return None
+    path = Path(folder) / 'jit-routes' / ('jit-' + pid.removeprefix('jit-') + '.json')
+    if path.resolve() != path.absolute() or not path.is_file():
+        return None
+    try:
+        route = record.read_json(path, cap=1024*1024, label='public probe route')
+        validate(route, 'route')
+    except (OSError, ValueError):
+        return None
+    return route if digest_v1(route) == sha else None
+
+
+DO_NOTHING_OUTCOMES = ('passes', 'fails', 'indeterminate', 'not-run')
+
+
+def do_nothing_rows(path):
+    """The per-check rows of ``tools/do_nothing_public.py`` (its ``rows.json``), keyed by (defect, check)."""
+    doc = record.read_json(Path(path), cap=8*1024*1024, label='do-nothing control rows')
+    rows = doc.get('rows') if isinstance(doc, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError('do-nothing rows: no rows list')
+    out = {}
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get('defect'), str) or not isinstance(row.get('check'), str):
+            raise ValueError('do-nothing rows: a row has no defect or check')
+        if row.get('outcome') not in DO_NOTHING_OUTCOMES:
+            raise ValueError(f"do-nothing rows: {row['defect']} {row['check']}: unknown outcome {row.get('outcome')!r}")
+        key = (row['defect'], row['check'])
+        if key in out:
+            raise ValueError(f'do-nothing rows: {key[0]} {key[1]} appears twice')
+        out[key] = row
+    return out
+
+
+def do_nothing_tally(defect, run, rows):
+    """How the do-nothing control changes one record's legacy keep and catches. Advisory.
+
+    A row is used only when it names this record (``sourceRun``) and this exact check (``specSha256``);
+    otherwise the check is "cannot tell" and is neither kept nor dropped. A check is dropped when it passed
+    the control (the generator's rule, ``assess.validity``); fails, indeterminate and not-run are kept."""
+    source = digest_v1(run)
+    valid = {v['specId'] for v in run['validity'] if v.get('valid')}
+    caught = {c['specId'] for c in run.get('catches', [])}
+    tally = {'legacyKept': 0, 'dropped': 0, 'cannotTell': 0, 'kept': 0,
+             'legacyCatches': 0, 'catchesDropped': 0, 'catchesCannotTell': 0, 'catchesKept': 0,
+             'outcomes': dict.fromkeys(DO_NOTHING_OUTCOMES, 0),
+             'keptBy': dict.fromkeys(DO_NOTHING_OUTCOMES[1:], 0), 'unbound': []}
+    for entry in run['proposed']:
+        spec = entry['spec']
+        row = rows.get((defect, spec['id']))
+        bound = (row is not None and row.get('sourceRun') == source and row.get('specSha256') == digest_v1(spec))
+        if bound:
+            tally['outcomes'][row['outcome']] += 1
+        else:
+            tally['unbound'].append(spec['id'])
+        state = 'cannotTell' if not bound else 'dropped' if row['outcome'] == 'passes' else 'kept'
+        if spec['id'] in valid:
+            tally['legacyKept'] += 1
+            tally[state] += 1
+            if state == 'kept':
+                tally['keptBy'][row['outcome']] += 1
+        if spec['id'] in caught:
+            tally['legacyCatches'] += 1
+            tally['catches' + state[0].upper() + state[1:]] += 1
+    return tally
+
+
 class HarmlessControl:
     """Advisory paired replays of the public mutation bench's comment-only operator."""
 
@@ -262,18 +335,7 @@ class HarmlessControl:
                 continue
             routes = []
             for pid, sha in zip(ids, shas):
-                route = self.routes.get(sha)
-                # A published custom probe can be supplied alongside its source record.
-                if route is None and Path(pid).name == pid and not bench.private_name(pid):
-                    path = folder / 'jit-routes' / ('jit-' + pid.removeprefix('jit-') + '.json')
-                    if path.resolve() == path.absolute() and path.is_file():
-                        try:
-                            route = record.read_json(path, cap=1024*1024, label='public probe route')
-                            validate(route, 'route')
-                            if digest_v1(route) != sha:
-                                route = None
-                        except (OSError, ValueError):
-                            route = None
+                route = self.routes.get(sha) or public_custom_route(folder, pid, sha)
                 if route is None:
                     row['reason'] = 'missing exact route ' + pid
                     break
@@ -327,8 +389,12 @@ class HarmlessControl:
         return totals
 
 
-def public_bench(records, out, *, harmless_work=None, harmless_defects=()):
-    """Offline classification of committed public records; no replay or model."""
+def public_bench(records, out, *, harmless_work=None, harmless_defects=(), do_nothing=None):
+    """Offline classification of committed public records; no replay or model.
+
+    ``do_nothing`` is the ``rows.json`` of ``tools/do_nothing_public.py`` (#675): with it, the page also
+    says, per defect, how many legacy-kept checks and catches the do-nothing control would drop. Advisory:
+    it never changes the counting classification."""
     from expectrail.jit import bench
     if bench.private_name(records) or bench.private_name(Path(records).resolve()):
         raise ValueError('public-only: held-out/fresh record roots refused')
@@ -340,6 +406,9 @@ def public_bench(records, out, *, harmless_work=None, harmless_defects=()):
     if selected - {d['id'] for d in manifest['defects']} or (selected and not harmless_work):
         raise ValueError('harmless defect selection requires public defect IDs and --harmless-work')
     control = HarmlessControl(harmless_work, root) if harmless_work else None
+    controls = do_nothing_rows(do_nothing) if do_nothing else None
+    tallies = []
+    metamorphic = 0
     for defect in manifest['defects']:
         path=Path(records)/('repro-'+defect['id'])/'jit-run.json'
         if path.resolve() != path.absolute():
@@ -350,7 +419,10 @@ def public_bench(records, out, *, harmless_work=None, harmless_defects=()):
         if control:
             control.measure(defect['id'], run, not selected or defect['id'] in selected, path.parent)
         legacy_valid += sum(bool(row['valid']) for row in run['validity'])
+        metamorphic += len(run.get('metamorphic') or [])
         counted=sum(r['counting'] for r in result['assessment']['rows'])
+        if controls is not None:
+            tallies.append((defect['id'], do_nothing_tally(defect['id'], run, controls)))
         rows.append((defect['id'],len(result['assessment']['rows']),counted,digest_v1(run)))
     history_note = ('The counting assessment uses existing records. The separate harmless control replays '
                     'the clean game and its comment-only edit. No trusted source certificate/context is supplied.'
@@ -367,11 +439,66 @@ def public_bench(records, out, *, harmless_work=None, harmless_defects=()):
               f'{total-legacy_valid} are dropped proposals retained only as advisory diagnostics. '
               + ('The counting classification used the frozen outcomes.' if control else 'No outcomes were replayed.'),'']
     control_totals = {}
+    if controls is not None:
+        known = {(d, entry['spec']['id']) for d, entry in _proposed(records, manifest)}
+        extra = sorted(set(controls) - known)
+        if extra:
+            raise ValueError('do-nothing rows name checks the records do not have: '
+                             + ', '.join(f'{d} {c}' for d, c in extra[:5]))
+        control_totals['doNothing'] = do_nothing_report(tallies, lines)
+    lines += ['## Metamorphic checks', '',
+              f'Metamorphic rows in these records: {metamorphic}. They are advisory: a record keeps them apart from '
+              '`proposed`, `validity` and `catches`, and this audit never assesses them for counting.', '']
+    control_totals['metamorphicRows'] = metamorphic
     if control:
         control_totals['harmlessControl'] = control.report(lines)
     Path(out).write_text('\n'.join(lines))
     return {**control_totals, 'defects':len(rows),'checks':total,'counting':counted,'advisory':total-counted,
             'legacyKeptAdvisory':legacy_valid,'droppedProposals':total-legacy_valid}
+
+
+def _proposed(records, manifest):
+    for defect in manifest['defects']:
+        run = record.read_json(Path(records) / ('repro-' + defect['id']) / 'jit-run.json',
+                               cap=8*1024*1024, label='public JIT record')
+        for entry in run['proposed']:
+            yield defect['id'], entry
+
+
+def do_nothing_report(tallies, lines):
+    keys = ('legacyKept', 'dropped', 'cannotTell', 'kept', 'legacyCatches', 'catchesDropped',
+            'catchesCannotTell', 'catchesKept')
+    totals = {k: sum(t[k] for _, t in tallies) for k in keys}
+    totals['outcomes'] = {o: sum(t['outcomes'][o] for _, t in tallies) for o in DO_NOTHING_OUTCOMES}
+    totals['keptBy'] = {o: sum(t['keptBy'][o] for _, t in tallies) for o in DO_NOTHING_OUTCOMES[1:]}
+    totals['defectsWithNoCatchKept'] = [d for d, t in tallies if t['legacyCatches'] and not t['catchesKept']
+                                        and not t['catchesCannotTell']]
+    lines += ['## Do-nothing control (#675)', '',
+              'A check that still passes when the actor it is about does nothing states no obligation, and the '
+              'generator now drops it. These columns apply that rule to the frozen records, from the control\'s '
+              'own replays (`tools/do_nothing_public.py`). A row is used only when it names this record and this '
+              'exact check by digest; otherwise the check is "cannot tell", neither kept nor dropped. '
+              'Advisory: the counting classification above is unchanged.', '',
+              '| Public defect | Legacy kept | Dropped by the control | Cannot tell | Kept | '
+              'Legacy catches | Catches kept |',
+              '| --- | ---: | ---: | ---: | ---: | ---: | ---: |']
+    for name, t in tallies:
+        lines.append(f"| {name} | {t['legacyKept']} | {t['dropped']} | {t['cannotTell']} | {t['kept']} | "
+                     f"{t['legacyCatches']} | {t['catchesKept']} |")
+    o = totals['outcomes']
+    lines += ['', f"Total: {totals['legacyKept']} legacy kept; {totals['dropped']} dropped by the control; "
+              f"{totals['cannotTell']} cannot tell; {totals['kept']} kept. Catches: {totals['legacyCatches']} "
+              f"recorded, {totals['catchesDropped']} dropped, {totals['catchesCannotTell']} cannot tell, "
+              f"{totals['catchesKept']} kept.", '',
+              f"Control outcomes over all bound checks: {o['passes']} passes, {o['fails']} fails, "
+              f"{o['indeterminate']} indeterminate, {o['not-run']} not run.", '',
+              f"Of the {totals['kept']} kept, {totals['keptBy']['fails']} fail the control (the check is shown to "
+              f"state an obligation), {totals['keptBy']['indeterminate']} are indeterminate and "
+              f"{totals['keptBy']['not-run']} were not run on it: the control cannot drop those, and it does not "
+              "show they state one.", '',
+              'Public defects whose every recorded catch is dropped: '
+              + (', '.join(f'`{d}`' for d in totals['defectsWithNoCatchKept']) or 'none') + '.', '']
+    return totals
 
 
 def pixel_bench(records, out):
@@ -425,12 +552,13 @@ def main(argv=None):
     audit=sub.add_parser('public-bench');audit.add_argument('--records',type=Path,required=True);audit.add_argument('--out',type=Path,required=True)
     audit.add_argument('--harmless-work', type=Path, help='new folder for paired, advisory clean/comment-only replays')
     audit.add_argument('--harmless-defect', action='append', default=[], help='measure only this public defect (repeatable)')
+    audit.add_argument('--do-nothing-rows', type=Path, help='rows.json from tools/do_nothing_public.py (#675)')
     pixel=sub.add_parser('pixel-bench');pixel.add_argument('--records',type=Path,required=True);pixel.add_argument('--out',type=Path,required=True)
     judge_cmd=sub.add_parser('judge');judge_cmd.add_argument('--gate',type=Path,required=True)
     judge_cmd.add_argument('--evidence',type=Path,required=True);judge_cmd.add_argument('--context',type=Path,required=True)
     judge_cmd.add_argument('--trust-store',type=Path,required=True);judge_cmd.add_argument('--out',type=Path,required=True)
     args=parser.parse_args(argv)
-    if args.command=='public-bench':print(json.dumps(public_bench(args.records,args.out, harmless_work=args.harmless_work, harmless_defects=args.harmless_defect)));return 0
+    if args.command=='public-bench':print(json.dumps(public_bench(args.records,args.out, harmless_work=args.harmless_work, harmless_defects=args.harmless_defect, do_nothing=args.do_nothing_rows)));return 0
     if args.command=='pixel-bench':print(json.dumps(pixel_bench(args.records,args.out)));return 0
     trust=Trust.load(args.context,args.trust_store)
     doc,proof=judge(record.read_record(args.gate),args.evidence,trust=trust)

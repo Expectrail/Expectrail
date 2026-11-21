@@ -211,6 +211,7 @@ def close_superseded(publisher_api, ctx, run, publisher):
 
 EARLIER_HEADS = 20  # the newest commits of the pull request looked at, besides its head
 OPEN_PULL_PAGES = 10  # up to 1,000 open pull requests; more and the sweep cannot tell, so it skips
+RUN_PAGES = 10  # up to 1,000 earlier runs of the caller workflow on the branch
 
 
 def open_heads(api, ctx):
@@ -231,25 +232,42 @@ def open_heads(api, ctx):
     raise ValueError("cannot tell: more open pull requests than the sweep reads")
 
 
-def run_heads(api, ctx, run):
-    """The head commits of the caller workflow's newest 100 ``pull_request`` runs from this pull
-    request's head repository and branch, newest first. A head that was force-pushed away is among
-    them, though it is no longer among the pull request's commits. Raises ValueError when the list
-    cannot be read; a run of another event, branch or repository, or with a malformed head, is skipped."""
-    query = urllib.parse.urlencode({"event": "pull_request", "branch": ctx.head_branch, "per_page": 100})
-    listing = api("GET", f"/repos/{ctx.repo}/actions/workflows/{int(run['workflow_id'])}/runs?{query}")
-    items = listing.get("workflow_runs") if isinstance(listing, dict) else None
-    if not isinstance(items, list):
-        raise ValueError("cannot tell: the earlier captures could not be read")
+def run_heads(api, ctx, run, enough=EARLIER_HEADS):
+    """The head commits of the caller workflow's earlier ``pull_request`` runs from this pull request's
+    head repository and branch, newest first. A head that was force-pushed away is among them, though
+    it is no longer among the pull request's commits.
+
+    Pages of 100 runs are read until ``enough`` distinct heads other than the current one are found,
+    the list ends, or ``RUN_PAGES`` pages have been read, so a head older than the newest 100 runs (a
+    branch with many re-runs) is still reached. Raises ValueError when the first page cannot be read.
+    A later page that cannot be read ends the reading with a warning and keeps the heads already read:
+    a head left out only stays in progress, which is never cleared. A run of another event, branch or
+    repository, or with a malformed head, is skipped."""
     heads = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        repo = (item.get("head_repository") or {}).get("full_name")
-        sha = item.get("head_sha")
-        if (item.get("event") == "pull_request" and item.get("head_branch") == ctx.head_branch
-                and repo == ctx.head_repo and isinstance(sha, str) and re.fullmatch("[0-9a-f]{40}", sha)):
-            heads.append(sha)
+    for page in range(1, RUN_PAGES + 1):
+        query = urllib.parse.urlencode({"event": "pull_request", "branch": ctx.head_branch,
+                                        "per_page": 100, "page": page})
+        try:
+            listing = api("GET", f"/repos/{ctx.repo}/actions/workflows/{int(run['workflow_id'])}/runs?{query}")
+            items = listing.get("workflow_runs") if isinstance(listing, dict) else None
+            if not isinstance(items, list):
+                raise ValueError("cannot tell: the earlier captures could not be read")
+        except (OSError, LookupError, TypeError, ValueError) as exc:
+            if page == 1:
+                raise
+            print(f"::warning::Could not read every earlier capture (page {page}: {type(exc).__name__}); "
+                  "heads older than those read stay as they are.")
+            break
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            repo = (item.get("head_repository") or {}).get("full_name")
+            sha = item.get("head_sha")
+            if (item.get("event") == "pull_request" and item.get("head_branch") == ctx.head_branch
+                    and repo == ctx.head_repo and isinstance(sha, str) and re.fullmatch("[0-9a-f]{40}", sha)):
+                heads.append(sha)
+        if len(items) < 100 or len(set(heads) - {ctx.head_sha}) >= enough:
+            break
     return heads
 
 
@@ -270,7 +288,7 @@ def close_earlier_heads(api, publisher_api, ctx, pr, publisher, limit=EARLIER_HE
     captured = []
     if run is not None:
         try:
-            captured = run_heads(api, ctx, run)
+            captured = run_heads(api, ctx, run, enough=limit)
         except (OSError, LookupError, TypeError, ValueError) as exc:
             print(f"::warning::Could not read the earlier captures ({type(exc).__name__}); only the pull "
                   "request's own commits are swept, and a force-pushed head stays as it is.")
