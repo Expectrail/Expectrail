@@ -6,6 +6,30 @@ and a token, which only a person sets up (#249).
 
 ## Install and open the local app
 
+### Ubuntu 24.04 on a 64-bit Intel or AMD computer
+
+For an internal rehearsal, use the `expectrail_<version>_amd64.deb` provided by
+your maintainer. Open the file in **App Center** or your graphical package
+installer and choose **Install**. If double-clicking opens an archive viewer,
+use the file's **Open With** menu to choose the package installer. Ubuntu may
+ask for permission or download system packages.
+
+Open **Applications**, search for **Expectrail**, and select it. In your default
+browser, choose your **Before** and **After** project folders, then select
+**Check folders**. Installing the app supplies the launcher and replay tools.
+The first replay still needs the pinned Godot engine, and live vision requires
+the settings described below. The package is a rehearsal build. A public release
+and a timed, unaided session on a developer's own game are pending.
+
+A maintainer can reproduce the candidate on Ubuntu using the build dependencies
+in `requirements-build.txt`, `dpkg-deb`, and the existing release wheel:
+
+```sh
+python3 tools/build_deb.py --output-dir dist dist/expectrail-*.whl
+```
+
+### Install from the wheel on Linux or macOS
+
 Download `expectrail-0.1.0-py3-none-any.whl` to **Downloads**. Ask your
 maintainer for the wheel with the Expectrail launcher. On a prepared Linux or
 macOS computer, open **Terminal**, paste this single line, and press Enter:
@@ -33,7 +57,7 @@ On later visits:
   Closing that window stops the local app.
 
 Python 3.12 or later with `venv`, a default browser, and the system Godot replay
-tools must be ready first. Initial install or update uses Terminal on both
+tools must be ready first. Installing or updating **from the wheel** uses Terminal on both
 systems. Your maintainer may also need Terminal for system tools, preparing
 project checks and routes, and configuring live vision. macOS lacks Bubblewrap,
 so requiring the replay sandbox there stops the job. The macOS launcher file

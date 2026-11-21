@@ -1,3 +1,5 @@
 # What builds the wheel (pyproject.toml). Pinned, and installed before the build so the build makes no
 # download of its own (`pip wheel --no-build-isolation`). CI's `package` job uses it.
 setuptools==80.9.0
+# Stages the wheel into the Ubuntu desktop package. Not a runtime dependency.
+installer==1.1.0
