@@ -1,0 +1,21 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "player-stays-in-viewport",
+  "instruction": "During the right-hand part of traversal, keep the player's full drawing bounds inside the 800 by 480 viewport.",
+  "objects": {
+    "player": {"prompt": "blue player robot"}
+  },
+  "assertion": {
+    "type": "inside-region",
+    "object": "player",
+    "region": {"box": [0, 0, 800, 480]}
+  },
+  "window": {"fromFrame": 70, "toFrame": 132},
+  "coverage": {
+    "routes": ["traversal"],
+    "minFrames": 63,
+    "reached": [
+      {"type": "position-at-tick", "tick": 259, "object": "player", "x": 694, "y": 637, "tolerancePx": 12}
+    ]
+  }
+}
