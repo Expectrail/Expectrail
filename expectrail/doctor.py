@@ -353,9 +353,14 @@ def checks(*, isolated: bool = False, fetch: bool = True, env: dict | None = Non
            project: Path | None = None) -> list[Check]:
     """Every piece `doctor` reports, in the order it prints them."""
     from expectrail import godot_project, project_config
-    if project is None and (Path.cwd() / "project.godot").is_file():
-        project = Path.cwd()
-    if project is not None and (Path(project) / "project.godot").is_file():
+    if project is None:
+        cwd = Path.cwd()
+        if (cwd / "project.godot").is_file() or (cwd / "expectrail.project.json").is_file():
+            project = cwd
+    if project is not None:
+        if not (Path(project) / "project.godot").is_file():
+            return [_missing("project-folder", "a Godot project folder", "No project.godot file in this folder.",
+                             "Choose the folder containing project.godot or restore that file before verifying.")]
         try:
             config = project_config.read_game(project)
         except project_config.ProjectConfigError:
@@ -375,8 +380,6 @@ def checks(*, isolated: bool = False, fetch: bool = True, env: dict | None = Non
             program("curl", fetching, required=False), program("unzip", fetching, required=False),
             *vision_checks(env), chromium()]
     from expectrail import renderer
-    if project is None and (Path.cwd() / "expectrail.project.json").is_file():
-        project = Path.cwd()
     if project is not None:
         report = renderer.project_report(project, renderer.probed(engine, shown, drawing))
         found.append(Check("recorded-renderer", "the project's recorded vision and this renderer",
@@ -476,6 +479,8 @@ def main(argv: list[str] | None = None, *, prog: str = "expectrail doctor") -> i
     p.add_argument("--no-fetch", action="store_true", help="only look for the engine; do not download it")
     try:
         args = p.parse_args(argv)
+        if args.project is not None and not args.project.is_dir():
+            p.error("--project needs an existing folder. Choose the folder containing project.godot.")
     except _Usage as exc:
         print(f"{prog}: {exc}\n{p.format_usage().strip()}", file=sys.stderr)
         return EXIT_USAGE
