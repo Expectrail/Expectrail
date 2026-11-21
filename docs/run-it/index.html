@@ -122,7 +122,7 @@ footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/
 <main id="main" class="wrap">
   <h1>Run it</h1>
   <p class="lede">Pick a change to Expectrail's sample game. Expectrail plays the game with that change, watches it, and says whether the change holds. Nothing to install.</p>
-  <p class="muted">When you start a sample, the game and checks run again. The fix sample reuses a recorded patch. It never starts a fixer. The vision model's answers are recorded once for each sample, so a visit spends nothing: a frame that is not in the recording gets no answer, and the run then says it needs review rather than guess. A sample whose answers are not recorded yet cannot be accepted, and its result says so.</p>
+  <p class="muted">When you start a sample, the game and checks run again. The fix sample reuses a recorded patch. It never starts a fixer. Vision uses saved answers, so starting a sample makes no live model call. A sample whose answers are not recorded yet cannot be accepted. With a required answer missing, a failing check can still reject the change. Otherwise the run needs review. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#recorded-vision">How recorded vision is judged</a>.</p>
 
   <p id="service" class="service" role="status" aria-live="polite">Checking whether Run it can start a run… Earlier recorded evidence is available below.</p>
   <p id="standin" class="standin" hidden>Local stub with stand-in replays: these runs do not play the real game. They are for looking at this page.</p>
