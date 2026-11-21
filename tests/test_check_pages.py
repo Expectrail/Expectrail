@@ -58,6 +58,13 @@ class CheckPagesTest(unittest.TestCase):
                 '<a href="../viewer-samples/clean.html">Result</a>'
                 '<a href="../viewer-samples/fixture-repair.html">Repair</a>'
             ),
+            "index.html": (
+                '<a href="hub/">Hub</a>'
+                '<a href="hub/verify.html">Verify</a>'
+                '<a href="onboarding-examples/breakout.html">Setup</a>'
+                '<a href="viewer-samples/clean.html">Result</a>'
+                '<a href="viewer-samples/fixture-repair.html">Repair</a>'
+            ),
             "hub/verify.html": "<h1>Verify a change to your game</h1>",
             "onboarding-examples/breakout.html": "<h1>Does this describe your game?</h1>",
             "viewer-samples/clean.html": "<h1>Accepted</h1>",
@@ -96,10 +103,46 @@ class CheckPagesTest(unittest.TestCase):
     def test_destination_without_matching_heading_is_reported_at_both_widths(self):
         files = self.hub_files()
         files["viewer-samples/clean.html"] = "<h1>Example</h1><p>Accepted</p>"
+        # The hub's link and, since #709's site-root entry, the root page's link to the same screen.
         self.assertEqual(self.hub_findings(files), [
             {"page": "../viewer-samples/clean.html", "what": "unreadable without scripts", "detail": f"{width}px"}
             for width in (375, 1280)
+        ] + [
+            {"page": "viewer-samples/clean.html", "what": "unreadable without scripts", "detail": f"{width}px"}
+            for width in (375, 1280)
         ])
+
+    def test_root_without_a_screen_link_is_reported_at_both_widths(self):
+        files = self.hub_files()
+        files["index.html"] = files["index.html"].replace('<a href="viewer-samples/clean.html">Result</a>', '')
+        self.assertEqual(self.hub_findings(files), [
+            {"page": "index.html", "what": "missing screen link", "detail": "viewer-samples/clean.html"}
+        ] * 2)
+
+    def test_root_without_the_hub_link_is_reported(self):
+        files = self.hub_files()
+        files["index.html"] = files["index.html"].replace('<a href="hub/">Hub</a>', '')
+        self.assertEqual(self.hub_findings(files), [
+            {"page": "index.html", "what": "missing screen link", "detail": "hub/"}
+        ] * 2)
+
+    def test_root_link_hidden_on_a_phone_is_reported_only_at_phone_width(self):
+        files = self.hub_files()
+        files["index.html"] = ("<style>@media(max-width:700px){.r{display:none}}</style>"
+                               + files["index.html"].replace('<a href="hub/verify.html">',
+                                                             '<a class="r" href="hub/verify.html">'))
+        self.assertEqual(self.hub_findings(files), [
+            {"page": "index.html", "what": "missing screen link", "detail": "hub/verify.html"}
+        ])
+
+    def test_root_destination_without_matching_heading_is_reported(self):
+        files = self.hub_files()
+        files["onboarding-examples/breakout.html"] = "<h1>Setup</h1>"
+        found = self.hub_findings(files)
+        self.assertIn({"page": "onboarding-examples/breakout.html", "what": "unreadable without scripts",
+                       "detail": "375px"}, found)
+        self.assertIn({"page": "onboarding-examples/breakout.html", "what": "unreadable without scripts",
+                       "detail": "1280px"}, found)
 
     def test_hub_can_be_required_without_a_production_domain(self):
         self.assertEqual(self.hub_findings({"index.html": "<h1>Preview</h1>"}, require_hub=True), [
