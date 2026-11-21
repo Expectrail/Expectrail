@@ -1,5 +1,5 @@
 """python3 -m expectrail.repro check | visibility | render | screen | screen-render | evidence | evidence-render
-| reach | menu | cases | score | score-render | breakdown | control-rate | control-form | pixel-reach | pixel-reach-render"""
+| reach | menu | cases | score | score-render | breakdown | control-rate | control-form | control-survival | pixel-reach | pixel-reach-render"""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, SCORED
-from expectrail.repro import bench, breakdown, control_form, control_rate, evidence, menu, pixel_reach, reach, score, screen, visibility
+from expectrail.repro import bench, breakdown, control_form, control_rate, control_survival, evidence, menu, pixel_reach, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
 
@@ -132,6 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     cf.add_argument("--do-nothing-rows", type=Path, required=True, help="rows.json from tools/do_nothing_public.py")
     cf.add_argument("--out", type=Path, default=None, help="write the page here")
     cf.add_argument("--bench", type=Path, default=bench.BENCH)
+    cs = sub.add_parser("control-survival", help="survival under the do-nothing control and the form histogram, "
+                                                 "from each live run's own records (#285); no model, no engine")
+    cs.add_argument("--run", nargs=2, action="append", required=True, type=Path, metavar=("SCORE", "RECORDS"),
+                    help="a repro-score.json and its records (repro-<defect>/jit-run.json); repeat to compare runs")
+    cs.add_argument("--out", type=Path, default=None, help="write the page here")
+    cs.add_argument("--bench", type=Path, default=bench.BENCH)
     sr = sub.add_parser("score-render", help="print a score record as a page")
     sr.add_argument("record", type=Path)
     sr.add_argument("--bench", type=Path, default=bench.BENCH)
@@ -175,6 +181,18 @@ def main(argv: list[str] | None = None) -> int:
             if args.out is not None:
                 args.out.write_text(control_form.render(result), encoding="utf-8")
             print(json.dumps(result["forms"]))
+            return 0
+        if args.cmd == "control-survival":
+            results = []
+            for score_path, records_dir in args.run:
+                for line in score.stale(score.load(score_path), doc, bench_path=args.bench):
+                    print(f"repro control-survival: stale: {score_path}: {line}", file=sys.stderr)
+                results.append(control_survival.read(score_path, records_dir))
+            if args.out is not None:
+                args.out.write_text(control_survival.render(results), encoding="utf-8")
+            for r in results:
+                print(json.dumps({"label": r["label"], "survival": r["survival"], "outcomes": r["outcomes"],
+                                  "catches": r["catches"]}))
             return 0
         if args.cmd == "score-render":
             record = score.load(args.record)
@@ -319,6 +337,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except (bench.BenchError, visibility.VisibilityError, screen.ScreenError, score.ScoreError, reach.ReachError,
             evidence.EvidenceError, breakdown.BreakdownError, menu.MenuError, pixel_reach.PixelReachError, control_rate.ControlRateError, control_form.ControlFormError,
+            control_survival.ControlSurvivalError,
             OSError) as exc:
         print(f"repro: {exc}", file=sys.stderr)
         return 1
