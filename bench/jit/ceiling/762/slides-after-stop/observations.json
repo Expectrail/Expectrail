@@ -1,0 +1,693 @@
+{
+  "pinnedCommit": "d5b1e8f",
+  "engine": {
+    "name": "godot",
+    "version": "4.7.2.stable.official.ed1daf0bf",
+    "renderer": "opengl3",
+    "device": null
+  },
+  "harnessIsolation": {
+    "sandbox": null,
+    "mode": "auto",
+    "reason": "bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system",
+    "network": "host",
+    "filesystem": "host",
+    "processes": "host",
+    "environment": "allowlist",
+    "limits": null
+  },
+  "proposalSha256": "b69f5a313110d49135d34ffe5e8c9c0b568134636acc73432af95f0557a9a53c",
+  "gameTreeSha256": "c2513cb02908c016020205df272f5ff9e3be8cbf6272f41fffd7e0030691a9ba",
+  "replays": 60,
+  "repetitionsPerArmAndProbe": 3,
+  "doNothingMode": "frozen",
+  "patchSha256ByArm": {
+    "clean": null,
+    "actual-defect": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+    "do-nothing": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+    "harmless": "48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65"
+  },
+  "stockLibraryCalibration": {
+    "holdRightReleaseTick": 250,
+    "holdRightLastHeldTickDeltaXPx": 0.223,
+    "holdRightFirstReleasedTickDeltaXPx": 0.184,
+    "holdLeftFirstReleasedTickDeltaXPx": 0.0,
+    "freezeRationaleCorrection": "The frozen text labels 0.184 px as the final held tick. It measures the first released tick. The final held tick advanced 0.223 px.",
+    "otherArms": "unrun on the stock hold-right and hold-left programs",
+    "releaseTimedPredicate": "unsupported under the current generator vocabulary"
+  },
+  "acceptedAuthorSuppliedProbeDiagnostics": {
+    "separatingChecksWithDecisiveFailedControl": [
+      "jit-extra-hold-adds-travel",
+      "jit-split-hold-travels-less"
+    ],
+    "checks": {
+      "jit-right-hold-travels": {
+        "rawOutcomes": {
+          "clean": [
+            "pass",
+            "pass",
+            "pass"
+          ],
+          "actual-defect": [
+            "pass",
+            "pass",
+            "pass"
+          ],
+          "do-nothing": [
+            "fail",
+            "fail",
+            "fail"
+          ],
+          "harmless": [
+            "pass",
+            "pass",
+            "pass"
+          ]
+        },
+        "tightestCleanClearancePx": 100.0,
+        "doNothing": "fails",
+        "harmless": "pass",
+        "currentAssessorRelevance": false
+      },
+      "jit-extra-idle-adds-no-travel": {
+        "rawOutcomes": {
+          "clean": [
+            "pass",
+            "pass",
+            "pass"
+          ],
+          "actual-defect": [
+            "fail",
+            "fail",
+            "fail"
+          ],
+          "do-nothing": [
+            "pass",
+            "pass",
+            "pass"
+          ],
+          "harmless": [
+            "pass",
+            "pass",
+            "pass"
+          ]
+        },
+        "tightestCleanClearancePx": 1.0,
+        "doNothing": "passes",
+        "harmless": "pass",
+        "currentAssessorRelevance": false
+      },
+      "jit-extra-hold-adds-travel": {
+        "rawOutcomes": {
+          "clean": [
+            "pass",
+            "pass",
+            "pass"
+          ],
+          "actual-defect": [
+            "fail",
+            "fail",
+            "fail"
+          ],
+          "do-nothing": [
+            "fail",
+            "fail",
+            "fail"
+          ],
+          "harmless": [
+            "pass",
+            "pass",
+            "pass"
+          ]
+        },
+        "tightestCleanClearancePx": 5.0,
+        "doNothing": "fails",
+        "harmless": "pass",
+        "currentAssessorRelevance": false
+      },
+      "jit-split-hold-travels-less": {
+        "rawOutcomes": {
+          "clean": [
+            "pass",
+            "pass",
+            "pass"
+          ],
+          "actual-defect": [
+            "fail",
+            "fail",
+            "fail"
+          ],
+          "do-nothing": [
+            "fail",
+            "fail",
+            "fail"
+          ],
+          "harmless": [
+            "pass",
+            "pass",
+            "pass"
+          ]
+        },
+        "tightestCleanClearancePx": 5.0,
+        "doNothing": "fails",
+        "harmless": "pass",
+        "currentAssessorRelevance": false
+      }
+    },
+    "metricsByArm": {
+      "clean": {
+        "jit-right-hold-travels": [
+          {
+            "left": 0.0,
+            "right": 200.0,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 200.0,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 200.0,
+            "toleranceAbs": 100
+          }
+        ],
+        "jit-extra-idle-adds-no-travel": [
+          {
+            "left": 200.0,
+            "right": 200.0,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 200.0,
+            "right": 200.0,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 200.0,
+            "right": 200.0,
+            "toleranceAbs": 1
+          }
+        ],
+        "jit-extra-hold-adds-travel": [
+          {
+            "left": 200.0,
+            "right": 210.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 200.0,
+            "right": 210.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 200.0,
+            "right": 210.0,
+            "toleranceAbs": 5
+          }
+        ],
+        "jit-split-hold-travels-less": [
+          {
+            "left": 190.0,
+            "right": 200.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 190.0,
+            "right": 200.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 190.0,
+            "right": 200.0,
+            "toleranceAbs": 5
+          }
+        ]
+      },
+      "actual-defect": {
+        "jit-right-hold-travels": [
+          {
+            "left": 0.0,
+            "right": 358.59,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 358.59,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 358.59,
+            "toleranceAbs": 100
+          }
+        ],
+        "jit-extra-idle-adds-no-travel": [
+          {
+            "left": 307.19,
+            "right": 358.59,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 307.19,
+            "right": 358.59,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 307.19,
+            "right": 358.59,
+            "toleranceAbs": 1
+          }
+        ],
+        "jit-extra-hold-adds-travel": [
+          {
+            "left": 358.59,
+            "right": 317.19,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 358.59,
+            "right": 317.19,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 358.59,
+            "right": 317.19,
+            "toleranceAbs": 5
+          }
+        ],
+        "jit-split-hold-travels-less": [
+          {
+            "left": 367.09,
+            "right": 358.59,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 367.09,
+            "right": 358.59,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 367.09,
+            "right": 358.59,
+            "toleranceAbs": 5
+          }
+        ]
+      },
+      "do-nothing": {
+        "jit-right-hold-travels": [
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 100
+          }
+        ],
+        "jit-extra-idle-adds-no-travel": [
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 1
+          }
+        ],
+        "jit-extra-hold-adds-travel": [
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 5
+          }
+        ],
+        "jit-split-hold-travels-less": [
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 0.0,
+            "right": 0.0,
+            "toleranceAbs": 5
+          }
+        ]
+      },
+      "harmless": {
+        "jit-right-hold-travels": [
+          {
+            "left": 0.0,
+            "right": 200.0,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 200.0,
+            "toleranceAbs": 100
+          },
+          {
+            "left": 0.0,
+            "right": 200.0,
+            "toleranceAbs": 100
+          }
+        ],
+        "jit-extra-idle-adds-no-travel": [
+          {
+            "left": 200.0,
+            "right": 200.0,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 200.0,
+            "right": 200.0,
+            "toleranceAbs": 1
+          },
+          {
+            "left": 200.0,
+            "right": 200.0,
+            "toleranceAbs": 1
+          }
+        ],
+        "jit-extra-hold-adds-travel": [
+          {
+            "left": 200.0,
+            "right": 210.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 200.0,
+            "right": 210.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 200.0,
+            "right": 210.0,
+            "toleranceAbs": 5
+          }
+        ],
+        "jit-split-hold-travels-less": [
+          {
+            "left": 190.0,
+            "right": 200.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 190.0,
+            "right": 200.0,
+            "toleranceAbs": 5
+          },
+          {
+            "left": 190.0,
+            "right": 200.0,
+            "toleranceAbs": 5
+          }
+        ]
+      }
+    }
+  },
+  "auxiliaryDirectTrace": {
+    "bound": {
+      "probe": "jit-hold-80-tail-90",
+      "heldFromTick": 9,
+      "heldToTick": 89,
+      "heldMinProgressPx": 100,
+      "tailFromTick": 114,
+      "tailToTick": 149,
+      "tailMaxExtentPx": 1
+    },
+    "measurementsByArm": {
+      "clean": [
+        {
+          "outcome": "pass",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 290.0,
+          "tailLastXPx": 290.0,
+          "finalXPx": 290.0,
+          "lastObservedHorizontalChangeTick": 108
+        },
+        {
+          "outcome": "pass",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 290.0,
+          "tailLastXPx": 290.0,
+          "finalXPx": 290.0,
+          "lastObservedHorizontalChangeTick": 108
+        },
+        {
+          "outcome": "pass",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 290.0,
+          "tailLastXPx": 290.0,
+          "finalXPx": 290.0,
+          "lastObservedHorizontalChangeTick": 108
+        }
+      ],
+      "actual-defect": [
+        {
+          "outcome": "fail",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 71.823,
+          "tailFirstXPx": 325.365,
+          "tailLastXPx": 397.188,
+          "finalXPx": 448.594,
+          "lastObservedHorizontalChangeTick": 179
+        },
+        {
+          "outcome": "fail",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 71.823,
+          "tailFirstXPx": 325.365,
+          "tailLastXPx": 397.188,
+          "finalXPx": 448.594,
+          "lastObservedHorizontalChangeTick": 179
+        },
+        {
+          "outcome": "fail",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 71.823,
+          "tailFirstXPx": 325.365,
+          "tailLastXPx": 397.188,
+          "finalXPx": 448.594,
+          "lastObservedHorizontalChangeTick": 179
+        }
+      ],
+      "do-nothing": [
+        {
+          "outcome": "fail",
+          "releaseTick": 90,
+          "heldProgressPx": 0.0,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 90.0,
+          "tailLastXPx": 90.0,
+          "finalXPx": 90.0,
+          "lastObservedHorizontalChangeTick": null
+        },
+        {
+          "outcome": "fail",
+          "releaseTick": 90,
+          "heldProgressPx": 0.0,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 90.0,
+          "tailLastXPx": 90.0,
+          "finalXPx": 90.0,
+          "lastObservedHorizontalChangeTick": null
+        },
+        {
+          "outcome": "fail",
+          "releaseTick": 90,
+          "heldProgressPx": 0.0,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 90.0,
+          "tailLastXPx": 90.0,
+          "finalXPx": 90.0,
+          "lastObservedHorizontalChangeTick": null
+        }
+      ],
+      "harmless": [
+        {
+          "outcome": "pass",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 290.0,
+          "tailLastXPx": 290.0,
+          "finalXPx": 290.0,
+          "lastObservedHorizontalChangeTick": 108
+        },
+        {
+          "outcome": "pass",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 290.0,
+          "tailLastXPx": 290.0,
+          "finalXPx": 290.0,
+          "lastObservedHorizontalChangeTick": 108
+        },
+        {
+          "outcome": "pass",
+          "releaseTick": 90,
+          "heldProgressPx": 176.25,
+          "tailExtentPx": 0.0,
+          "tailFirstXPx": 290.0,
+          "tailLastXPx": 290.0,
+          "finalXPx": 290.0,
+          "lastObservedHorizontalChangeTick": 108
+        }
+      ]
+    }
+  },
+  "traceHashesByArmAndProbe": {
+    "clean": {
+      "wait-long": [
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0",
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0",
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0"
+      ],
+      "jit-hold-80-tail-90": [
+        "ff4a8f151f15cacbb092756b5e72d57d85757e280cb05437fa905beefc4a4874",
+        "ff4a8f151f15cacbb092756b5e72d57d85757e280cb05437fa905beefc4a4874",
+        "ff4a8f151f15cacbb092756b5e72d57d85757e280cb05437fa905beefc4a4874"
+      ],
+      "jit-hold-80-tail-60": [
+        "6db852367292d55e3bfa5abf745d52ab6363797775e195fd2579ef4b4a2df727",
+        "6db852367292d55e3bfa5abf745d52ab6363797775e195fd2579ef4b4a2df727",
+        "6db852367292d55e3bfa5abf745d52ab6363797775e195fd2579ef4b4a2df727"
+      ],
+      "jit-hold-84-tail-60": [
+        "d4f3dd6e8b642635919c9eace161a1153e132f6d5a7b5e8382017d447abe1458",
+        "d4f3dd6e8b642635919c9eace161a1153e132f6d5a7b5e8382017d447abe1458",
+        "d4f3dd6e8b642635919c9eace161a1153e132f6d5a7b5e8382017d447abe1458"
+      ],
+      "jit-split-hold-right": [
+        "18d40489e3b59ef335a045aedab4803a4c841f0724987d5702c3e2cdc2f18d2c",
+        "18d40489e3b59ef335a045aedab4803a4c841f0724987d5702c3e2cdc2f18d2c",
+        "18d40489e3b59ef335a045aedab4803a4c841f0724987d5702c3e2cdc2f18d2c"
+      ]
+    },
+    "actual-defect": {
+      "wait-long": [
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0",
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0",
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0"
+      ],
+      "jit-hold-80-tail-90": [
+        "e7e55d6f6f62392f4e7d4d534dd5aae57ca6f6c85284058c66505d6761c3b65f",
+        "e7e55d6f6f62392f4e7d4d534dd5aae57ca6f6c85284058c66505d6761c3b65f",
+        "e7e55d6f6f62392f4e7d4d534dd5aae57ca6f6c85284058c66505d6761c3b65f"
+      ],
+      "jit-hold-80-tail-60": [
+        "99480051f23577b1792b1b44c1187ad0617881ac8e41b82a9fbb1516a8be7d2f",
+        "99480051f23577b1792b1b44c1187ad0617881ac8e41b82a9fbb1516a8be7d2f",
+        "99480051f23577b1792b1b44c1187ad0617881ac8e41b82a9fbb1516a8be7d2f"
+      ],
+      "jit-hold-84-tail-60": [
+        "5d0855b143de4b7e7f37b6197c8c8017e4ac5868dc82fc08eb8e31c3287b8c5f",
+        "5d0855b143de4b7e7f37b6197c8c8017e4ac5868dc82fc08eb8e31c3287b8c5f",
+        "5d0855b143de4b7e7f37b6197c8c8017e4ac5868dc82fc08eb8e31c3287b8c5f"
+      ],
+      "jit-split-hold-right": [
+        "bf8bf3803415e274603172784525523ea58304f4852ae1902a5c9198752cef40",
+        "bf8bf3803415e274603172784525523ea58304f4852ae1902a5c9198752cef40",
+        "bf8bf3803415e274603172784525523ea58304f4852ae1902a5c9198752cef40"
+      ]
+    },
+    "do-nothing": {
+      "wait-long": [
+        "962fd9e20a4eb45483a2f6ad8b6cc3e62c81665deb75be5d6ee8e40322debbd6",
+        "962fd9e20a4eb45483a2f6ad8b6cc3e62c81665deb75be5d6ee8e40322debbd6",
+        "962fd9e20a4eb45483a2f6ad8b6cc3e62c81665deb75be5d6ee8e40322debbd6"
+      ],
+      "jit-hold-80-tail-90": [
+        "5ea8217e50d320240b919ed11160a10ea7776de17c99281b37fc6af0180fdae1",
+        "5ea8217e50d320240b919ed11160a10ea7776de17c99281b37fc6af0180fdae1",
+        "5ea8217e50d320240b919ed11160a10ea7776de17c99281b37fc6af0180fdae1"
+      ],
+      "jit-hold-80-tail-60": [
+        "ab04fc7460facea7508b2236d987ef5a752c85e2c8ca02438a83ee98902bbc47",
+        "ab04fc7460facea7508b2236d987ef5a752c85e2c8ca02438a83ee98902bbc47",
+        "ab04fc7460facea7508b2236d987ef5a752c85e2c8ca02438a83ee98902bbc47"
+      ],
+      "jit-hold-84-tail-60": [
+        "f0116ec52f69a7f6d8ced8ef1cbd3a6fda98731410d97758c03c325a08778bc6",
+        "f0116ec52f69a7f6d8ced8ef1cbd3a6fda98731410d97758c03c325a08778bc6",
+        "f0116ec52f69a7f6d8ced8ef1cbd3a6fda98731410d97758c03c325a08778bc6"
+      ],
+      "jit-split-hold-right": [
+        "e855726361799a22ef8d1b68deee5f4a54427aefe8edfe6946470cf84d3772ae",
+        "e855726361799a22ef8d1b68deee5f4a54427aefe8edfe6946470cf84d3772ae",
+        "e855726361799a22ef8d1b68deee5f4a54427aefe8edfe6946470cf84d3772ae"
+      ]
+    },
+    "harmless": {
+      "wait-long": [
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0",
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0",
+        "655b6bfc25202d934aa19d6b5647993fc81a7fd94258ff1f10de1cc86a5234d0"
+      ],
+      "jit-hold-80-tail-90": [
+        "ff4a8f151f15cacbb092756b5e72d57d85757e280cb05437fa905beefc4a4874",
+        "ff4a8f151f15cacbb092756b5e72d57d85757e280cb05437fa905beefc4a4874",
+        "ff4a8f151f15cacbb092756b5e72d57d85757e280cb05437fa905beefc4a4874"
+      ],
+      "jit-hold-80-tail-60": [
+        "6db852367292d55e3bfa5abf745d52ab6363797775e195fd2579ef4b4a2df727",
+        "6db852367292d55e3bfa5abf745d52ab6363797775e195fd2579ef4b4a2df727",
+        "6db852367292d55e3bfa5abf745d52ab6363797775e195fd2579ef4b4a2df727"
+      ],
+      "jit-hold-84-tail-60": [
+        "d4f3dd6e8b642635919c9eace161a1153e132f6d5a7b5e8382017d447abe1458",
+        "d4f3dd6e8b642635919c9eace161a1153e132f6d5a7b5e8382017d447abe1458",
+        "d4f3dd6e8b642635919c9eace161a1153e132f6d5a7b5e8382017d447abe1458"
+      ],
+      "jit-split-hold-right": [
+        "18d40489e3b59ef335a045aedab4803a4c841f0724987d5702c3e2cdc2f18d2c",
+        "18d40489e3b59ef335a045aedab4803a4c841f0724987d5702c3e2cdc2f18d2c",
+        "18d40489e3b59ef335a045aedab4803a4c841f0724987d5702c3e2cdc2f18d2c"
+      ]
+    }
+  },
+  "revisions": 0
+}

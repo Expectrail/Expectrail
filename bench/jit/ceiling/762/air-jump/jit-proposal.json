@@ -1,0 +1,207 @@
+{
+  "format": "expectrail.jit-proposal/v0",
+  "offer": "signals-reach-evidence-menu-control",
+  "candidate": "withheld",
+  "reportSha256": "29a13ffaf433209099c3cdde979019a18901fffdc41b2b243230085c391294ab",
+  "patchSha256": null,
+  "model": null,
+  "promptSha256": null,
+  "error": null,
+  "usage": {
+    "promptTokens": 0,
+    "completionTokens": 0
+  },
+  "diagnostics": [
+    "Hand-authored before the defect replay. The demand and count ceiling are separate checks.",
+    "A same-route rise cap and strict rise relation test height as a proxy for the count ceiling."
+  ],
+  "probes": [
+    {
+      "id": "jit-jump-l40-x2-second-hold8",
+      "description": "Walk left for 40 ticks, stop, then press jump twice 20 ticks apart, holding the second for eight ticks.",
+      "program": {
+        "op": "sequence",
+        "steps": [
+          {
+            "op": "hold",
+            "durationTicks": 40,
+            "action": "move_left"
+          },
+          {
+            "op": "wait",
+            "durationTicks": 10
+          },
+          {
+            "op": "tap",
+            "durationTicks": 4,
+            "action": "jump"
+          },
+          {
+            "op": "wait",
+            "durationTicks": 16
+          },
+          {
+            "op": "hold",
+            "durationTicks": 8,
+            "action": "jump"
+          },
+          {
+            "op": "wait",
+            "durationTicks": 12
+          }
+        ]
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "templateId": "jit",
+      "spec": {
+        "format": "expectrail.trace-spec/v1",
+        "id": "jit-air-jump-demand",
+        "origin": "AUTO_DIFF",
+        "statement": "Eight jump presses must produce more jumps within one airborne span than one press.",
+        "expectationRef": {
+          "claimId": "player.jump",
+          "authority": "model_prior"
+        },
+        "scope": {
+          "class": "player"
+        },
+        "window": {
+          "kind": "episode"
+        },
+        "operation": {
+          "type": "relation",
+          "signal": "air_jumps",
+          "left": "jump-l40-x1",
+          "right": "jump-l40-x8",
+          "comparator": "gt",
+          "toleranceAbs": 0
+        },
+        "evidenceRequirement": {
+          "minimumTriggers": 1,
+          "minimumEvaluations": 1,
+          "completeWindow": true
+        },
+        "guards": []
+      },
+      "applies": {
+        "kind": "pair",
+        "left": "jump-l40-x1",
+        "right": "jump-l40-x8"
+      }
+    },
+    {
+      "templateId": "jit",
+      "spec": {
+        "format": "expectrail.trace-spec/v1",
+        "id": "jit-air-jump-ceiling",
+        "origin": "AUTO_DIFF",
+        "statement": "Eight jump presses must produce no more jumps within one airborne span than two presses.",
+        "expectationRef": {
+          "claimId": "player.jump",
+          "authority": "model_prior"
+        },
+        "scope": {
+          "class": "player"
+        },
+        "window": {
+          "kind": "episode"
+        },
+        "operation": {
+          "type": "relation",
+          "signal": "air_jumps",
+          "left": "jump-l40-x2",
+          "right": "jump-l40-x8",
+          "comparator": "lte",
+          "toleranceAbs": 0
+        },
+        "evidenceRequirement": {
+          "minimumTriggers": 1,
+          "minimumEvaluations": 1,
+          "completeWindow": true
+        },
+        "guards": []
+      },
+      "applies": {
+        "kind": "pair",
+        "left": "jump-l40-x2",
+        "right": "jump-l40-x8"
+      }
+    },
+    {
+      "templateId": "jit",
+      "spec": {
+        "format": "expectrail.trace-spec/v1",
+        "id": "jit-air-jump-rise-cap",
+        "origin": "AUTO_DIFF",
+        "statement": "With repeated short jump presses, the player rises at most 125 pixels above the floor it left.",
+        "expectationRef": {
+          "claimId": "player.jump",
+          "authority": "model_prior"
+        },
+        "scope": {
+          "class": "player"
+        },
+        "window": {
+          "kind": "episode"
+        },
+        "operation": {
+          "type": "max_episode_rise",
+          "maxPx": 125
+        },
+        "evidenceRequirement": {
+          "minimumTriggers": 1,
+          "minimumEvaluations": 1,
+          "completeWindow": true
+        },
+        "guards": []
+      },
+      "applies": {
+        "kind": "probes",
+        "ids": [
+          "jump-l40-x8"
+        ]
+      }
+    },
+    {
+      "templateId": "jit",
+      "spec": {
+        "format": "expectrail.trace-spec/v1",
+        "id": "jit-air-jump-strict-rise",
+        "origin": "AUTO_DIFF",
+        "statement": "Two presses with the second held eight ticks must rise higher than eight four-tick presses.",
+        "expectationRef": {
+          "claimId": "player.jump",
+          "authority": "model_prior"
+        },
+        "scope": {
+          "class": "player"
+        },
+        "window": {
+          "kind": "episode"
+        },
+        "operation": {
+          "type": "relation",
+          "signal": "max_rise_px",
+          "left": "jump-l40-x8",
+          "right": "jit-jump-l40-x2-second-hold8",
+          "comparator": "gt",
+          "toleranceAbs": 0
+        },
+        "evidenceRequirement": {
+          "minimumTriggers": 1,
+          "minimumEvaluations": 1,
+          "completeWindow": true
+        },
+        "guards": []
+      },
+      "applies": {
+        "kind": "pair",
+        "left": "jump-l40-x8",
+        "right": "jit-jump-l40-x2-second-hold8"
+      }
+    }
+  ]
+}

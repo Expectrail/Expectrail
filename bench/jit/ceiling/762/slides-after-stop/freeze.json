@@ -1,0 +1,35 @@
+{
+  "pinnedCommit": "d5b1e8f",
+  "proposalSha256": "b69f5a313110d49135d34ffe5e8c9c0b568134636acc73432af95f0557a9a53c",
+  "designInputs": [
+    "public report",
+    "clean platformer and mechanics profile",
+    "current JIT generator offer and evaluator"
+  ],
+  "obligation": "The robot must move while the arrow is held and settle promptly when released.",
+  "counterexample": "The robot travels appreciably in the late portion of the no-input tail.",
+  "routeRationale": "The 240-tick library holds are blocked or slowed by terrain before release. On clean hold-right x advances 0.184 px in its last held tick and hold-left has already stopped. The shorter pure holds reach full speed on clear floor. Most other library routes jump, shoot, reverse, press another action, or never move.",
+  "cleanCalibration": {
+    "idleNetDxPx": 0.0,
+    "hold80Tail60NetDxPx": 200.0,
+    "hold80Tail90NetDxPx": 200.0,
+    "hold84Tail60NetDxPx": 210.0,
+    "splitHoldNetDxPx": 190.0,
+    "releaseTick": 90,
+    "lastObservedHorizontalChangeTick": 108,
+    "xBeforePressPx": 90.0,
+    "xBeforeReleasePx": 266.25,
+    "settledXPx": 290.0
+  },
+  "boundRationale": "A full-speed clean release settles within 20 physics ticks. The independent trace observation starts at release plus 24 ticks (200 ms), four ticks after that bound, and allows 1 px horizontal range through release plus 59. The held-motion floor of 100 px is below the calibrated 176.25 px. The paired greater-than comparisons require a 5 px difference given clean references of 10 px. Tail-extension equality allows a 1 px deviation around the clean difference of zero.",
+  "auxiliaryTraceObservation": {
+    "probe": "jit-hold-80-tail-90",
+    "heldFromTick": 9,
+    "heldToTick": 89,
+    "heldMinProgressPx": 100,
+    "tailFromTick": 114,
+    "tailToTick": 149,
+    "tailMaxExtentPx": 1
+  },
+  "generatorLimitation": "The parser supplies whole-episode windows, the displacement signal reads the endpoints, and event_response supports projectile_spawn only. The paired endpoints are proxies. The independent trace observation is not a generated predicate and receives no proposal credit."
+}
