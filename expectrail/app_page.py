@@ -11,6 +11,8 @@ input[type=checkbox]{width:auto}
 button{font:inherit;font-weight:600;background:#175c47;color:white;border:2px solid #175c47;border-radius:6px;padding:10px 18px;margin:16px 12px 0 0;cursor:pointer}
 button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;cursor:default}a{color:#175c47}a:focus,button:focus,input:focus{outline:3px solid #b35c12;outline-offset:3px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering,#error{white-space:pre-wrap;overflow-wrap:anywhere}
+.folder-entry{display:flex;flex-wrap:wrap;gap:8px}.folder-entry button{margin:0;padding:8px 12px}.folder-entry input{flex:1 1 10rem}
+.folder-feedback{overflow-wrap:anywhere;color:#475a53}
 #result-folders dt{font-weight:600}#result-folders dd{margin:0 0 .5em;overflow-wrap:anywhere}
 [hidden]{display:none!important}summary{cursor:pointer}#error{color:#8e251c;font-weight:600}li{margin:5px 0;overflow-wrap:anywhere}
 @media(max-width:600px){main{padding:16px 12px 36px}section{padding:16px}.grid{grid-template-columns:1fr;gap:0}h1{font-size:1.65rem}button{width:100%;margin-right:0}}
@@ -20,8 +22,14 @@ button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;curs
 <section aria-labelledby="project-heading"><h2 id="project-heading">1. Your project and versions</h2>
 <p>Choose a copy from before the change and a copy from after it. Both must have the same folder layout.
 For your own checks, the routes and approvals come from <strong>Before</strong>. Checking folders and verifying leave your source files unchanged.</p>
-<div class="grid"><div><label for="before">Before: full folder path or project.godot file path</label><input id="before" placeholder="/Users/you/MyGame-before" autocomplete="off" spellcheck="false"></div>
-<div><label for="after">After: full folder path or project.godot file path</label><input id="after" placeholder="/Users/you/MyGame-after/project.godot" autocomplete="off" spellcheck="false"></div></div>
+<div class="grid"><div><label for="before">Before: full folder path or project.godot file path</label>
+<div class="folder-entry"><button id="choose-before" type="button">Choose Before folder</button>
+<input id="before" autocomplete="off" spellcheck="false" aria-describedby="before-feedback"></div>
+<div id="before-feedback" class="folder-feedback" role="status"></div></div>
+<div><label for="after">After: full folder path or project.godot file path</label>
+<div class="folder-entry"><button id="choose-after" type="button">Choose After folder</button>
+<input id="after" autocomplete="off" spellcheck="false" aria-describedby="after-feedback"></div>
+<div id="after-feedback" class="folder-feedback" role="status"></div></div></div>
 <p>Each folder needs <code>project.godot</code>. If <code>expectrail.project.json</code> is missing, check the folder to review and save a draft setup.
 The config names the routes and checks. A draft config cannot give an accept.
 The kinematic-character example uses the same config path as your project.</p>
@@ -79,7 +87,7 @@ const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and too
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['manual','before','after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent','isolated']) el(id).disabled=active;
+  for (const id of ['manual','choose-before','before','choose-after','after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent','isolated']) el(id).disabled=active;
 }
 
 async function api(path, body) {
@@ -246,7 +254,35 @@ function playerPicker(panel, side, folder, preview, detail) {
   };
 }
 for(const side of Object.keys(sideNames)) {
-  el(side).addEventListener('input',()=>el('inspection-'+side).replaceChildren());
+  const input=el(side), choose=el('choose-'+side), feedback=el(side+'-feedback');
+  input.addEventListener('input',()=>{
+    el('inspection-'+side).replaceChildren();
+    feedback.textContent='';
+  });
+  choose.onclick=async()=>{
+    if(busy || job) return;
+    controls(true);
+    el('before').disabled=el('after').disabled=false;
+    feedback.textContent='Choose a project folder in the desktop dialog.';
+    let edited=false;
+    const markEdited=()=>{edited=true;};
+    input.addEventListener('input',markEdited);
+    try {
+      const {folder}=await api('/api/projects/choose',{});
+      if(edited) return;
+      if(folder===null){feedback.textContent='Folder choice cancelled.';return;}
+      if(typeof folder!=='string' || !folder.trim()) throw new Error('The desktop dialog returned no usable folder.');
+      input.value=folder;
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+      feedback.textContent=sideNames[side]+' folder selected.';
+    } catch(error) {
+      if(!edited) feedback.textContent=error.message+' You can also paste the full path here.';
+    } finally {
+      input.removeEventListener('input',markEdited);
+      controls(false);
+      if(document.activeElement===document.body) choose.focus();
+    }
+  };
 }
 for(const id of ['manual','game','routes','specs','isolated']) {
   el(id).addEventListener('input',()=>{
