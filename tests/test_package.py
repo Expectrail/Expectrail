@@ -159,6 +159,7 @@ NOT_PACKAGED = {
     "expectrail.change_evidence": "evidence of a fix loop's change; used by the demo review path",
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
+    "expectrail.blind_set": "the blind set's manifest validator (#742): the set's author runs it from a clone; no verification imports it",
     "expectrail.runit_site": "the Run it page's results index (#265): the publish job runs it from a clone; built on expectrail.runit",
 }
 # Imports a packaged module makes only on a path a verification never takes.

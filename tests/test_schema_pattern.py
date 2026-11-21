@@ -139,6 +139,9 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    "^[0-9a-f]{7,40}$": ("b761b4c", True),
+    "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$": ("e01/defect.patch", True),
+    "^[A-Za-z0-9][A-Za-z0-9._-]{0,59}$": ("kinematic-character", True),
     r"^(tests|tools)/[A-Za-z0-9_./-]+\.py$": ("tests/test_evidence_storage.py", True),
     "^[A-Za-z0-9_. /-]+$": ("run/docs/raw/a.txt", True),
     "^docs/[A-Za-z0-9_. /-]+$": ("docs/trial/raw", True),
