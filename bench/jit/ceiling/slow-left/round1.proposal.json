@@ -1,0 +1,105 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "model": "hand-written",
+ "offer": "signals-reach-evidence-menu-control",
+ "error": null,
+ "probes": [
+  {
+   "id": "jit-right-1s",
+   "family": "jit",
+   "description": "Hold move_right for one second, then stand for half a second.",
+   "program": {
+    "op": "sequence",
+    "steps": [
+     {
+      "op": "hold",
+      "action": "move_right",
+      "durationTicks": 120
+     },
+     {
+      "op": "wait",
+      "durationTicks": 60
+     }
+    ]
+   },
+   "tags": []
+  },
+  {
+   "id": "jit-right-left-1s",
+   "family": "jit",
+   "description": "Hold move_right for one second, then move_left for one second, then stand for half a second.",
+   "program": {
+    "op": "sequence",
+    "steps": [
+     {
+      "op": "hold",
+      "action": "move_right",
+      "durationTicks": 120
+     },
+     {
+      "op": "hold",
+      "action": "move_left",
+      "durationTicks": 120
+     },
+     {
+      "op": "wait",
+      "durationTicks": 60
+     }
+    ]
+   },
+   "tags": []
+  }
+ ],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c1",
+    "origin": "AUTO_DIFF",
+    "statement": "A second of walking left brings the robot back more than 187.5 px of the way a second of walking right took it.",
+    "expectationRef": {
+     "claimId": "model.unbound",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "player_dx_px",
+     "comparator": "lt",
+     "toleranceAbs": 187.5,
+     "left": "jit-right-1s",
+     "right": "jit-right-left-1s"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jit-right-1s",
+    "right": "jit-right-left-1s"
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [],
+ "usage": {
+  "model": "hand-written",
+  "promptTokens": null,
+  "completionTokens": null
+ },
+ "promptSha256": "63ed7107a76b5e7bb38d5c45393aeb3366bed61bf8000901dcd88ad12690e6b7",
+ "candidate": "withheld",
+ "reportSha256": "33607609537dcbd60ae8f5e07449d4b696f84494a3559591159873517cf0fbd4"
+}

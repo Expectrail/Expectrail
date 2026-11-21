@@ -1,0 +1,18 @@
+{
+ "obligation": "The player can jump once more in the air (the profile's double jump) and no more than that. Two parts, both required: (demand) a second press in the air lifts the player more than 27 px higher than one press; (bound) eight presses lift the player no more than 27 px higher than two. Measured where nothing is overhead (after walking left 40 ticks). On the clean game two presses rise 113.46 px, one press 57.93 px and eight presses 113.61 px; 27 px is about half the extra a second jump gives, so a third jump in the air breaks the bound. Chosen from the clean game and the profile claim, before any replay of the defect.",
+ "probes": [],
+ "candidates": [
+  {"id": "c1",
+   "statement": "A second jump press in the air lifts the player more than 27 px higher than a single press.",
+   "claimId": "player.jump", "class": "player",
+   "operation": {"type": "relation", "signal": "max_rise_px", "comparator": "gt", "toleranceAbs": 27,
+                 "left": "jump-l40-x1", "right": "jump-l40-x2"},
+   "appliesTo": ["jump-l40-x1", "jump-l40-x2"]},
+  {"id": "c2",
+   "statement": "Eight jump presses lift the player no more than 27 px higher than two presses.",
+   "claimId": "player.jump", "class": "player",
+   "operation": {"type": "relation", "signal": "max_rise_px", "comparator": "lte", "toleranceAbs": 27,
+                 "left": "jump-l40-x2", "right": "jump-l40-x8"},
+   "appliesTo": ["jump-l40-x2", "jump-l40-x8"]}
+ ]
+}

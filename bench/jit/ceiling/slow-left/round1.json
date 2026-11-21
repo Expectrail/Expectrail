@@ -1,0 +1,20 @@
+{
+ "obligation": "Walking left is about as fast as walking right. After one second walking right and then one second walking left, the robot has come back more than 187.5 px of the 300 px one second right takes it. The clean game comes back 250 px (turning costs the rest); at half speed to the left it would come back about 125 px. 187.5 is the midpoint of those two, chosen from the clean game and the report's 'about half speed', before any replay of the defect.",
+ "probes": [
+  {"id": "right-1s", "description": "Hold move_right for one second, then stand for half a second.",
+   "program": {"op": "sequence", "steps": [{"op": "hold", "action": "move_right", "durationTicks": 120},
+                                           {"op": "wait", "durationTicks": 60}]}},
+  {"id": "right-left-1s", "description": "Hold move_right for one second, then move_left for one second, then stand for half a second.",
+   "program": {"op": "sequence", "steps": [{"op": "hold", "action": "move_right", "durationTicks": 120},
+                                           {"op": "hold", "action": "move_left", "durationTicks": 120},
+                                           {"op": "wait", "durationTicks": 60}]}}
+ ],
+ "candidates": [
+  {"id": "c1",
+   "statement": "A second of walking left brings the robot back more than 187.5 px of the way a second of walking right took it.",
+   "claimId": "player.walk-speed", "class": "player",
+   "operation": {"type": "relation", "signal": "player_dx_px", "comparator": "lt", "toleranceAbs": 187.5,
+                 "left": "right-1s", "right": "right-left-1s"},
+   "appliesTo": ["right-1s", "right-left-1s"]}
+ ]
+}
