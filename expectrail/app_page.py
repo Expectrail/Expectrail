@@ -367,6 +367,14 @@ el('verify').onclick=async()=>{
   el('result-text').textContent='No verdict yet.';el('progress').textContent='Checking the rendering environment before starting…';controls(true);
   let submissionAttempted=false;
   try{const body=values();
+    for(const side of Object.keys(sideNames)) {
+      if(!body[side].trim()) {
+        problem(new Error('Choose both versions before starting verification.'));
+        el(side+'-feedback').textContent='Choose the '+sideNames[side]+' folder or enter its path.';
+        el(side).focus();
+        return;
+      }
+    }
     if(el('auto-fix').checked){
       body.autoFix=true;body.repairAgent=el('fix-agent').value;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
       if(!Number.isInteger(body.attempts)||body.attempts<1||body.attempts>10) throw new Error('Enter 1 to 10 fix attempts.');

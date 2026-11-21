@@ -71,11 +71,25 @@ def browser_rehearsal():
             expect(recent_before).to_be_hidden()
             expect(recent_after).to_be_hidden()
 
+            submitted = []
+            page.on('request', lambda r: submitted.append(r.url.rsplit('/', 1)[-1])
+                    if r.method == 'POST' and r.url.endswith(('/api/jobs', '/api/inspect')) else None)
+
+            def verify_with_missing(side):
+                page.get_by_role('button', name='Verify', exact=True).click()
+                expect(page.locator('#progress')).to_have_text('Verification did not start.')
+                expect(page.locator('#'+side)).to_be_focused()
+                expect(page.locator('#'+side+'-feedback')).to_contain_text('Choose the '+side.title()+' folder')
+                fixture.assertEqual(submitted, [])
+
+            verify_with_missing('before')
             native.return_value = str(before)
             choose_before.focus()
             choose_before.press('Enter')
             expect(before_field).to_have_value(str(before))
             expect(after_field).to_have_value('')
+            after_field.fill('  ')
+            verify_with_missing('after')
             native.return_value = str(after)
             choose_after.click()
             expect(after_field).to_have_value(str(after))
