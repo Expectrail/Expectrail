@@ -279,7 +279,7 @@ for(const side of Object.keys(sideNames)) {
   let selection=0;
   input.addEventListener('input',()=>{
     selection++;
-    recent.value='';
+    if(recent.value!==input.value) recent.value='';
     el('inspection-'+side).replaceChildren();
     feedback.textContent='';
   });
