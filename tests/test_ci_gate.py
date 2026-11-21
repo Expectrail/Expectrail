@@ -2290,6 +2290,80 @@ class HeadChecksTest(unittest.TestCase):
         read = {p.split("/commits/")[1].split("/")[0] for p in seen if "check-runs?" in p}
         self.assertEqual(read, {self.FORCED, self.OLD2})
 
+    def paged_runs(self, pages, seen_pages, broken=(), junk=()):
+        """A runs listing served page by page: ``pages`` is a list of lists of head shas."""
+        def one(sha):
+            return {"id": 1, "head_sha": sha, "head_branch": "fix/floor", "event": "pull_request",
+                    "head_repository": {"full_name": "owner/game"}}
+
+        def listing(path):
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)
+            self.assertEqual(query["per_page"], ["100"])
+            page = int(query.get("page", ["1"])[0])
+            seen_pages.append(page)
+            if page in broken:
+                raise urllib.error.URLError("API down")
+            if page in junk:
+                return ["junk"]
+            items = pages[page - 1] if page <= len(pages) else []
+            return {"total_count": sum(map(len, pages)), "workflow_runs": [one(s) for s in items]}
+        return listing
+
+    def test_a_force_pushed_head_older_than_the_newest_100_runs_is_reached(self):
+        # The newest 100 runs are all re-runs of this capture's own head; the force-pushed head is on
+        # the second page (#254: "a head older than the newest 100 runs on the branch is not reached").
+        pages = [[HEAD] * 100, [self.FORCED]]
+        seen_pages = []
+        api = self.earlier_heads_api(listing=self.paged_runs(pages, seen_pages))
+        refused = self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run)
+        self.assertEqual(refused, [])
+        self.assertEqual(seen_pages, [1, 2])
+        self.assertTrue({"81", "82"} <= {w[1].rsplit("/", 1)[1] for w in self.writes})
+
+    def test_further_pages_are_read_only_until_the_limit_is_met(self):
+        heads = [f"{i:040x}" for i in range(1, 101)]  # distinct earlier heads with no checks of ours
+
+        def sweep(pages, **kw):
+            seen_pages = []
+            inner = self.earlier_heads_api(listing=self.paged_runs(pages, seen_pages))
+
+            def api(method, path, body=None):
+                if "check-runs?" in path and path.split("/commits/")[1].split("/")[0] in heads:
+                    return {"check_runs": []}
+                return inner(method, path, body)
+            self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run, **kw)
+            return seen_pages
+        # 100 distinct earlier heads on page 1: the limit is met, page 2 is not read.
+        self.assertEqual(sweep([heads, [self.FORCED]]), [1])
+        # Three distinct earlier heads on a full page 1 and a limit of four: page 2 is read.
+        self.assertEqual(sweep([[HEAD] + heads[:3] + [HEAD] * 96, [self.FORCED]], limit=4), [1, 2])
+        # The current head never counts towards the limit.
+        self.assertEqual(sweep([heads[:3] + [HEAD] * 97, [self.FORCED]], limit=3), [1])
+        self.assertEqual(sweep([heads[:2] + [HEAD] * 98, [self.FORCED]], limit=3), [1, 2])
+
+    def test_the_run_pages_read_are_bounded(self):
+        seen_pages = []
+        pages = [[HEAD] * 100] * (self.c.RUN_PAGES + 5)
+        api = self.earlier_heads_api(listing=self.paged_runs(pages, seen_pages))
+        self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run)
+        self.assertEqual(seen_pages, list(range(1, self.c.RUN_PAGES + 1)))
+
+    def test_an_unreadable_later_page_keeps_what_was_read_and_warns(self):
+        seen_pages = []
+        pages = [[self.FORCED] + [HEAD] * 99, [HEAD] * 100, ["7" * 40]]
+        for case, bad in (("down", dict(broken={2})), ("not a dict", dict(junk={2}))):
+            with self.subTest(case=case), mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+                self.writes.clear()
+                seen_pages.clear()
+                api = self.earlier_heads_api(listing=self.paged_runs(pages, seen_pages, **bad))
+                refused = self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run)
+                self.assertEqual(refused, [])
+                patched = {w[1].rsplit("/", 1)[1] for w in self.writes}
+                # The force-pushed head from page 1, and the pull request's own commits.
+                self.assertEqual(patched, {"81", "82", "91", "96", "97"})
+                self.assertIn("::warning::Could not read every earlier capture", out.getvalue())
+                self.assertEqual(seen_pages, [1, 2])  # no page after the one that failed
+
     def test_start_reaches_a_force_pushed_head(self):
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \

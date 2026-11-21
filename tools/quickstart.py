@@ -64,6 +64,7 @@ def copy_checkout(source, target):
     for name in ('harness/get_godot.sh','harness/macos/get_godot_mac.sh','bugs/physics-fall-through/v1.patch'):
         copy(name)
     # The local app's recorded outside example (#370): the package data pyproject.toml names.
+    copy('contracts/examples/project-recorded.json')
     for name in ('kinematic-character/routes/walk.json','recordings/kinematic-character/calibration.json',
                  'recordings/kinematic-character/vision-recording.json'):
         copy('tests/outside/'+name)
