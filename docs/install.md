@@ -170,13 +170,16 @@ files are" in a clone and in an installed copy.
 
 ## A release
 
-`.github/workflows/release.yml` builds the wheel for a version tag and attaches it to the run:
+`.github/workflows/release.yml` builds the wheel and recorded-sample image for a version tag.
 
 - A tag `v<version>` builds from that commit, and only when it is the package's own version
   (`expectrail/__init__.py`); any other tag builds nothing and says why. A dispatch builds from main
   only, to try the workflow.
 - The wheel is installed into a clean venv and its command must say "installed package" and the
-  version. The wheel and its SHA-256 go up as the run's artifact `expectrail-<version>-wheel`, kept 90 days.
+  version. The workflow also builds `Dockerfile.sample` from that wheel and runs doctor and the
+  three recorded-sample cases by image ID with networking disabled. The sample must return
+  accept, reject and accept. On success the run summary records the local image ID, and the
+  wheel and its SHA-256 are kept for 90 days as `expectrail-<version>-wheel`.
 - It reads only and holds no secret. It publishes nowhere: PyPI or a container registry needs an
   account and a token, and pushing the tag is a person's step too.
 
@@ -234,9 +237,7 @@ with no runtime Python dependencies, unpacks the pinned Godot through the instal
 checks the archive SHA-512 again inside the build with networking disabled. The host fetches the
 public archive using the same pinned script; TLS verification is never disabled. The final image has no checkout. Runs use a non-root user. Bubblewrap
 is checked and reported; the sample's diagnostic execution class does not claim isolation.
-See [the proposed CI job](proposals/249-wheel-sample.yml.txt); Sean applies it, with no workflow
-changed or dispatched here. The versioned release, registry publishing and credentials remain
-Sean's steps. This patch claims part of #249, not closure of the release process.
+The [release workflow](#a-release) uses this same build context and recorded profile.
 
 ### Recorded local container run, November 17, 2026
 
