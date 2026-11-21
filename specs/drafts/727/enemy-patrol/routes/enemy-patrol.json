@@ -1,0 +1,11 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "enemy-patrol",
+  "description": "Walk into view of the middle platform, stop, and let its enemy turn and return.",
+  "ticks": 1200,
+  "seed": 1,
+  "events": [
+    {"tick": 10, "action": "move_right", "pressed": true},
+    {"tick": 102, "action": "move_right", "pressed": false}
+  ]
+}
