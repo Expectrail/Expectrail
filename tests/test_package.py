@@ -256,6 +256,8 @@ class QuickstartPackageTest(unittest.TestCase):
                 for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
                     self.assertEqual(wheel.read(f'expectrail/_bundle/sample-vision/{name}.json'),
                                      (REPO / f'docs/run-it/vision/{name}.json').read_bytes())
+                config = 'contracts/examples/project-recorded.json'
+                self.assertEqual(wheel.read(BUNDLE + config), (REPO / config).read_bytes())
 
 
 
@@ -406,10 +408,38 @@ class InstalledTest(Case):
         cls.elsewhere = BUILT["tmp"] / "elsewhere"
         cls.elsewhere.mkdir()
 
-    def run_installed(self, *args: str, code: str | None = None) -> subprocess.CompletedProcess:
-        command = [str(self.python), "-c", code] if code else [str(self.python), "-m", "expectrail.cli", *args]
+    def run_installed(self, *args: str, code: str | None = None, module: str = "expectrail.cli") -> subprocess.CompletedProcess:
+        command = [str(self.python), "-c", code] if code else [str(self.python), "-m", module, *args]
         return subprocess.run(command, cwd=self.elsewhere, capture_output=True, text=True, timeout=120,
                               env={"PATH": "/usr/bin:/bin", "HOME": str(self.elsewhere / "home")})
+
+    def test_installed_outside_example_prepares_the_published_files(self):
+        source = self.elsewhere / "kinematic-character"
+        destination = self.elsewhere / "example-before"
+        (source / "player").mkdir(parents=True)
+        (source / "project.godot").write_text("[application]\n")
+        (source / "world.tscn").write_text("[gd_scene format=3]\n")
+        shutil.copyfile(REPO / "tests/fixtures/recorded-pixel-mismatch/recorded.png", source / "player/player.png")
+
+        done = self.run_installed(source.name, destination.name, module="expectrail.app_kinematic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.strip(), str(destination))
+        outside = REPO / "tests/outside"
+        expected = {
+            "project.godot": source / "project.godot",
+            "world.tscn": source / "world.tscn",
+            "player/player.png": source / "player/player.png",
+            "expectrail.project.json": REPO / "contracts/examples/project-recorded.json",
+            "checks/player-stays-above-ground.json": REPO / "agents/specs/player-stays-above-ground.json",
+            "routes/walk.json": outside / "kinematic-character/routes/walk.json",
+            "vision/calibration.json": outside / "recordings/kinematic-character/calibration.json",
+            "vision/vision-recording.json": outside / "recordings/kinematic-character/vision-recording.json",
+        }
+        self.assertEqual({p.relative_to(destination).as_posix() for p in destination.rglob("*") if p.is_file()},
+                         set(expected))
+        for name, original in expected.items():
+            with self.subTest(file=name):
+                self.assertEqual((destination / name).read_bytes(), original.read_bytes())
 
     def test_installed_sample_checks_new_capture_without_optional_packages(self):
         """Real installed entry point and judge; only the replay/isolation are stand-ins."""
