@@ -1,6 +1,9 @@
 # Verify two versions in the local app
 
-With Expectrail installed, start it once:
+On Ubuntu 24.04 amd64 with the [desktop package](install.md#install-and-open-the-local-app)
+installed, open **Expectrail** from Applications. The local page opens in your default browser.
+
+If you installed the wheel, use its launcher or start the local server from a terminal:
 
 ```sh
 expectrail app
@@ -11,9 +14,11 @@ required. Open the full address it prints. Keep that process running while using
 The address is on `127.0.0.1`, with a free port and a new token each time. Do not share it.
 The app serves its own page without downloading scripts, styles or fonts.
 
-1. For **Before** and **After**, paste the full path to each Godot project folder or its
-   `project.godot` file. Either input selects the containing project, including its routes
-   and checks. To verify, each also needs its own [project config](project-config.md), `expectrail.project.json`.
+1. Select **Choose Before folder** and pick the copy from before your change. Select
+   **Choose After folder** and pick the changed copy. In each dialog, choose the folder
+   containing `project.godot`. The selected path appears in the corresponding field.
+   You can also paste a full folder path or the path to `project.godot`. To verify, each
+   folder also needs its own [project config](project-config.md), `expectrail.project.json`.
    Git references are not supported in this screen.
 2. The config's `routes` and `approvedContracts` lists choose the policy. The base config
    chooses what judges both copies. A config produced by `expectrail init` is a draft and
