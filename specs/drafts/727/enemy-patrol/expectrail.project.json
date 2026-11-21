@@ -1,0 +1,16 @@
+{
+  "format": "expectrail.project/v1",
+  "adapter": "godot",
+  "version": "4.7",
+  "toolchain": {"engine": "godot", "version": "4.7"},
+  "entryScene": "res://game_singleplayer.tscn",
+  "viewport": [800, 480],
+  "physicsTicksPerSecond": 120,
+  "captureFps": 60,
+  "inputActions": ["move_right"],
+  "bindings": {
+    "player": {"node": "Level/Player", "texture": "res://player/robot.webp"},
+    "enemy": {"node": "Level/Enemies/Enemy2", "texture": "res://enemy/enemy.webp"},
+    "landmark": {"node": "Level/Flowers/Flower18", "texture": "res://level/props/ground_flowers_1.webp"}
+  }
+}

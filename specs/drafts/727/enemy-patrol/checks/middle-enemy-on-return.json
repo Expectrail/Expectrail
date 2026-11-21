@@ -1,0 +1,16 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "middle-enemy-on-return",
+  "instruction": "After the middle-platform enemy turns, its drawing stays near the flower on that platform for frames 460 through 490 of the enemy-patrol route.",
+  "objects": {
+    "enemy": {"prompt": "enemy on the middle platform"},
+    "landmark": {"prompt": "flower at the right end of the middle platform"}
+  },
+  "assertion": {
+    "type": "inside-region",
+    "object": "enemy",
+    "region": {"relativeTo": "landmark", "marginPx": 64}
+  },
+  "window": {"fromFrame": 460, "toFrame": 490},
+  "coverage": {"routes": ["enemy-patrol"], "minFrames": 31}
+}
