@@ -54,6 +54,12 @@ name: Generated checks
 # routes, no patch), and every case is judged with that one bank. propose and revise are told which
 # observer will judge (--observer), so the proposer is offered only what that observer can tell: for the
 # sensor, whether and where the player is drawn. sam_every sets the sensor's frame plan too.
+#
+# metamorphic (#675, piece 3): also offer the mirror-inputs metamorphic checks (expectrail/jit/metamorphic.py)
+# in every replay of the run (replay, replay-final, pixel-judge), judged by the same rule. They need no model
+# and no reference answer, so they add replays and no spend; their rows are advisory, in the record's
+# `metamorphic`, never in its counts or catches. Off by default on a dispatch; on in every rehearsal. The
+# known-bugs bench is registered without them and refuses it.
 on:
   pull_request:
     paths:
@@ -101,6 +107,10 @@ on:
         type: choice
         options: ['sam-3.1-anchor', 'visual-sensor']
         default: 'sam-3.1-anchor'
+      metamorphic:
+        description: Also offer the mirror-inputs metamorphic checks in every replay (advisory rows, no model, more replays)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -160,7 +170,7 @@ jobs:
           python -m expectrail.jit.cli run --report-file "$REPORT" \
             --candidate "bench/jit/rehearsal/$CASE.patch" --base "$BASE" \
             --proposal "bench/jit/rehearsal/$CASE/jit-proposal.json" --out "runs/jit/$CASE" \
-            --run-id "rehearsal-${GITHUB_RUN_ID}-$CASE"
+            --run-id "rehearsal-${GITHUB_RUN_ID}-$CASE" --metamorphic
           echo "::notice title=Generated checks rehearsal ${CASE}::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json"); $(( $(date +%s) - start )) s"
           cat "runs/jit/$CASE/jit-report.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Check the rehearsal reached what it rehearses
@@ -171,7 +181,7 @@ jobs:
         # accepted by Sean on November 20). gun-cooldown-long-comment-only brings the strong catch back: it
         # must be caught 3 of 3 on the bug and the candidate by a check the control fails (#691; see
         # tools/jit_rehearsal_check.py).
-        run: python -m tools.jit_rehearsal_check "$CASE" "runs/jit/$CASE/jit-run.json"
+        run: python -m tools.jit_rehearsal_check --metamorphic "$CASE" "runs/jit/$CASE/jit-run.json"
       - name: Keep the record
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -197,12 +207,14 @@ jobs:
       candidate: ${{ steps.plan.outputs.candidate }}
       sam_every: ${{ steps.plan.outputs.sam_every }}
       observer: ${{ steps.plan.outputs.observer }}
+      metamorphic: ${{ steps.plan.outputs.metamorphic }}
     env:
       MODE: ${{ inputs.mode }}
       OFFER: ${{ inputs.offer || 'baseline' }}
       CANDIDATE_TO_MODEL: ${{ inputs.candidate || 'shown' }}
       SAM_EVERY: ${{ inputs.sam_every || '10' }}
       OBSERVER: ${{ inputs.observer || 'sam-3.1-anchor' }}
+      METAMORPHIC: ${{ inputs.metamorphic }}
       CASE: ${{ inputs.case }}
       BASE: ${{ inputs.base_patch }}
       CANDIDATE: ${{ inputs.candidate_patch }}
@@ -228,10 +240,13 @@ jobs:
           OBSERVER="${OBSERVER:-sam-3.1-anchor}"; [[ "$OBSERVER" =~ ^(sam-3\.1-anchor|visual-sensor)$ ]] || { echo "::error::observer must be sam-3.1-anchor or visual-sensor"; exit 1; }
           [[ "$OBSERVER" == "sam-3.1-anchor" || "$OFFER" == "signals-reach-evidence-pixel" ]] || { echo "::error::observer visual-sensor judges pixel checks, which only the signals-reach-evidence-pixel offer has"; exit 1; }
           echo "observer=$OBSERVER" >> "$GITHUB_OUTPUT"
+          METAMORPHIC="${METAMORPHIC:-false}"; [[ "$METAMORPHIC" =~ ^(true|false)$ ]] || { echo "::error::metamorphic must be true or false"; exit 1; }
+          echo "metamorphic=$METAMORPHIC" >> "$GITHUB_OUTPUT"
           if [[ "$MODE" == "bench" ]]; then
             [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
             [[ "$OFFER" == "baseline" ]] || { echo "::error::the known-bugs bench is registered under the baseline offer"; exit 1; }
             [[ "$CANDIDATE_TO_MODEL" == "shown" ]] || { echo "::error::the known-bugs bench is registered with the candidate shown"; exit 1; }
+            [[ "$METAMORPHIC" == "false" ]] || { echo "::error::the known-bugs bench is registered without metamorphic checks"; exit 1; }
             python -m expectrail.jit.cli bench-check
             python - >> "$GITHUB_OUTPUT" <<'EOF'
           import json
@@ -379,6 +394,7 @@ jobs:
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
+      METAMORPHIC: ${{ needs.plan.outputs.metamorphic }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -402,9 +418,10 @@ jobs:
           export PATH="$PWD/tools/godot:$PATH"
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
+          mm=(); if [[ "$METAMORPHIC" == "true" ]]; then mm=(--metamorphic); fi
           python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-            --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1" --offer "$OFFER" "${wc[@]}"
+            --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1" --offer "$OFFER" "${wc[@]}" "${mm[@]}"
           echo "::notice title=Generated checks ${CASE} (round 1)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
       - name: Keep the record
         if: always()
@@ -514,6 +531,7 @@ jobs:
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
+      METAMORPHIC: ${{ needs.plan.outputs.metamorphic }}
       SAM_EVERY: ${{ needs.plan.outputs.sam_every }}
       OBSERVER: ${{ needs.plan.outputs.observer }}
     steps:
@@ -566,9 +584,10 @@ jobs:
             export PATH="$PWD/tools/godot:$PATH"
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
             wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
+            mm=(); if [[ "$METAMORPHIC" == "true" ]]; then mm=(--metamorphic); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" "${px[@]}" "${wc[@]}"
+              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" "${px[@]}" "${wc[@]}" "${mm[@]}"
           else
             cp runs/jit-round1/jit-run.json "runs/jit/$CASE/jit-run.json"
           fi
@@ -668,6 +687,7 @@ jobs:
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
+      METAMORPHIC: ${{ needs.plan.outputs.metamorphic }}
       SAM_EVERY: ${{ needs.plan.outputs.sam_every }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -705,11 +725,12 @@ jobs:
             export PATH="$PWD/tools/godot:$PATH"
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
             wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
+            mm=(); if [[ "$METAMORPHIC" == "true" ]]; then mm=(--metamorphic); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
               --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" --observer sam-3.1-anchor \
               --sam-answers runs/pixel-answers/answers.json --pixel-replays runs/captured/pixel-capture \
-              --sam-every "$SAM_EVERY" "${wc[@]}"
+              --sam-every "$SAM_EVERY" "${wc[@]}" "${mm[@]}"
           else
             echo "::warning title=Pixel checks ${CASE}::no captured frames or no SAM answers; replay-final's record stands, its pixel checks not run"
             # With no frames kept the artifact's root is the record's own folder, not runs/.
