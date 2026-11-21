@@ -21,7 +21,7 @@ Tests name behavior; a stand-in test is not presented as a live model measuremen
 | Proposer sees a bounded buggy-versus-clean summary on routes | `expectrail/repro/evidence.py`, `expectrail/jit/offer.py::attach_evidence`; `tests/test_repro_evidence.py::test_signals_come_from_the_same_replays_as_the_fields`, `test_an_unstable_field_is_left_out_and_the_same_replay_twice_gives_nothing`; `tests/test_jit_offer_evidence.py`; committed `evidence-*.json` and `menu-evidence-*.json` in the public bench | Implemented for measured library/reach probes, at most six shown. Model-invented routes are not premeasured. At this audit menu evidence could not be attached as usable generator probes. Since November 18 the `signals-reach-evidence-menu` offer attaches it for the three menu probes, and their measure and evidence replays record the pause menu's counter, so the summary shows `uiIntegers` differing on `coin-counts-twice` from tick 310 (#622, #624; `tests/test_jit_offer_menu.py`, `tests/test_jit_menu_reading.py`). No live quality/rate measurement. |
 | Reproduce from report and base alone; candidate-shaped checks do not qualify for #271 | `--withhold-candidate`; `tests/test_jit_withheld.py::test_two_different_fixes_of_one_report_give_the_model_the_same_prompt`, `test_only_checks_proposed_blind_are_from_the_base_alone`; `tests/test_repro_score_withheld.py::test_a_record_of_the_other_setting_never_raises_the_rate`; `run.from_base_alone` returns no qualifying checks for shown records | Implemented and tested with stand-ins. Baseline candidate was shown: it proves no candidate-withheld rate and qualifies no checks for that #271 condition. Hosted withheld measurement missing. (The test's name describes withholding the candidate; no private content is used.) |
 | Reproduction rate after each step, with a run | `docs/jit.md` and public bench README cite only run 43465090517 for a live reproduction rate. Public API lists zero JIT runs at the audited main SHA: `docs/repro-current-main-runs.json` | Missing for signals/reach, evidence, and candidate withheld. No current-code live rate is recorded. Sender-cap workflow prerequisite below also blocks a dispatch. |
-| At least 70% of trace-visible public defects reproduced; no kept clean failure | Baseline score: 16/19 trace-visible reproduced (84.21%); 91 kept checks each pass clean 3/3. `tests/test_repro_score.py::test_two_of_three_on_the_bug_build_is_not_a_reproduction`, `test_a_record_whose_valid_flag_its_own_runs_contradict` | Baseline meets the trace-visible target. This does not establish the target for current offers or for candidate-withheld checks. Zero clean failures among the 91 kept checks is the keep rule, not an independent false-reject sample. |
+| At least 70% of trace-visible public defects reproduced; no kept clean failure | Baseline score: 16/19 trace-visible reproduced (84.21%); 91 kept checks each pass clean 3/3. `tests/test_repro_score.py::test_two_of_three_on_the_bug_build_is_not_a_reproduction`, `test_a_record_whose_valid_flag_its_own_runs_contradict` | Baseline meets the trace-visible target under the keep rule it was made with. **Under today's rule, which also drops a check that passes the do-nothing control (#675), the same records reproduce 11/19 trace-visible (57.89%), below the target** ([section below](#reproduction-rate-under-the-do-nothing-rule)). This does not establish the target for current offers or for candidate-withheld checks. Zero clean failures among the 91 kept checks is the keep rule, not an independent false-reject sample. |
 | Spend per defect under existing $2 cap, reported | Same run: total $2.0492 across 24 defects; maximum $0.1722 (`slow-left`), 0/24 over $2. `expectrail/jit/run.py::Spend`; `tests/test_repro_score.py::test_out_of_budget_is_a_miss_with_that_reason` | Baseline measured using recorded price assumptions, not a vendor invoice. Later-step spend missing. Premeasurement/job overhead is outside the assessed per-defect ledger. |
 
 ## Published miss breakdown: one baseline, not a new rate
@@ -62,6 +62,67 @@ python3 -m expectrail.repro score \
   --source 'jit.yml run 43465090517, attempt 1, at 1e6055004dccfd90bc0f4d132823784838718627'
 python3 -m expectrail.repro breakdown \
   --score bench/jit/recordings/public-43465090517/repro-score/repro-score.json
+```
+
+## Reproduction rate under the do-nothing rule
+
+Reproduced under the do-nothing rule: **11/24** (45.83%) of all public defects; trace-visible **11/19** (57.89%); authored/untuned **9/20** (45.00%).
+The score reproduced 17/24 (16/19 trace-visible). Dropped: 5. Cannot tell: 1 (0 trace-visible), counted in neither. Kept only by indeterminate checks: 4. Reproduced by a check that fails the control, so shown to state an obligation: **7/24** (29.17%); trace-visible **7/19** (36.84%).
+
+| Public defect | Visibility | Under the rule | Reproducing checks: fail the control | indeterminate | not run | unbound | pass (dropped) |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| air-jump | signal | dropped | 0 | 0 | 0 | 0 | 6 |
+| gun-cooldown | signal | reproduced-indeterminate | 0 | 4 | 0 | 0 | 2 |
+| body-flip | signal | reproduced-indeterminate | 0 | 5 | 0 | 0 | 2 |
+| enemy-ledge | signal | dropped | 0 | 0 | 0 | 0 | 6 |
+| bullet-through-enemy | signal | reproduced | 4 | 0 | 0 | 0 | 0 |
+| platforms-not-solid | signal | reproduced | 2 | 1 | 2 | 0 | 0 |
+| floaty-fall | signal | reproduced-indeterminate | 0 | 2 | 0 | 0 | 3 |
+| jump-always-full | signal | reproduced | 1 | 4 | 1 | 0 | 0 |
+| slow-left | signal | dropped | 0 | 0 | 0 | 0 | 5 |
+| slides-after-stop | signal | dropped | 0 | 0 | 0 | 0 | 6 |
+| no-shooting-in-air | none | cannot-tell | 0 | 0 | 1 | 0 | 0 |
+| jump-needs-rest | signal | reproduced-indeterminate | 0 | 3 | 0 | 0 | 5 |
+| double-jump-once | signal | reproduced | 1 | 3 | 0 | 0 | 0 |
+| gun-cooldown-long | signal | reproduced | 6 | 0 | 0 | 0 | 0 |
+| enemy-missing | signal | reproduced | 6 | 0 | 0 | 0 | 0 |
+| enemy-fast-left | signal | dropped | 0 | 0 | 0 | 0 | 6 |
+| enemy-slides-when-shot | signal | reproduced | 4 | 0 | 0 | 0 | 0 |
+
+- Dropped (every reproducing check passed the control): `air-jump`, `enemy-ledge`, `slow-left`, `slides-after-stop`, `enemy-fast-left`.
+- Cannot tell, `no-shooting-in-air`: `jit-c4` not run on the control.
+
+Added November 21, 2026 (#285). Since #675 the generator drops a check that passes all three runs of the
+do-nothing control (the clean game with the check's actor doing nothing): such a check states no
+obligation. The baseline's checks were made before that rule. This section applies it to the same
+24 records and the same score, with nothing re-proposed and no model called, so it is the baseline
+under today's keep rule, not a new measurement of the generator.
+
+- **Rows:** [`bench/jit/public/do-nothing-rows.json`](../bench/jit/public/do-nothing-rows.json), written by
+  `tools/do_nothing_public.py` on Godot 4.7.2.stable.official.ed1daf0bf, headless, locally, 132 replays.
+  Its counts equal the [November 20 measurement](measurements/675-do-nothing-control.md): of the 135 checks
+  on the reference, 56 pass the control, 35 fail it, 33 are indeterminate and 11 were not run. The replays
+  were not sandboxed (no bubblewrap on that machine).
+- **Each row binds by digest** to its record and its check; each record must be the file the score names.
+  The rule is `expectrail/repro/control_rate.py`, tested in `tests/test_repro_control_rate.py`, which also
+  checks that this section is what the committed rows give.
+- **The one cannot-tell defect** is `no-shooting-in-air` (not trace-visible). Its only reproducing check,
+  `jit-c4`, uses a model-proposed route kept only in the run's artifacts, which the machine making these
+  rows could not download. The [November 21 follow-up](jit.md#november-21-2026-follow-up-with-all-public-routes-675)
+  ran it with the restored routes and it **passed** the control, which would make this defect dropped too
+  (six dropped, none cannot tell; the rates above do not change, since a cannot-tell defect is in neither
+  count). That result is from that page, not from these rows.
+- **Indeterminate is not shown.** Four defects are kept only by checks the control could not judge
+  (not exercised, mixed, or depending on the frozen player's floor state). The generator keeps such a
+  check, so the rate counts them; only 7 defects have a reproducing check shown to fail the control.
+
+Recompute:
+
+```sh
+python3 -m expectrail.repro control-rate \
+  --score bench/jit/recordings/public-43465090517/repro-score/repro-score.json \
+  --records bench/jit/recordings/public-43465090517/repro \
+  --do-nothing-rows bench/jit/public/do-nothing-rows.json
 ```
 
 ## Offline step: make menu-counter state measurable and expressible
