@@ -129,24 +129,26 @@ class GatewayBridgeClosesItsSockets(unittest.TestCase):
         self.assertEqual([str(w.message) for w in caught if issubclass(w.category, ResourceWarning)], [])
 
     def test_a_refused_upstream_leaves_no_socket_open(self):
-        import threading
         from agents import gateway_bridge
 
-        with tempfile.TemporaryDirectory() as tmp, warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always", ResourceWarning)
-            before = set(threading.enumerate())
-            listener = gateway_bridge.listen(0, str(Path(tmp) / "nobody-listens.sock"))
-            serving = [t for t in threading.enumerate() if t not in before]
-            try:
-                with socket.create_connection(listener.getsockname(), timeout=5) as conn:
-                    self.assertEqual(conn.recv(1), b"")  # the bridge closed it: no gateway behind it
-            finally:
-                listener.shutdown(socket.SHUT_RDWR)
-                listener.close()
-            for t in serving:
-                t.join(5)  # its loop ends when accept() fails, and drops what it still held
-            gc.collect()
-        self.assertEqual([str(w.message) for w in caught if issubclass(w.category, ResourceWarning)], [])
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            socket_path = str(Path(tmp) / "gateway.sock")
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as bound:
+                # A bound socket which has not started listening refuses connections.
+                bound.bind(socket_path)
+                upstream = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                self.addCleanup(upstream.close)
+                client, peer = socket.socketpair()
+                self.addCleanup(client.close)
+                self.addCleanup(peer.close)
+                listener = mock.Mock()
+                listener.accept.side_effect = [(client, None), OSError("listener closed")]
+
+                with mock.patch.object(gateway_bridge.socket, "socket", return_value=upstream):
+                    gateway_bridge._serve(listener, socket_path)
+
+                self.assertEqual(listener.accept.call_count, 2)
+                self.assertEqual((client.fileno(), upstream.fileno()), (-1, -1))
 
 
 if __name__ == "__main__":
