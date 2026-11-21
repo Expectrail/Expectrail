@@ -21,7 +21,7 @@ from tools import reproduction_ceiling as rc
 
 REPO = Path(__file__).resolve().parents[1]
 ROWS = REPO / "bench/jit/ceiling/rows.json"
-MEASUREMENT = REPO / "docs/measurements/762-reproduction-ceiling.md"
+MEASUREMENT = REPO / "docs/measurements/762-reproduction-ceiling-hand-checks.md"
 START, END = "<!-- ceiling-table:start -->", "<!-- ceiling-table:end -->"
 
 
