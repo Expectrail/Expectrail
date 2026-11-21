@@ -135,7 +135,7 @@ def state_of(record: dict | None, status: dict | None = None) -> tuple[str, str 
 def not_tested(record: dict | None) -> list[str]:
     """What this run did not test, in plain words."""
     if record is None:
-        return ["nothing: no check ran"]
+        return ["No findings record is available to establish what was tested."]
     out = []
     held = record["heldOut"]
     if held["status"] == "not-used":
@@ -1127,21 +1127,29 @@ def _facts(payload: dict) -> list[tuple[str, str]]:
 
 def vision_words(record: dict | None, job: dict | None) -> str | None:
     """Say what did not run without changing the structured decision (including rejects)."""
-    said = [((c.get("observed") or {}).get("after") or {}).get("visual")
-            for c in (record or {}).get("checks", []) if c["after"] != "not-applicable"]
+    observed = [(c.get("observed") or {}).get("after") or {}
+                for c in (record or {}).get("checks", []) if c["after"] != "not-applicable"]
+    said = [row.get("visual") for row in observed]
     if any(d.get("code") == "PROVIDER_FAILED" for d in (job or {}).get("diagnostics") or []):
         if any(s in rec.VISUAL_VERDICTS for s in said):
             return "Vision did not complete (PROVIDER_FAILED). Some recorded visual answers are available."
         if "no-answer" in said:
             return "Vision returned no usable answer (PROVIDER_FAILED). This is not a visual pass."
         return "Vision did not run (PROVIDER_FAILED) on the after-change checks. An engine failure still rejects."
-    n = said.count("not-asked")
-    if n:
-        # Not a provider failure: the gate does not ask vision about a check the engine's record already
-        # fails, since a failure from either observer rejects.
-        return (f"Vision was not asked about {n} after-change check{'s' if n != 1 else ''}: the engine's record "
-                "already fails it, and a failure from either observer rejects.")
-    return None
+    unasked = [row for row in observed if row.get("visual") == "not-asked"]
+    notes = []
+    if unasked:
+        n = len(unasked)
+        note = f"Vision was not asked about {n} after-change check{'s' if n != 1 else ''}"
+        if all(row.get("engine") == "fail" for row in unasked):
+            result = "fails it" if n == 1 else "fails them"
+            note += f": the engine's record already {result}, and a failure from either observer rejects"
+        notes.append(note + ".")
+    missing = said.count("no-answer")
+    if missing:
+        notes.append(f"Vision returned no usable answer for {missing} after-change "
+                     f"check{'s' if missing != 1 else ''}.")
+    return " ".join(notes) or None
 
 
 def auto_fix_words(job: dict) -> str:
@@ -1381,6 +1389,7 @@ def render(payload: dict) -> str:
         f'<div class="banner {tone}" role="status" data-state="{esc(state)}"><h1>{esc(title)}</h1>'
         f"<p>{esc(means)}</p></div>",
     ]
+    parts.append("<h2>Not tested</h2><ul>" + "".join(f"<li>{esc(t)}</li>" for t in not_tested(record)) + "</ul>")
     if payload.get("repair"):
         parts.append(_repair_section(payload["repair"], payload["decision"] or "No verdict"))
     exported = payload.get("export")
@@ -1460,7 +1469,6 @@ def render(payload: dict) -> str:
     if facts:
         parts.append('<h2>Run</h2><div class="scroll"><table class="facts">'
                      + "".join(f"<tr><td>{esc(k)}</td><td>{esc(v)}</td></tr>" for k, v in facts) + "</table></div>")
-    parts.append("<h2>Not tested</h2><ul>" + "".join(f"<li>{esc(t)}</li>" for t in not_tested(record)) + "</ul>")
     if record and record["checks"]:
         parts.append('<h2>Every check</h2><div class="scroll"><table><tr><th>Spec</th><th>Route</th><th>Before</th>'
                      "<th>After</th><th>Comparison</th></tr>"

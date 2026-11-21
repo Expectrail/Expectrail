@@ -96,6 +96,27 @@ class VisualTimelineTest(Case):
         self.assertIn('returned no usable answer', words)
         self.assertNotIn('did not run', words)
 
+    def test_unasked_vision_on_a_clean_engine_result_does_not_imply_a_failure(self):
+        doc = self.gate(repo(self.tmp / 'clean'), visual=None)
+        self.assertEqual(self.row(doc)['observed']['after']['engine'], 'pass')
+        page = (self.out / 'viewer/index.html').read_text()
+        self.assertNotIn('already fails', page)
+        self.assertIn('Vision was not asked about 1 after-change check', page)
+        self.assertEqual(banner_state(page), 'observation-failure')
+
+    def test_mixed_visual_gaps_do_not_get_one_invented_cause(self):
+        rows = [('fail', 'not-asked', 'fail'), ('replay-error', 'not-asked', 'replay-error'),
+                ('pass', 'no-answer', 'needs-review')]
+        checks = [{'after': after, 'observed': {'after': {'engine': engine, 'visual': visual}}}
+                  for engine, visual, after in rows]
+        words = viewer.vision_words({'checks': checks}, None)
+        self.assertIn('not asked about 2 after-change checks', words)
+        self.assertIn('no usable answer for 1 after-change check', words)
+        self.assertNotIn('already fails', words)
+
+    def test_no_findings_record_does_not_establish_that_no_check_ran(self):
+        self.assertIn('no findings record', ' '.join(viewer.not_tested(None)).lower())
+
 
 class GapTest(unittest.TestCase):
     def test_absent_frames_missing_objects_and_not_exercised_are_distinct(self):
@@ -181,6 +202,10 @@ class PublishedSamplesTest(unittest.TestCase):
             with self.subTest(sample=name):
                 text = (root / (name + '.html')).read_text()
                 data, source = embedded(text), provenance['samples'][name]
+                regenerated = viewer.render(data)
+                limits = regenerated.index('<h2>Not tested</h2>')
+                self.assertLess(regenerated.index('<h1>'), limits)
+                self.assertLess(limits, regenerated.index('<h2>Reproduce</h2>'))
                 References().feed(text)
                 self.assertIn(f'content="{viewer.CSP}"', text)
                 self.assertEqual(text.count('</script>'), 2)
