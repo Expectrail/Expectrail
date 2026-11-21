@@ -1,0 +1,18 @@
+/* TeX Gyre Adventor, with the license in docs/assets/fonts/. */
+@font-face {
+  font-family: Adventor;
+  src: url('/assets/fonts/texgyreadventor-regular.woff') format('woff');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Adventor;
+  src: url('/assets/fonts/texgyreadventor-bold.woff') format('woff');
+  font-weight: 700;
+  font-display: swap;
+}
+
+h1, h2, h3, .wordmark {
+  font-family: Adventor, system-ui, sans-serif;
+}
