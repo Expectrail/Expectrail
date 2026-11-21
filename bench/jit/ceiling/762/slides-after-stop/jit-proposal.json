@@ -1,0 +1,243 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "model": null,
+ "offer": "signals-reach-evidence-menu-control",
+ "error": null,
+ "probes": [
+  {
+   "id": "jit-hold-80-tail-90",
+   "family": "jit",
+   "description": "Hold right for 80 ticks on the starting floor, then release and wait.",
+   "program": {
+    "op": "sequence",
+    "steps": [
+     {
+      "op": "hold",
+      "action": "move_right",
+      "durationTicks": 80
+     },
+     {
+      "op": "wait",
+      "durationTicks": 30
+     }
+    ]
+   },
+   "tags": []
+  },
+  {
+   "id": "jit-hold-80-tail-60",
+   "family": "jit",
+   "description": "Hold right for 80 ticks on the starting floor, then release.",
+   "program": {
+    "op": "hold",
+    "action": "move_right",
+    "durationTicks": 80
+   },
+   "tags": []
+  },
+  {
+   "id": "jit-hold-84-tail-60",
+   "family": "jit",
+   "description": "Hold right for 84 ticks on the starting floor, then release.",
+   "program": {
+    "op": "hold",
+    "action": "move_right",
+    "durationTicks": 84
+   },
+   "tags": []
+  },
+  {
+   "id": "jit-split-hold-right",
+   "family": "jit",
+   "description": "Hold right for 40 ticks, release for 30 ticks, then hold again for 36 ticks.",
+   "program": {
+    "op": "sequence",
+    "steps": [
+     {
+      "op": "hold",
+      "action": "move_right",
+      "durationTicks": 40
+     },
+     {
+      "op": "wait",
+      "durationTicks": 30
+     },
+     {
+      "op": "hold",
+      "action": "move_right",
+      "durationTicks": 36
+     }
+    ]
+   },
+   "tags": []
+  }
+ ],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-right-hold-travels",
+    "origin": "AUTO_DIFF",
+    "statement": "Holding right for 80 ticks moves the player over 100 pixels farther right than standing idle.",
+    "expectationRef": {
+     "claimId": "model.unbound",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "player_dx_px",
+     "comparator": "gt",
+     "toleranceAbs": 100,
+     "left": "wait-long",
+     "right": "jit-hold-80-tail-90"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "wait-long",
+    "right": "jit-hold-80-tail-90"
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-extra-idle-adds-no-travel",
+    "origin": "AUTO_DIFF",
+    "statement": "Adding thirty idle ticks after the standard idle tail changes the horizontal displacement by at most one pixel.",
+    "expectationRef": {
+     "claimId": "model.unbound",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "player_dx_px",
+     "comparator": "eq",
+     "toleranceAbs": 1,
+     "left": "jit-hold-80-tail-60",
+     "right": "jit-hold-80-tail-90"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jit-hold-80-tail-60",
+    "right": "jit-hold-80-tail-90"
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-extra-hold-adds-travel",
+    "origin": "AUTO_DIFF",
+    "statement": "Holding right four more ticks yields over five pixels of extra rightward displacement even with thirty fewer idle ticks.",
+    "expectationRef": {
+     "claimId": "model.unbound",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "player_dx_px",
+     "comparator": "gt",
+     "toleranceAbs": 5,
+     "left": "jit-hold-80-tail-90",
+     "right": "jit-hold-84-tail-60"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jit-hold-80-tail-90",
+    "right": "jit-hold-84-tail-60"
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-split-hold-travels-less",
+    "origin": "AUTO_DIFF",
+    "statement": "The continuous hold travels over five pixels farther right than the split hold with four fewer held ticks.",
+    "expectationRef": {
+     "claimId": "model.unbound",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "player_dx_px",
+     "comparator": "gt",
+     "toleranceAbs": 5,
+     "left": "jit-split-hold-right",
+     "right": "jit-hold-80-tail-90"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jit-split-hold-right",
+    "right": "jit-hold-80-tail-90"
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [],
+ "usage": {},
+ "promptSha256": null,
+ "candidate": "withheld",
+ "reportSha256": "fda86f2c200c12b5a4e205ba24953341acf233f81b3bf7ae507dcc8844b59b7b"
+}

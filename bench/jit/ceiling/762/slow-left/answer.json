@@ -1,0 +1,35 @@
+{
+  "probes": [],
+  "candidates": [
+    {
+      "id": "slow-left-travel-floor",
+      "statement": "After a 40-tick left hold the robot travels left by more than 75 pixels relative to standing still.",
+      "class": "player",
+      "operation": {"type": "relation", "signal": "player_dx_px", "comparator": "lt", "toleranceAbs": 75, "left": "wait-long", "right": "jump-l40-x1"}
+    },
+    {
+      "id": "slow-left-right-travel-floor",
+      "statement": "After a 40-tick right hold the robot travels right by more than 75 pixels relative to standing still.",
+      "class": "player",
+      "operation": {"type": "relation", "signal": "player_dx_px", "comparator": "gt", "toleranceAbs": 75, "left": "wait-long", "right": "jump-w40-x1"}
+    },
+    {
+      "id": "slow-left-signed-separation",
+      "statement": "The 40-tick right hold ends more than 150 pixels to the right of the 40-tick left hold from the same start.",
+      "class": "player",
+      "operation": {"type": "relation", "signal": "player_dx_px", "comparator": "gt", "toleranceAbs": 150, "left": "jump-l40-x1", "right": "jump-w40-x1"}
+    },
+    {
+      "id": "slow-left-signed-equality",
+      "statement": "The signed horizontal displacements after the matched 40-tick holds differ by at most two pixels.",
+      "class": "player",
+      "operation": {"type": "relation", "signal": "player_dx_px", "comparator": "eq", "toleranceAbs": 2, "left": "jump-l40-x1", "right": "jump-w40-x1"}
+    },
+    {
+      "id": "slow-left-screen-range",
+      "statement": "The robot's horizontal screen range differs by at most two pixels between the matched 40-tick holds.",
+      "class": "player",
+      "operation": {"type": "relation", "signal": "player_screen_x_range_px", "comparator": "eq", "toleranceAbs": 2, "left": "jump-l40-x1", "right": "jump-w40-x1"}
+    }
+  ]
+}

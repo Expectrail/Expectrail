@@ -1,0 +1,99 @@
+{
+ "probe": "jump-l40-x1",
+ "mirror": {
+  "id": "jump-l40-x1-mirror",
+  "family": "jump-taps-mirror",
+  "description": "Walk left for 40 ticks, stop, then press jump 1 times, every 20 ticks. Mirrored: left and right swapped.",
+  "program": {
+   "op": "sequence",
+   "steps": [
+    {
+     "op": "hold",
+     "action": "move_right",
+     "durationTicks": 40
+    },
+    {
+     "op": "wait",
+     "durationTicks": 10
+    },
+    {
+     "op": "repeat",
+     "count": 1,
+     "body": {
+      "op": "sequence",
+      "steps": [
+       {
+        "op": "tap",
+        "action": "jump",
+        "durationTicks": 4
+       },
+       {
+        "op": "wait",
+        "durationTicks": 16
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "tags": [
+   "jump-l40",
+   "jump-x1",
+   "mirror",
+   "no-shoot"
+  ],
+  "mirrorOf": "jump-l40-x1"
+ },
+ "entry": {
+  "templateId": "metamorphic.mirror_x",
+  "spec": {
+   "format": "expectrail.trace-spec/v1",
+   "id": "mm-mirror-jump-l40-x1-player-dx-px",
+   "origin": "AUTO_RELATION",
+   "statement": "Mirroring the inputs of jump-l40-x1 mirrors the player's sideways travel, while the player touches nothing the mirror does not also move.",
+   "expectationRef": {
+    "claimId": "metamorphic.mirror-x",
+    "authority": "inferred_behavior"
+   },
+   "scope": {
+    "class": "player"
+   },
+   "window": {
+    "kind": "episode"
+   },
+   "operation": {
+    "type": "metamorphic",
+    "transform": "mirror_x",
+    "pairs": [
+     [
+      "move_left",
+      "move_right"
+     ]
+    ],
+    "signal": "player_dx_px",
+    "relation": "negate",
+    "toleranceAbs": 2.0,
+    "left": "jump-l40-x1",
+    "right": "jump-l40-x1-mirror"
+   },
+   "evidenceRequirement": {
+    "minimumTriggers": 1,
+    "minimumEvaluations": 1,
+    "completeWindow": true
+   },
+   "guards": []
+  },
+  "approved": false,
+  "applies": {
+   "kind": "pair",
+   "left": "jump-l40-x1",
+   "right": "jump-l40-x1-mirror"
+  },
+  "source": "metamorphic"
+ },
+ "compoundDiagnostic": {
+  "leftTravelPx": "strictly greater than 75 px in the requested direction",
+  "rightTravelPx": "strictly greater than 75 px in the requested direction",
+  "mirror": "the built-in player_dx_px mirror verdict passes"
+ }
+}
