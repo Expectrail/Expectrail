@@ -11,6 +11,14 @@ from expectrail.contracts import digest
 from expectrail.gate.verify import NoAnswer
 
 
+# A concept name is lowercase ASCII words one space apart, and short. A game's own file and node
+# names are text the game's author controls; one that is not already words after splitting camel
+# case and the separators _ and - is not proposed at all, never rewritten into words. See
+# docs/sam.md, "What text reaches a model" (#745).
+CONCEPT_NAME = re.compile(r'[a-z0-9]+(?: [a-z0-9]+)*')
+MAX_CONCEPT_NAME = 64
+
+
 def name_proposals(game, textures):
     """Cheap candidates from binding node/group names and texture stems; no semantic guess wins by default."""
     from expectrail.project_config import read_game
@@ -19,8 +27,8 @@ def name_proposals(game, textures):
     if config and 'player' in config['bindings']:
         binding = config['bindings']['player']
         names.extend([binding.get('node', binding.get('group', '')).split('/')[-1]])
-    words = [re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', n).replace('_', ' ').replace('-', ' ').lower() for n in names]
-    return sorted({w.strip() for w in words if w.strip()})
+    words = [re.sub(r'[ _-]+', ' ', re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', n)).strip(' ').lower() for n in names]
+    return sorted({w for w in words if len(w) <= MAX_CONCEPT_NAME and CONCEPT_NAME.fullmatch(w)})
 
 
 class RecordedSam:

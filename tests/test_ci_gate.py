@@ -2165,6 +2165,9 @@ class HeadChecksTest(unittest.TestCase):
                 sha = path.split("/commits/")[1].split("/")[0]
                 name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
                 return {"check_runs": runs[sha][name]}
+            if "/attempts/" in path:
+                # A capture still running: the lost-capture sweep (#254) leaves its check open.
+                return {"status": "in_progress"}
             if "/runs?" in path and "branch=" in path and listing is not None:
                 return listing(path) if callable(listing) else listing
             if "/runs?" in path:
