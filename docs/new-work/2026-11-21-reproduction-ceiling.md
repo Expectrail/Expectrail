@@ -37,7 +37,7 @@ Nothing in the generator, its prompts, the schema or `expectrail/jit/intent.py` 
 - No revision round was used. For `air-jump` the measurement argues that no single check in the language
   can survive the control, so a revision cannot help.
 - `enemy-ledge` was left out, as the issue asks.
-- The compound check is a schema change, filed as its own issue, not built here.
+- The compound check is a schema change, filed as #767, not built here.
 - Three defects are not a rate.
 
 ## Files

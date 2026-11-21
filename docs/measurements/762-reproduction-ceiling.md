@@ -176,8 +176,8 @@ The third needs a compound check, which the language does not have. **What I wou
    before changing more text.
 2. **Then the language, for bound-shaped defects.** Add a check made of a demand and a bound, judged
    together on the same runs, with the do-nothing control applied to the pair. Every "too much" defect
-   (too high, too often, too fast) has the shape `air-jump` has. This is a schema change and is filed as its
-   own issue, not made here.
+   (too high, too often, too fast) has the shape `air-jump` has. This is a schema change and is filed as
+   #767, not made here.
 
 This is three public defects, not a rate. It says what one person with the generator's tools reached, not
 what a model will reach.
