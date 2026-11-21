@@ -70,7 +70,7 @@ version = { attr = "expectrail.__version__" }
 [tool.setuptools.package-data]
 "expectrail._bundle.harness" = ["get_godot.sh", "godot/*.gd", "routes/*.json", "macos/get_godot_mac.sh"]
 "expectrail._bundle.agents" = ["specs/*.json"]
-"expectrail._bundle.contracts" = ["*.json"]
+"expectrail._bundle.contracts" = ["*.json", "examples/project-recorded.json"]
 # Every file of the bundled game, dot-files included (`*` does not match them); never `.godot`.
 "expectrail._bundle.game" = ["platformer/**/*", "platformer/**/.gdignore"]
 "expectrail._bundle.bugs" = ["physics-fall-through/v1.patch"]
