@@ -125,6 +125,92 @@ python3 -m expectrail.repro control-rate \
   --do-nothing-rows bench/jit/public/do-nothing-rows.json
 ```
 
+## Why the dropped defects' checks state no obligation
+
+Of the 137 checks in the 24 baseline records, those a still actor satisfies by their form (`holds-when-equal`, `holds-when-still`): 79; **0 fail the control**, 52 pass it, 20 are indeterminate. Strict relations (`fails-when-equal`): 32; **0 pass the control**, 24 fail it.
+
+All checks, by form:
+
+| Form | Checks | Fail the control | Indeterminate | Not run | Pass (dropped) | No bound row |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| holds-when-equal | 60 | 0 | 8 | 7 | 45 | 0 |
+| holds-when-still | 19 | 0 | 12 | 0 | 7 | 0 |
+| fails-when-equal | 32 | 24 | 4 | 4 | 0 | 0 |
+| needs-activity | 11 | 11 | 0 | 0 | 0 | 0 |
+| other | 15 | 0 | 11 | 0 | 4 | 0 |
+
+The reproducing checks of the reproduced defects, by form:
+
+| Form | Checks | Fail the control | Indeterminate | Not run | Pass (dropped) | No bound row |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| holds-when-equal | 49 | 0 | 8 | 1 | 40 | 0 |
+| holds-when-still | 7 | 0 | 6 | 0 | 1 | 0 |
+| fails-when-equal | 25 | 18 | 4 | 3 | 0 | 0 |
+| needs-activity | 6 | 6 | 0 | 0 | 0 | 0 |
+| other | 4 | 0 | 4 | 0 | 0 | 0 |
+
+- Dropped, `air-jump`: reproduced only by 6 `holds-when-equal`; checks of a demanding form in its record: 0.
+- Dropped, `enemy-ledge`: reproduced only by 5 `holds-when-equal`, 1 `holds-when-still`; checks of a demanding form in its record: 0.
+- Dropped, `slow-left`: reproduced only by 5 `holds-when-equal`; checks of a demanding form in its record: 0.
+- Dropped, `slides-after-stop`: reproduced only by 6 `holds-when-equal`; checks of a demanding form in its record: 0.
+- Dropped, `enemy-fast-left`: reproduced only by 6 `holds-when-equal`; checks of a demanding form in its record: 0.
+- Shown, `bullet-through-enemy`: its reproducing checks that fail the control are `fails-when-equal`.
+- Shown, `platforms-not-solid`: its reproducing checks that fail the control are `fails-when-equal`.
+- Shown, `jump-always-full`: its reproducing checks that fail the control are `fails-when-equal`.
+- Shown, `double-jump-once`: its reproducing checks that fail the control are `fails-when-equal`.
+- Shown, `gun-cooldown-long`: its reproducing checks that fail the control are `needs-activity`.
+- Shown, `enemy-missing`: its reproducing checks that fail the control are `fails-when-equal`.
+- Shown, `enemy-slides-when-shot`: its reproducing checks that fail the control are `fails-when-equal`.
+
+Added November 21, 2026 (#285). The section above says which defects the do-nothing rule drops; this one
+says why, from the form of what each check asserts, read before any replay
+(`expectrail/repro/control_form.py`). Under the control the actor stands still, so it measures the same
+on any two probes and never moves, falls, vanishes or fires:
+
+- `holds-when-equal`: a relation between two probes whose comparator holds when both measure the same
+  (`eq`, `lte`, `gte`, tolerance zero or more). Judged with the evaluator's own comparator at two equal
+  arms, so a negative tolerance is read, not assumed.
+- `holds-when-still`: a bound on activity (`max_entity_drop`, `max_episode_rise`, `entity_present`,
+  `min_event_interval`).
+- `fails-when-equal`: a relation that asks the two probes to differ (`gt`, `lt`).
+- `needs-activity`: a demand a still actor cannot meet (`min_event_count`, `min_motion_extent`,
+  `event_response`).
+- `other`: what the form does not settle (`direction_agreement` here). Never guessed.
+
+**What this shows.** In these rows the form decides the control: no check of a form a still actor
+satisfies fails it, and no strict relation passes it. The five dropped defects were reproduced only by
+`holds-when-equal` relations (and one activity bound), and the proposer offered those five records no
+check of a demanding form at all. Each of the seven defects shown to state an obligation is shown by a
+strict relation or a demand for activity. So the drop is not about these bugs being hard to reach:
+`air-jump` was caught by "eight presses give the same air jumps as two", which a frozen player also
+obeys. A single relation cannot say "the same, and not zero": a trace check asserts one operation (its
+`guards` are names the evaluator does not judge), so such a defect needs a second, demanding check
+beside the invariance (for `air-jump`, "two presses
+give more air jumps than one").
+
+**What the proposer is told today.** Since #675 the revision step sends a check rejected this way back
+with `why: "passed-with-the-actor-doing-nothing"` (`expectrail/jit/intent.py`, `feedback`), but the
+revision's system text still says a rejected check failed in one of two ways, and does not say what the
+control is or which forms can fail it. Changing that text changes the generator's prompt, which
+`tests/test_jit_offer.py` pins byte for byte for the baseline, so it needs its own setting and its own
+live run; it is not done here. The text it would add, in substance: the clean game is also replayed with
+the check's actor doing nothing, and a check that still passes is rejected; a relation that holds when
+both probes measure the same, or a bound a still actor never breaks, always passes that replay; pair it
+with a relation that asks the probes to differ, or a minimum the actor must reach.
+
+Not run here: no replay, no engine and no model. The forms are read from the committed records and the
+outcomes from the committed rows; "a still actor satisfies it" is a reading of the operation, and the
+rows are the evidence that the control agreed with it on this bench.
+
+Recompute:
+
+```sh
+python3 -m expectrail.repro control-form \
+  --score bench/jit/recordings/public-43465090517/repro-score/repro-score.json \
+  --records bench/jit/recordings/public-43465090517/repro \
+  --do-nothing-rows bench/jit/public/do-nothing-rows.json
+```
+
 ## Offline step: make menu-counter state measurable and expressible
 
 Three categories tie at two of seven baseline misses. Reach pairs and the camera/coin signals
