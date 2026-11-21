@@ -36,7 +36,7 @@ def sha(path):
 
 
 def load_proposal(work):
-    freeze = read_json(CASE / 'freeze.json')
+    freeze = read_json(CASE / 'frozen-proposal.json')
     path = CASE / 'jit-proposal.json'
     if sha(path) != freeze['proposalSha256']:
         raise ValueError('the proposal differs from the pre-replay freeze')
