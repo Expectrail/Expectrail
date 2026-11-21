@@ -1,0 +1,4410 @@
+{
+ "controls": [
+  {
+   "class": "enemy",
+   "mode": "frozen",
+   "files": [
+    "enemy/enemy.gd"
+   ],
+   "reason": null,
+   "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+  },
+  {
+   "class": "player",
+   "mode": "frozen",
+   "files": [
+    "player/player.gd"
+   ],
+   "reason": null,
+   "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+  },
+  {
+   "class": "projectile",
+   "mode": "never-made",
+   "files": [
+    "player/gun.gd"
+   ],
+   "reason": null,
+   "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+  }
+ ],
+ "records": "bench/jit/recordings/public-43465090517/repro",
+ "evidence": {
+  "player-b6cca17fb249a768": [
+   {
+    "trace": "5ba4c717449d38cdf25dd24cc6f0612305a8982452a3d7e290d83b9ebf258f47",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "5ba4c717449d38cdf25dd24cc6f0612305a8982452a3d7e290d83b9ebf258f47",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "5ba4c717449d38cdf25dd24cc6f0612305a8982452a3d7e290d83b9ebf258f47",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-209cf72abe2851ee": [
+   {
+    "trace": "bbe722399ef05131fe74d3f2fffa4a071f759038e9b1c47462ee29108ca1392e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "bbe722399ef05131fe74d3f2fffa4a071f759038e9b1c47462ee29108ca1392e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "bbe722399ef05131fe74d3f2fffa4a071f759038e9b1c47462ee29108ca1392e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-742850d7ab0d04de": [
+   {
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-bb8ffadfe5b02a47": [
+   {
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-36e5b2628fb9e3b5": [
+   {
+    "trace": "d411ba1431c09781a63c901cdb5c6596c79e8840ea0b74688d38c7958c71b3f9",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "d411ba1431c09781a63c901cdb5c6596c79e8840ea0b74688d38c7958c71b3f9",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "d411ba1431c09781a63c901cdb5c6596c79e8840ea0b74688d38c7958c71b3f9",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-2a9eb2a3cd276d5c": [
+   {
+    "trace": "fafcbe031786bcbac074733b7edd2b8e12df31d9aeccf74fa63e263597560611",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "fafcbe031786bcbac074733b7edd2b8e12df31d9aeccf74fa63e263597560611",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "fafcbe031786bcbac074733b7edd2b8e12df31d9aeccf74fa63e263597560611",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-ca4d763028dcf7ef": [
+   {
+    "trace": "bbe722399ef05131fe74d3f2fffa4a071f759038e9b1c47462ee29108ca1392e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "bbe722399ef05131fe74d3f2fffa4a071f759038e9b1c47462ee29108ca1392e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "bbe722399ef05131fe74d3f2fffa4a071f759038e9b1c47462ee29108ca1392e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-a227fc1afba206f0": [
+   {
+    "trace": "b6d0a6d73839e3024032735c10f8636bcc825ced55c1f431cb0252c963b64127",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "b6d0a6d73839e3024032735c10f8636bcc825ced55c1f431cb0252c963b64127",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "b6d0a6d73839e3024032735c10f8636bcc825ced55c1f431cb0252c963b64127",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-ad66e9df192dfa2a": [
+   {
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "2b67b96a681aacacce39b5a04da3f877e1717c8f570d45c7fed18c80ce488036",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-8808601f37e61321": [
+   {
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "b8c29a18052d1b334285badaac681963ee0bc9e69cc76e221fd48fd6bc668b89",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "projectile-e774115a4ccb465a": [
+   {
+    "trace": "cc30c85900b3f331aa9d639cbc78265d75497fca4a66768a4a92297bcfbfe884",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "cc30c85900b3f331aa9d639cbc78265d75497fca4a66768a4a92297bcfbfe884",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "cc30c85900b3f331aa9d639cbc78265d75497fca4a66768a4a92297bcfbfe884",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   }
+  ],
+  "projectile-e0742f3a18c47208": [
+   {
+    "trace": "2c19f581acd825f436caa2ff04849860f65d0126ce492341782a062c1241e812",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "2c19f581acd825f436caa2ff04849860f65d0126ce492341782a062c1241e812",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "2c19f581acd825f436caa2ff04849860f65d0126ce492341782a062c1241e812",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   }
+  ],
+  "projectile-a294d061444e538e": [
+   {
+    "trace": "cc30c85900b3f331aa9d639cbc78265d75497fca4a66768a4a92297bcfbfe884",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "cc30c85900b3f331aa9d639cbc78265d75497fca4a66768a4a92297bcfbfe884",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "cc30c85900b3f331aa9d639cbc78265d75497fca4a66768a4a92297bcfbfe884",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   }
+  ],
+  "projectile-f657f374af462f69": [
+   {
+    "trace": "2c19f581acd825f436caa2ff04849860f65d0126ce492341782a062c1241e812",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "2c19f581acd825f436caa2ff04849860f65d0126ce492341782a062c1241e812",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "2c19f581acd825f436caa2ff04849860f65d0126ce492341782a062c1241e812",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   }
+  ],
+  "player-d0c42842b6ce4ddb": [
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-d449b338f6c7efcc": [
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-4181e355f218f08f": [
+   {
+    "trace": "5c98920a9670287d9180cfd715004ce0f1497ad201794abc85789ad922b69c81",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "5c98920a9670287d9180cfd715004ce0f1497ad201794abc85789ad922b69c81",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "5c98920a9670287d9180cfd715004ce0f1497ad201794abc85789ad922b69c81",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-9c1617e416ffef6b": [
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "777b65699971e96c89a2e85d033f61a330ff53b0ba4c85df31d45ab0bbd5fd7a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-a294d061444e538e": [
+   {
+    "trace": "59582a9b2d7931ba04da93cb3b5a8fed07ece121f0c3259e65fa3c3b88484179",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "59582a9b2d7931ba04da93cb3b5a8fed07ece121f0c3259e65fa3c3b88484179",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "59582a9b2d7931ba04da93cb3b5a8fed07ece121f0c3259e65fa3c3b88484179",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-f657f374af462f69": [
+   {
+    "trace": "a48e17711b90372fb643187efbcfdd9de2039d89b6cd91b53be0058d91af2bb9",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "a48e17711b90372fb643187efbcfdd9de2039d89b6cd91b53be0058d91af2bb9",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "a48e17711b90372fb643187efbcfdd9de2039d89b6cd91b53be0058d91af2bb9",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-67f3bdeec4fc32f4": [
+   {
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-23cc4bf727bccecb": [
+   {
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "10728149d235561a11ff4482a03060056e7a2af6c2133c5c32097f7129232a4d",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "enemy-0746f1753d65ce9b": [
+   {
+    "trace": "cf0ee10729aa52a071d3b635c71f91396501abf7a1ce925a636375b5bbcb1b6e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "cf0ee10729aa52a071d3b635c71f91396501abf7a1ce925a636375b5bbcb1b6e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "cf0ee10729aa52a071d3b635c71f91396501abf7a1ce925a636375b5bbcb1b6e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-67f3bdeec4fc32f4": [
+   {
+    "trace": "51bd58ef43a872e7f827cd566b233cc9acaa3e8574f7bc08e9c382a1d9aef977",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "51bd58ef43a872e7f827cd566b233cc9acaa3e8574f7bc08e9c382a1d9aef977",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "51bd58ef43a872e7f827cd566b233cc9acaa3e8574f7bc08e9c382a1d9aef977",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-a294d061444e538e": [
+   {
+    "trace": "60d4f9a1509c73f06bd847980bfab4e520e2116f20e06e9b43c722c27f50e201",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "60d4f9a1509c73f06bd847980bfab4e520e2116f20e06e9b43c722c27f50e201",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "60d4f9a1509c73f06bd847980bfab4e520e2116f20e06e9b43c722c27f50e201",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-03727ff8e274f7ca": [
+   {
+    "trace": "ab695fa2c871fdbd555927b7784321effe26876d0ba611b34778e2d2262530a3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "ab695fa2c871fdbd555927b7784321effe26876d0ba611b34778e2d2262530a3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "ab695fa2c871fdbd555927b7784321effe26876d0ba611b34778e2d2262530a3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-742850d7ab0d04de": [
+   {
+    "trace": "64486c368dfc0118dd88968ecc467f183035d4130bad0037db0401c5c8a4932c",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "64486c368dfc0118dd88968ecc467f183035d4130bad0037db0401c5c8a4932c",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "64486c368dfc0118dd88968ecc467f183035d4130bad0037db0401c5c8a4932c",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-fadad3101620ee5b": [
+   {
+    "trace": "ba510862c86f0e68b429abd2eba6fe636afad2f3bc2b3bbdfc9b09a7c15c802c",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "ba510862c86f0e68b429abd2eba6fe636afad2f3bc2b3bbdfc9b09a7c15c802c",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "ba510862c86f0e68b429abd2eba6fe636afad2f3bc2b3bbdfc9b09a7c15c802c",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-36e5b2628fb9e3b5": [
+   {
+    "trace": "21febdbfd729f3d40cc15fecebd60dd23c310bff97074dc9ee2517c79e60d831",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "21febdbfd729f3d40cc15fecebd60dd23c310bff97074dc9ee2517c79e60d831",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "21febdbfd729f3d40cc15fecebd60dd23c310bff97074dc9ee2517c79e60d831",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-5e5434d594ddd371": [
+   {
+    "trace": "c7e1c992ac5d88b16affa0212c174592a1431e026af3d9f957dc6c4718cd5beb",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "c7e1c992ac5d88b16affa0212c174592a1431e026af3d9f957dc6c4718cd5beb",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "c7e1c992ac5d88b16affa0212c174592a1431e026af3d9f957dc6c4718cd5beb",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-4181e355f218f08f": [
+   {
+    "trace": "2a343158b273c47eee82629cf23d0b88600ca9aa82ee09597176a6682baa5844",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "2a343158b273c47eee82629cf23d0b88600ca9aa82ee09597176a6682baa5844",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "2a343158b273c47eee82629cf23d0b88600ca9aa82ee09597176a6682baa5844",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-f657f374af462f69": [
+   {
+    "trace": "71613f11879d00d233e49cc689eaa037e23cb9d18253ed0285c67afcb3ce908e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "71613f11879d00d233e49cc689eaa037e23cb9d18253ed0285c67afcb3ce908e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "71613f11879d00d233e49cc689eaa037e23cb9d18253ed0285c67afcb3ce908e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-e774115a4ccb465a": [
+   {
+    "trace": "60d4f9a1509c73f06bd847980bfab4e520e2116f20e06e9b43c722c27f50e201",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "60d4f9a1509c73f06bd847980bfab4e520e2116f20e06e9b43c722c27f50e201",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "60d4f9a1509c73f06bd847980bfab4e520e2116f20e06e9b43c722c27f50e201",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-e0742f3a18c47208": [
+   {
+    "trace": "71613f11879d00d233e49cc689eaa037e23cb9d18253ed0285c67afcb3ce908e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "71613f11879d00d233e49cc689eaa037e23cb9d18253ed0285c67afcb3ce908e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "71613f11879d00d233e49cc689eaa037e23cb9d18253ed0285c67afcb3ce908e",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "player-05fbc284b8bda542": [
+   {
+    "trace": "c2a228752ce3e1d118c0aa0e0b5d90e5e8da7607b157b1f3720934e0106f824a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "c2a228752ce3e1d118c0aa0e0b5d90e5e8da7607b157b1f3720934e0106f824a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "c2a228752ce3e1d118c0aa0e0b5d90e5e8da7607b157b1f3720934e0106f824a",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-03727ff8e274f7ca": [
+   {
+    "trace": "5ea8217e50d320240b919ed11160a10ea7776de17c99281b37fc6af0180fdae1",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "5ea8217e50d320240b919ed11160a10ea7776de17c99281b37fc6af0180fdae1",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "5ea8217e50d320240b919ed11160a10ea7776de17c99281b37fc6af0180fdae1",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "player-5e5434d594ddd371": [
+   {
+    "trace": "59c4f08881facd9d8770ca5bbe80a7384629237d97161e8f3bfa542de25908db",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "59c4f08881facd9d8770ca5bbe80a7384629237d97161e8f3bfa542de25908db",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   },
+   {
+    "trace": "59c4f08881facd9d8770ca5bbe80a7384629237d97161e8f3bfa542de25908db",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51"
+   }
+  ],
+  "enemy-9c1617e416ffef6b": [
+   {
+    "trace": "ac41075e3c8c8687619483cfb61d61ccf92dd047bb28a2ee2d2aa5eedd4a7e53",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "ac41075e3c8c8687619483cfb61d61ccf92dd047bb28a2ee2d2aa5eedd4a7e53",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "ac41075e3c8c8687619483cfb61d61ccf92dd047bb28a2ee2d2aa5eedd4a7e53",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-d0c42842b6ce4ddb": [
+   {
+    "trace": "5bd94a2697727cb63494c8971442f47d3d27dddb42e1a7d2080ced5b84d83b17",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "5bd94a2697727cb63494c8971442f47d3d27dddb42e1a7d2080ced5b84d83b17",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "5bd94a2697727cb63494c8971442f47d3d27dddb42e1a7d2080ced5b84d83b17",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "projectile-fadad3101620ee5b": [
+   {
+    "trace": "135040d92616c6ea1d19e34fe93ca2ef43955e8fa4b9f68532b7f71a72870de3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "135040d92616c6ea1d19e34fe93ca2ef43955e8fa4b9f68532b7f71a72870de3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "135040d92616c6ea1d19e34fe93ca2ef43955e8fa4b9f68532b7f71a72870de3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   }
+  ],
+  "projectile-4181e355f218f08f": [
+   {
+    "trace": "10dda4d29b1d0753432707be356170f0e905929a920849c68c4431172bb97228",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "10dda4d29b1d0753432707be356170f0e905929a920849c68c4431172bb97228",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   },
+   {
+    "trace": "10dda4d29b1d0753432707be356170f0e905929a920849c68c4431172bb97228",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "1905b10e2f57a263bb733edea9abe890735cbffc32c4da0f3fa6535b12cb1ea7"
+   }
+  ],
+  "enemy-d449b338f6c7efcc": [
+   {
+    "trace": "9c4e3715aac32207ee5fa4e41250dd1a5dde32e1f66e8fef9e3d812106f858bd",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "9c4e3715aac32207ee5fa4e41250dd1a5dde32e1f66e8fef9e3d812106f858bd",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "9c4e3715aac32207ee5fa4e41250dd1a5dde32e1f66e8fef9e3d812106f858bd",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-b6cca17fb249a768": [
+   {
+    "trace": "fb0b222e4bbba4db4571ce58775fe54c5b8cf6a44ecc6effe8f90639f18d78e3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "fb0b222e4bbba4db4571ce58775fe54c5b8cf6a44ecc6effe8f90639f18d78e3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "fb0b222e4bbba4db4571ce58775fe54c5b8cf6a44ecc6effe8f90639f18d78e3",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ],
+  "enemy-05fbc284b8bda542": [
+   {
+    "trace": "fd21c2742f43e3f960b5534cea186de49fa2e3b422304c556c22e654925b7b59",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "fd21c2742f43e3f960b5534cea186de49fa2e3b422304c556c22e654925b7b59",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   },
+   {
+    "trace": "fd21c2742f43e3f960b5534cea186de49fa2e3b422304c556c22e654925b7b59",
+    "engine": {
+     "name": "godot",
+     "version": "4.7.2.stable.official.ed1daf0bf",
+     "renderer": "opengl3",
+     "device": null
+    },
+    "patchSha256": "beadfacabbd162810a03139a453b308c4e073cbba0bb6e813bbab21bb07da963"
+   }
+  ]
+ },
+ "rows": [
+  {
+   "defect": "air-jump",
+   "check": "jit-c1",
+   "specSha256": "dee983975f362b39a463261ba754ff591808b836932f06ca61805fb482095179",
+   "sourceRun": "566e03f7ba8eebe2e7e89d8feb8e9a3ce1d75b75ea6e24db568642c950fb5873",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "air-jump",
+   "check": "jit-c2",
+   "specSha256": "a56dae8f74eb7c9f1beb112ae0def6e26285b3d61578d55d5a46be6af6bae686",
+   "sourceRun": "566e03f7ba8eebe2e7e89d8feb8e9a3ce1d75b75ea6e24db568642c950fb5873",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "air-jump",
+   "check": "jit-c3",
+   "specSha256": "27b2f8c65e67922ccdfa8267d5e29288107c676a28e1bba52a186b1507ae258d",
+   "sourceRun": "566e03f7ba8eebe2e7e89d8feb8e9a3ce1d75b75ea6e24db568642c950fb5873",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "air-jump",
+   "check": "jit-c4",
+   "specSha256": "65ba286c8e09e683b86d2915cfd67ffdddc36065ae6608a5a6e00040fc50f665",
+   "sourceRun": "566e03f7ba8eebe2e7e89d8feb8e9a3ce1d75b75ea6e24db568642c950fb5873",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "air-jump",
+   "check": "jit-c5",
+   "specSha256": "3b06b2df5ca530da1eb87e04307732b218b7f3de04e8c9178072c42bf276f9d2",
+   "sourceRun": "566e03f7ba8eebe2e7e89d8feb8e9a3ce1d75b75ea6e24db568642c950fb5873",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "air-jump",
+   "check": "jit-c6",
+   "specSha256": "e25b0278a0fdd5710dd1ed1c852c97abde37d536c4cf896e36d986042a936aeb",
+   "sourceRun": "566e03f7ba8eebe2e7e89d8feb8e9a3ce1d75b75ea6e24db568642c950fb5873",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown",
+   "check": "jit-cooldown-interval-right",
+   "specSha256": "259c5ff71df0f90b23cfb4e9f025a944eba0019a0f7fdf256a314c85505b4aca",
+   "sourceRun": "fb829788967783f6604e68a8c0e17c87ad396352d0ebd1a0d9d7ded11ec2825c",
+   "class": "projectile",
+   "operation": "min_event_interval",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown",
+   "check": "jit-cooldown-interval-left",
+   "specSha256": "98aae68aa433e68e177eeb8987a791eb8a00cc43e9bfe0d3ff54d34d375dbf17",
+   "sourceRun": "fb829788967783f6604e68a8c0e17c87ad396352d0ebd1a0d9d7ded11ec2825c",
+   "class": "projectile",
+   "operation": "min_event_interval",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown",
+   "check": "jit-cooldown-count-right-eq",
+   "specSha256": "06bb050aca977908de6a6744a80da7c15b7e50f59113dce8822bcfe869b7e742",
+   "sourceRun": "fb829788967783f6604e68a8c0e17c87ad396352d0ebd1a0d9d7ded11ec2825c",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "projectile_count",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown",
+   "check": "jit-cooldown-count-left-eq",
+   "specSha256": "8dce28ed34fa49ad92f9143ab0a13754c48f2e009232fdbda5589c2f1e36d2d6",
+   "sourceRun": "fb829788967783f6604e68a8c0e17c87ad396352d0ebd1a0d9d7ded11ec2825c",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "projectile_count",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown",
+   "check": "jit-cooldown-gap-right-eq",
+   "specSha256": "41a93a676b9e3e68d80e5654584e5ccf5cabfe27385c3427379a3e59e396a106",
+   "sourceRun": "fb829788967783f6604e68a8c0e17c87ad396352d0ebd1a0d9d7ded11ec2825c",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "min_projectile_interval_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown",
+   "check": "jit-cooldown-gap-left-eq",
+   "specSha256": "10c58438a96d3c6422a7616240c37e013f14a6fa8c781f4a3de664c2c9f522da",
+   "sourceRun": "fb829788967783f6604e68a8c0e17c87ad396352d0ebd1a0d9d7ded11ec2825c",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "min_projectile_interval_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "body-flip",
+   "check": "jit-face-hold-left",
+   "specSha256": "b87690ffd0ae878d0b3326a08f4bd9b51737f2ce9fff8265410b704f08b72cac",
+   "sourceRun": "b12f1d649e7e7ee87468e17053f3633e8064215da1c6eac005c070aff6b07ed6",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "body-flip",
+   "check": "jit-face-reverse",
+   "specSha256": "eecad5d1cc8dafe7a59f06d7ad807b45a66297686dea7488b1df8ff5f5ea3543",
+   "sourceRun": "b12f1d649e7e7ee87468e17053f3633e8064215da1c6eac005c070aff6b07ed6",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "body-flip",
+   "check": "jit-face-move-fire-left",
+   "specSha256": "f11bc5c35478c05e161164898b3cabd3f16d6036ea2fa0c2e013145bf23cc2cf",
+   "sourceRun": "b12f1d649e7e7ee87468e17053f3633e8064215da1c6eac005c070aff6b07ed6",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "body-flip",
+   "check": "jit-face-jump-left",
+   "specSha256": "d6b2d5324ab7ffcef86760f1a67d8493817745ca1c003df06eeab3c7d1c49347",
+   "sourceRun": "b12f1d649e7e7ee87468e17053f3633e8064215da1c6eac005c070aff6b07ed6",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "body-flip",
+   "check": "jit-sym-flips-hold",
+   "specSha256": "c7df864e12c5c55b62809deb9ec3ea24bde18848008cf8c3c92d897d22c1ad96",
+   "sourceRun": "b12f1d649e7e7ee87468e17053f3633e8064215da1c6eac005c070aff6b07ed6",
+   "class": "player",
+   "operation": "relation",
+   "signal": "facing_flips",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "body-flip",
+   "check": "jit-sym-flips-shoot",
+   "specSha256": "b31c3bc4d1f2a6c5fc19ed949cc5599eb0924f5ea24fe95451a9adc85b05a362",
+   "sourceRun": "b12f1d649e7e7ee87468e17053f3633e8064215da1c6eac005c070aff6b07ed6",
+   "class": "player",
+   "operation": "relation",
+   "signal": "facing_flips",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "body-flip",
+   "check": "jit-sym-mismatch-jump",
+   "specSha256": "b6a47a38db3b90e460ef3c53a7d599b76860671aef6ac4c94220084b0a8e7996",
+   "sourceRun": "b12f1d649e7e7ee87468e17053f3633e8064215da1c6eac005c070aff6b07ed6",
+   "class": "player",
+   "operation": "relation",
+   "signal": "facing_mismatch_fraction",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "enemy-ledge",
+   "check": "jit-e1",
+   "specSha256": "ddf0194b3cb7539724572c7367222af5a37a054ac0f53cc8954978d087159a81",
+   "sourceRun": "d0e2b725d11cc8bc812920d1a61d2ace03bac9c5c44d79269b8a5f94eb1d5029",
+   "class": "enemy",
+   "operation": "max_entity_drop",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-ledge",
+   "check": "jit-e2",
+   "specSha256": "c3d382df597fb9bc1d6c6dbcf24066c8b53c2f58033dbda09d807a612dce1286",
+   "sourceRun": "d0e2b725d11cc8bc812920d1a61d2ace03bac9c5c44d79269b8a5f94eb1d5029",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-ledge",
+   "check": "jit-e3",
+   "specSha256": "1a615996790ebb0cce96b8710f608a02c56e9d148b0bccd63751b013046acdb1",
+   "sourceRun": "d0e2b725d11cc8bc812920d1a61d2ace03bac9c5c44d79269b8a5f94eb1d5029",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-ledge",
+   "check": "jit-e4",
+   "specSha256": "7b8c7767add0c7f1cfd3849de43fae8be35dcd29a2d2fa33e3bf7992a1243fd8",
+   "sourceRun": "d0e2b725d11cc8bc812920d1a61d2ace03bac9c5c44d79269b8a5f94eb1d5029",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-ledge",
+   "check": "jit-e5",
+   "specSha256": "67056730852b0982e3169abcce659ab8e31518954bb474b0b0191012f5883651",
+   "sourceRun": "d0e2b725d11cc8bc812920d1a61d2ace03bac9c5c44d79269b8a5f94eb1d5029",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-ledge",
+   "check": "jit-e6",
+   "specSha256": "0ec8805bd00ff49f3a88281e8cb1809c6a38f691965aa94028af0e557eec0b51",
+   "sourceRun": "d0e2b725d11cc8bc812920d1a61d2ace03bac9c5c44d79269b8a5f94eb1d5029",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "bullet-through-enemy",
+   "check": "jit-c1-kill-count",
+   "specSha256": "7a04b86f61b3ef08d4bdbc41286b79d8153a568cd5a24d39650a4f893dec1257",
+   "sourceRun": "69def49303f002744806103716f84c217106804b13146a14830e29d1053d9cb7",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "enemies_at_end",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-through-enemy",
+   "check": "jit-c2-extent-move",
+   "specSha256": "51230613f955e38a720596757c786c136765f059fef095feccbd1a482e1bb5ef",
+   "sourceRun": "69def49303f002744806103716f84c217106804b13146a14830e29d1053d9cb7",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-through-enemy",
+   "check": "jit-c3-extent-shoot48",
+   "specSha256": "e2ab9c6f65502c1820323d6570ac033041f46bf8384920b72269f4a1dcf95e5d",
+   "sourceRun": "69def49303f002744806103716f84c217106804b13146a14830e29d1053d9cb7",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-through-enemy",
+   "check": "jit-c4-extent-shoot12",
+   "specSha256": "a1b176fa55416dff704290377ea0c387716c85d5a11e999bdf97884af6645c88",
+   "sourceRun": "69def49303f002744806103716f84c217106804b13146a14830e29d1053d9cb7",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "platforms-not-solid",
+   "check": "jit-c1-landing-sooner-base",
+   "specSha256": "b21789b542f4299ad672d8f0c5d510fb28d66cb2e6f99e09fd96e65c836afd96",
+   "sourceRun": "1308f90301e9bdb1922518ee4aca0ce1dc4be72cd55a159f2186c3bcbe1f58bd",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "platforms-not-solid",
+   "check": "jit-c2-landing-sooner-w40",
+   "specSha256": "ffd94e0d06d1afecc3bcd41b8435f032163bfe7525d48242321e28162fc0e0dd",
+   "sourceRun": "1308f90301e9bdb1922518ee4aca0ce1dc4be72cd55a159f2186c3bcbe1f58bd",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "platforms-not-solid",
+   "check": "jit-c3-landing-sooner-w80",
+   "specSha256": "5fcfba7b22de9fdb0d34fcf716193857aa20b86f6629657a6083c2791e6f73df",
+   "sourceRun": "1308f90301e9bdb1922518ee4aca0ce1dc4be72cd55a159f2186c3bcbe1f58bd",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "platforms-not-solid",
+   "check": "jit-r-jit-c4-repl-38",
+   "specSha256": "329214fc496cb67388270ca79f458e4d7f3f39f2c778fdfa1b0c863f13df87d0",
+   "sourceRun": "1308f90301e9bdb1922518ee4aca0ce1dc4be72cd55a159f2186c3bcbe1f58bd",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-jit-left38-dbl"
+  },
+  {
+   "defect": "platforms-not-solid",
+   "check": "jit-r-jit-c5-repl-42",
+   "specSha256": "d88784249fc3885bc7f047a32aeb626c6aedc8a992885f324454b15522862c0b",
+   "sourceRun": "1308f90301e9bdb1922518ee4aca0ce1dc4be72cd55a159f2186c3bcbe1f58bd",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-jit-left42-dbl"
+  },
+  {
+   "defect": "floaty-fall",
+   "check": "jit-check-w0-single-double",
+   "specSha256": "1e4178ff0a47b95d422702eb20a6c3d4cb845aa9d3e06d4742afe6aa8b5915b1",
+   "sourceRun": "0825d03479081dcbb4717440cf67afa69bee71fa5f3f1e0415e127ce2ec84db8",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "floaty-fall",
+   "check": "jit-check-w40-single-double",
+   "specSha256": "28201d6ff35e7e484f5f440a96148ddcb5021ef4936808a4ec63635a001beb23",
+   "sourceRun": "0825d03479081dcbb4717440cf67afa69bee71fa5f3f1e0415e127ce2ec84db8",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "floaty-fall",
+   "check": "jit-check-w80-single-double",
+   "specSha256": "3972a5bc80bd2c124a6fb65df23df6d41458d10ea6ff5ad92f69da5996ed65e7",
+   "sourceRun": "0825d03479081dcbb4717440cf67afa69bee71fa5f3f1e0415e127ce2ec84db8",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "floaty-fall",
+   "check": "jit-check-w0-double-multi",
+   "specSha256": "00527fb49b6b3652cc58052f678d7f64246f4ab97eb474c027360a00a9aea099",
+   "sourceRun": "0825d03479081dcbb4717440cf67afa69bee71fa5f3f1e0415e127ce2ec84db8",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "floaty-fall",
+   "check": "jit-check-w40-double-multi",
+   "specSha256": "20ff1457bcd349a16e8ba3794d911d27824d74a7f116d0bf5786b52d703be4ce",
+   "sourceRun": "0825d03479081dcbb4717440cf67afa69bee71fa5f3f1e0415e127ce2ec84db8",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "jump-always-full",
+   "check": "jit-tap-low-w0",
+   "specSha256": "62e10e9a70430d9472a601503c2c1ef9a5829727de0c0597741c6c0c4f3d6ee4",
+   "sourceRun": "e9d520cc8bf36821aaaf7afc395cc891c88413b0a37093bbb104d672e75ad69e",
+   "class": "player",
+   "operation": "max_episode_rise",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "jump-always-full",
+   "check": "jit-tap-low-w80",
+   "specSha256": "2738fb46e54a0526dd285b326deeb8f476c047c2cff54b97812772e8bf65acfc",
+   "sourceRun": "e9d520cc8bf36821aaaf7afc395cc891c88413b0a37093bbb104d672e75ad69e",
+   "class": "player",
+   "operation": "max_episode_rise",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "jump-always-full",
+   "check": "jit-tap-low-l40",
+   "specSha256": "86da429481b68cf17bbc1f95e63b6854aae9e914f775bf8c651ad3c05313e47c",
+   "sourceRun": "e9d520cc8bf36821aaaf7afc395cc891c88413b0a37093bbb104d672e75ad69e",
+   "class": "player",
+   "operation": "max_episode_rise",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "jump-always-full",
+   "check": "jit-double-higher-w40",
+   "specSha256": "6f8aa675b0a3d110897891c4c46ccb91ef78ab93254fe5e521f6e586ecee4023",
+   "sourceRun": "e9d520cc8bf36821aaaf7afc395cc891c88413b0a37093bbb104d672e75ad69e",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "jump-always-full",
+   "check": "jit-hold-higher-than-tap",
+   "specSha256": "b18e42b7b2912261b492c2d2d803de1613cb93155d467db5abd1bac08e58e387",
+   "sourceRun": "e9d520cc8bf36821aaaf7afc395cc891c88413b0a37093bbb104d672e75ad69e",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-short-tap, jit-long-hold"
+  },
+  {
+   "defect": "jump-always-full",
+   "check": "jit-tap-low-w120",
+   "specSha256": "f4af7dc409d00bb3f0c7f4fd9581c869955da356f3f2ae50503e772d0f67cbf7",
+   "sourceRun": "e9d520cc8bf36821aaaf7afc395cc891c88413b0a37093bbb104d672e75ad69e",
+   "class": "player",
+   "operation": "max_episode_rise",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "slow-left",
+   "check": "jit-c4",
+   "specSha256": "1a59137632d78303f9b12460d907ba317edae9b8f2fc5747a5058cdc2914d620",
+   "sourceRun": "30c16f8aa65df59e827ff0807701a050c6e2d7a95292ee83120d5ee5a2abdc72",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slow-left",
+   "check": "jit-c5",
+   "specSha256": "d3513f48db1ad6c7197ab1928be76cf4d8ad21e068f509996a68b9713200598d",
+   "sourceRun": "30c16f8aa65df59e827ff0807701a050c6e2d7a95292ee83120d5ee5a2abdc72",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slow-left",
+   "check": "jit-r-jit-d1",
+   "specSha256": "ddfc6aac9af3f757813cb7ea05fcf9a9b1375ab85ec2084a585590855a471132",
+   "sourceRun": "30c16f8aa65df59e827ff0807701a050c6e2d7a95292ee83120d5ee5a2abdc72",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slow-left",
+   "check": "jit-r-jit-d2",
+   "specSha256": "0c1291fb4a495704cb7f791f5e841fadfb9b3d4d9552d864cf301c3bbdf017c8",
+   "sourceRun": "30c16f8aa65df59e827ff0807701a050c6e2d7a95292ee83120d5ee5a2abdc72",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slow-left",
+   "check": "jit-r-jit-d3",
+   "specSha256": "89da261ecb0f0d104b1fc1184d498c05646acf18c90492b7fda527ca54939771",
+   "sourceRun": "30c16f8aa65df59e827ff0807701a050c6e2d7a95292ee83120d5ee5a2abdc72",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slides-after-stop",
+   "check": "jit-c1",
+   "specSha256": "00d52ea660ee05c1f690197ca677088715f164fac5bd61d19b3a8622ef692b4f",
+   "sourceRun": "ff459eb78e2c88d062872eefddc3c64f2e557f2def4805ab150c65ebec55063c",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slides-after-stop",
+   "check": "jit-c2",
+   "specSha256": "012bc125a5e8a81df135c4d2c065535f766ba2b7dc7b4a935bb04468c5c75cdd",
+   "sourceRun": "ff459eb78e2c88d062872eefddc3c64f2e557f2def4805ab150c65ebec55063c",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slides-after-stop",
+   "check": "jit-c3",
+   "specSha256": "3ad3528817c45090f4b4d8df709ea549d7908cf477df6ae28a56698f4a6e1d0a",
+   "sourceRun": "ff459eb78e2c88d062872eefddc3c64f2e557f2def4805ab150c65ebec55063c",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slides-after-stop",
+   "check": "jit-c4",
+   "specSha256": "eda1090405d1c320513ddb69231e2eb65e61507102f8756b1f0bcc6bf0ad6eee",
+   "sourceRun": "ff459eb78e2c88d062872eefddc3c64f2e557f2def4805ab150c65ebec55063c",
+   "class": "player",
+   "operation": "relation",
+   "signal": "player_dx_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slides-after-stop",
+   "check": "jit-c5",
+   "specSha256": "4db9f31838db906928db9cc729bc153199a480ff4a67ba8e5aba9c1fc036415d",
+   "sourceRun": "ff459eb78e2c88d062872eefddc3c64f2e557f2def4805ab150c65ebec55063c",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "slides-after-stop",
+   "check": "jit-c6",
+   "specSha256": "7f371b652dad1b3a364839c2ed1ef6b55935fd3811a0459f0c3928035bad8bc4",
+   "sourceRun": "ff459eb78e2c88d062872eefddc3c64f2e557f2def4805ab150c65ebec55063c",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "no-shooting-in-air",
+   "check": "jit-c4",
+   "specSha256": "1b06ee97c7eb408e59d6a5684df81f32f4d0e33155e82ecaff4f11dbdce1a308",
+   "sourceRun": "7678076a41d702bf43bf6af8d1aaf22a08011875bd549151aa874aa182810699",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "projectile_count",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-ground-shoot-1, jit-air-shoot-1"
+  },
+  {
+   "defect": "no-shooting-in-air",
+   "check": "jit-c5",
+   "specSha256": "9e6931647bfff3346475f551bbb708cba99f15be3e1cf29217ccf9e5fd8939df",
+   "sourceRun": "7678076a41d702bf43bf6af8d1aaf22a08011875bd549151aa874aa182810699",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "projectile_count",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-air-shoot-1, jit-air-shoot-2"
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c1",
+   "specSha256": "e9a4e86a8cb106e0b4a65d631217a75699b4ab8f8ebb484e990b46802acc3827",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c2",
+   "specSha256": "cd9ac4e1dfba171fbe7ba07ff66c174c523472cb3b7bff269c1e79c9154023ab",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c3",
+   "specSha256": "78170a9d5e86c9a293687660bec31caf9523b4dbbde0d616467c3e46b5882007",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c4",
+   "specSha256": "046a0e25ccdfa82d26d8244ad1893788be9ff8f6e660cdd7ad33347690318dff",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c5",
+   "specSha256": "5e50a302c4870f634f9f79f2b0dd5b1f8d80659b13ea5cd05983ab37d41c54a1",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c6",
+   "specSha256": "2f1570ca47d19675275ef0daca651f2be7423f843a0dc3076e50ca5565b734f9",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c7",
+   "specSha256": "9db493d6832b79967b515900a1539226f7ee0a59ab6dc4e308900cd8eab82eaf",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "jump-needs-rest",
+   "check": "jit-c8",
+   "specSha256": "cfcc77c1fa23988395df0e444ddbb9f6e43a7b5a71580d8473f922e87de144c9",
+   "sourceRun": "9d311d65863937c89bab6e145f1b0a7a709faafd3478e9c5727110ad90043e42",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "double-jump-once",
+   "check": "jit-c1",
+   "specSha256": "97cda63afd55a1a5e9edecf7f28833f7d3c13e6cbc7cbc154d29ad5151b06cc7",
+   "sourceRun": "76cfe2f44c6af57a74050479164367cd29f1de23eaac8889ee5c7de4f227cdf4",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "double-jump-once",
+   "check": "jit-c2",
+   "specSha256": "55b90a5c8686608c4d436b4a3a9d0a6924dfbfa960be4542b33c87dc92164a8a",
+   "sourceRun": "76cfe2f44c6af57a74050479164367cd29f1de23eaac8889ee5c7de4f227cdf4",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "double-jump-once",
+   "check": "jit-c3",
+   "specSha256": "02bc0d93e7a178acf3e858d70e542e3a2269ed16751abc182baeea8cc6d69994",
+   "sourceRun": "76cfe2f44c6af57a74050479164367cd29f1de23eaac8889ee5c7de4f227cdf4",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "double-jump-once",
+   "check": "jit-c4",
+   "specSha256": "7a9aa2e561629bde3e6a0ae9970106f7f1d895b827b9bae518da1e6b167c1f60",
+   "sourceRun": "76cfe2f44c6af57a74050479164367cd29f1de23eaac8889ee5c7de4f227cdf4",
+   "class": "player",
+   "operation": "relation",
+   "signal": "airborne_ticks",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "insufficient_observation",
+    "insufficient_observation",
+    "insufficient_observation"
+   ],
+   "outcome": "indeterminate",
+   "reason": "cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped"
+  },
+  {
+   "defect": "coin-stays",
+   "check": "jit-r-jump-double-higher-w40",
+   "specSha256": "c06ce23e316b25ea6fc2f4837e212374c00f209ea63f4944c9d093590ce66c51",
+   "sourceRun": "315af52fda380f11c55eea4e25a48ad384cf61454bf8bfa4dae4e53aaf0be429",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "coin-stays",
+   "check": "jit-r-jump-eight-capped-w40",
+   "specSha256": "3b2e54d36b3e9f2140850a659a8648db16ad317cac0d448e5a7fbc94d9320b02",
+   "sourceRun": "315af52fda380f11c55eea4e25a48ad384cf61454bf8bfa4dae4e53aaf0be429",
+   "class": "player",
+   "operation": "max_episode_rise",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "coin-stays",
+   "check": "jit-r-cooldown-limits-left",
+   "specSha256": "45c81c8f4d38de9a1eea282ecdd7e9df9df37b5bbaf4632a802b550b10aa6d1f",
+   "sourceRun": "315af52fda380f11c55eea4e25a48ad384cf61454bf8bfa4dae4e53aaf0be429",
+   "class": "projectile",
+   "operation": "min_event_interval",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "coin-stays",
+   "check": "jit-r-rapid-press-same-left",
+   "specSha256": "69ee3be0505c7b638a930cc212acae05631e112f52efe558e35abfc51294d939",
+   "sourceRun": "315af52fda380f11c55eea4e25a48ad384cf61454bf8bfa4dae4e53aaf0be429",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "projectile_count",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "coin-stays",
+   "check": "jit-r-facing-follows-hold-right",
+   "specSha256": "41b5691f26c2e89f0d8c1ec7632bc4043c9764380ab0516cc061bfbefbb8bf86",
+   "sourceRun": "315af52fda380f11c55eea4e25a48ad384cf61454bf8bfa4dae4e53aaf0be429",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "coin-stays",
+   "check": "jit-r-enemies-dont-fall-hold-right",
+   "specSha256": "992697a07b80e48999e4279fd0f59c48d99f22bb13fc7c3181c93c8871b8addb",
+   "sourceRun": "315af52fda380f11c55eea4e25a48ad384cf61454bf8bfa4dae4e53aaf0be429",
+   "class": "enemy",
+   "operation": "max_entity_drop",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "coin-stays",
+   "check": "jit-r-enemies-patrol-wait-long",
+   "specSha256": "9889210ff4033dd072ec318d1431c9d0c4feffefd74ff786c328359c346c6461",
+   "sourceRun": "315af52fda380f11c55eea4e25a48ad384cf61454bf8bfa4dae4e53aaf0be429",
+   "class": "enemy",
+   "operation": "min_motion_extent",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "coin-counts-twice",
+   "check": "jit-r-reg-double-higher-w40",
+   "specSha256": "0ca200143a4cd5bfbd9354a011e50fb4bdd74d60bb529c9ac86c1d2253052110",
+   "sourceRun": "c53dea5d49601281ee295804742cd80ba1d041a384dc9db7f65628733ecf314c",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "coin-counts-twice",
+   "check": "jit-r-reg-no-triple-rise-w80",
+   "specSha256": "40e0c43ee234f53fe0efbf3f41f517e5bf413919d25f6d5aa7e0ea82c8c6d2ea",
+   "sourceRun": "c53dea5d49601281ee295804742cd80ba1d041a384dc9db7f65628733ecf314c",
+   "class": "player",
+   "operation": "max_episode_rise",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "coin-counts-twice",
+   "check": "jit-r-reg-cooldown-left",
+   "specSha256": "135575c84d1efca6827477a24e3642c20dc6edb901cf949b38507c7bef3e7f49",
+   "sourceRun": "c53dea5d49601281ee295804742cd80ba1d041a384dc9db7f65628733ecf314c",
+   "class": "projectile",
+   "operation": "min_event_interval",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "coin-counts-twice",
+   "check": "jit-r-reg-facing-hold-right",
+   "specSha256": "672b23edf71bcf86cd541cf4636d1f8350170253046b8f72ce2f02b5cac65a65",
+   "sourceRun": "c53dea5d49601281ee295804742cd80ba1d041a384dc9db7f65628733ecf314c",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "coin-counts-twice",
+   "check": "jit-r-reg-enemy-no-fall-left",
+   "specSha256": "31400e049619793a9bb11ec569c52299ee361e05d08b547a57b010bf68d647aa",
+   "sourceRun": "c53dea5d49601281ee295804742cd80ba1d041a384dc9db7f65628733ecf314c",
+   "class": "enemy",
+   "operation": "max_entity_drop",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "coin-counts-twice",
+   "check": "jit-r-reg-enemy-present-hold",
+   "specSha256": "fc6ef591ea805e578c1890358a0b08375279f2e0b6ffda0ca7801c1d56c06a5a",
+   "sourceRun": "c53dea5d49601281ee295804742cd80ba1d041a384dc9db7f65628733ecf314c",
+   "class": "enemy",
+   "operation": "entity_present",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "coin-counter-stuck",
+   "check": "jit-r-jit-double-rise-b",
+   "specSha256": "fa0d574787fa42426b8345d8dad3d9acec9fac361194417771d48379c1d467e3",
+   "sourceRun": "db8b56947ead3ecf755127a7289495e1aa847ea268e3ff2b5c487502a48dfdfb",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "coin-counter-stuck",
+   "check": "jit-r-jit-jump-limit-b",
+   "specSha256": "5614a6ab33641ed1040761ca2ddb1eea502061b6b3123747c9517916c5247636",
+   "sourceRun": "db8b56947ead3ecf755127a7289495e1aa847ea268e3ff2b5c487502a48dfdfb",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "coin-counter-stuck",
+   "check": "jit-r-jit-cooldown-left",
+   "specSha256": "5d53bbe0608a56f7d736f24e9f575e427f51a096d6417efa52e756b53017551f",
+   "sourceRun": "db8b56947ead3ecf755127a7289495e1aa847ea268e3ff2b5c487502a48dfdfb",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "projectile_count",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "coin-counter-stuck",
+   "check": "jit-r-jit-facing-left",
+   "specSha256": "4df8b9596c7e104195c805190e517ad72fc0f75f3136d096aa333515a78f86bc",
+   "sourceRun": "db8b56947ead3ecf755127a7289495e1aa847ea268e3ff2b5c487502a48dfdfb",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "coin-counter-stuck",
+   "check": "jit-r-jit-patrol-drop-b",
+   "specSha256": "9be34ac235d6e8d238340b7deb8c88d5762b6fc493ccc9b4ec781888dfbc20df",
+   "sourceRun": "db8b56947ead3ecf755127a7289495e1aa847ea268e3ff2b5c487502a48dfdfb",
+   "class": "enemy",
+   "operation": "max_entity_drop",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "coin-counter-stuck",
+   "check": "jit-r-jit-patrol-motion-b",
+   "specSha256": "2b8d1e2ce5650a873a81ec76b23b58f059aeb15c01af3b0875411604ad79f0e9",
+   "sourceRun": "db8b56947ead3ecf755127a7289495e1aa847ea268e3ff2b5c487502a48dfdfb",
+   "class": "enemy",
+   "operation": "min_motion_extent",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown-long",
+   "check": "jit-c1",
+   "specSha256": "ed63d42f68d528dd409cbeeeb994222566fa74ad03b5b23e9a5f53afb52c6069",
+   "sourceRun": "71422060abf6deb80e31af412014eebb2006cd654ad615bb7ff5308f3bbecd43",
+   "class": "projectile",
+   "operation": "min_event_count",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown-long",
+   "check": "jit-c2",
+   "specSha256": "842c672ea1c754287d4ca20b75051276b611fb31937c169cf4bfecc6ef458bdc",
+   "sourceRun": "71422060abf6deb80e31af412014eebb2006cd654ad615bb7ff5308f3bbecd43",
+   "class": "projectile",
+   "operation": "min_event_count",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown-long",
+   "check": "jit-c3",
+   "specSha256": "5fa40fe2b200dd60866fff18b29413b1929516fb1b5fe6ed2c04c11b7e166564",
+   "sourceRun": "71422060abf6deb80e31af412014eebb2006cd654ad615bb7ff5308f3bbecd43",
+   "class": "projectile",
+   "operation": "min_event_count",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown-long",
+   "check": "jit-c4",
+   "specSha256": "8c65a725a1406345f10140a7865fa539a9a9c0bc7eba85d3e7867bbef18ff99d",
+   "sourceRun": "71422060abf6deb80e31af412014eebb2006cd654ad615bb7ff5308f3bbecd43",
+   "class": "projectile",
+   "operation": "min_event_count",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown-long",
+   "check": "jit-c5",
+   "specSha256": "c25560b8783cb3cd45a84364124bcff4fa0723b68267ddd1d11f3d8e8e90fc0d",
+   "sourceRun": "71422060abf6deb80e31af412014eebb2006cd654ad615bb7ff5308f3bbecd43",
+   "class": "projectile",
+   "operation": "min_event_count",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "gun-cooldown-long",
+   "check": "jit-c6",
+   "specSha256": "6b883efcb82343e721a0650e504d25d4f8b55347a2392d5c298fa8d6e4ffa5cf",
+   "sourceRun": "71422060abf6deb80e31af412014eebb2006cd654ad615bb7ff5308f3bbecd43",
+   "class": "projectile",
+   "operation": "min_event_count",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-missing",
+   "check": "jit-c3",
+   "specSha256": "6cf0c92b10fbc9fbab9624a5b5dd458cf9f0c50caf8b164075bda69b23f5c7d3",
+   "sourceRun": "08df13d01bd2330e8dca256a122b7c3289c22acd88612377db5055a364a2a82e",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "max_enemy_drop_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-missing",
+   "check": "jit-c4",
+   "specSha256": "96d919ca5967a85afab59b95889c3c8c488999445b065c1f18918d36cb4cf81a",
+   "sourceRun": "08df13d01bd2330e8dca256a122b7c3289c22acd88612377db5055a364a2a82e",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "max_enemy_drop_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-missing",
+   "check": "jit-c5",
+   "specSha256": "6fe934f717273763a6fd206ec153036d2de2b88bb367c56f86693b65a9559878",
+   "sourceRun": "08df13d01bd2330e8dca256a122b7c3289c22acd88612377db5055a364a2a82e",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "max_enemy_drop_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-missing",
+   "check": "jit-c6",
+   "specSha256": "ec2a5c593c0128c889cf11a859f2842877d60d0954cb38196d4654113c904e2e",
+   "sourceRun": "08df13d01bd2330e8dca256a122b7c3289c22acd88612377db5055a364a2a82e",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "max_enemy_drop_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-missing",
+   "check": "jit-r-jit-c7",
+   "specSha256": "615149bd737a6ed8a0c52e2ae42b40d60b2737a821a853caa56b009a9e7483e9",
+   "sourceRun": "08df13d01bd2330e8dca256a122b7c3289c22acd88612377db5055a364a2a82e",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "max_enemy_drop_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-missing",
+   "check": "jit-r-jit-c8",
+   "specSha256": "9ea80745fba67cc55a2a983d491099f51ed61c7ce693f1b6da6f44df803c0705",
+   "sourceRun": "08df13d01bd2330e8dca256a122b7c3289c22acd88612377db5055a364a2a82e",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "max_enemy_drop_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-fast-left",
+   "check": "jit-enemy-extent-long-vs-short-right",
+   "specSha256": "6d8475cdccc716a7081e70b7ad03a81a1e23f05356282ddc515bc926d096fe8b",
+   "sourceRun": "bba25a959dd108ff5d67b1361884d8c70a1640c80b5171d5306c03153f721f9b",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-fast-left",
+   "check": "jit-enemy-extent-long-vs-short-left",
+   "specSha256": "632d3d2703b14226dfc5698367523cf3a6ac96d4f5c7b79c677d54aa732da5a7",
+   "sourceRun": "bba25a959dd108ff5d67b1361884d8c70a1640c80b5171d5306c03153f721f9b",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-fast-left",
+   "check": "jit-enemy-extent-long-vs-reverse",
+   "specSha256": "d61ff5f4ca15d66b669f53e7f02d270744fc8007779a745155771a91fa8fb709",
+   "sourceRun": "bba25a959dd108ff5d67b1361884d8c70a1640c80b5171d5306c03153f721f9b",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-fast-left",
+   "check": "jit-r-jit-enemy-extent-long-vs-shoot-right",
+   "specSha256": "75273a28c368f089f7e5b70db77e501159e66a0a01ebcb3a31abc9ce801db463",
+   "sourceRun": "bba25a959dd108ff5d67b1361884d8c70a1640c80b5171d5306c03153f721f9b",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-fast-left",
+   "check": "jit-r-jit-enemy-extent-long-vs-jump-short",
+   "specSha256": "0008bee1dbad00ee8bbdbbc5d5256d9ea53f7c3965a0560190be2bfe7396d584",
+   "sourceRun": "bba25a959dd108ff5d67b1361884d8c70a1640c80b5171d5306c03153f721f9b",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-fast-left",
+   "check": "jit-r-jit-enemy-extent-long-vs-movefire-right",
+   "specSha256": "c1e96b1739ffdda829cf2bbce3d5dc43bfb590749dffd2bf7557613068c778fa",
+   "sourceRun": "bba25a959dd108ff5d67b1361884d8c70a1640c80b5171d5306c03153f721f9b",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-slides-when-shot",
+   "check": "jit-c1",
+   "specSha256": "63c395d523d6cb7b00588c7881225e50ff4514fd0a8a2b87141062267c7bafd2",
+   "sourceRun": "78fffb502c3049db07a9733bdfe960d49b5e396be99dd651f1e51dfda3f0dd03",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-slides-when-shot",
+   "check": "jit-c2",
+   "specSha256": "e28ab5aa9708f633c6445dc6ec49092e8a88f9105bf446535270cf9cbcbdcf92",
+   "sourceRun": "78fffb502c3049db07a9733bdfe960d49b5e396be99dd651f1e51dfda3f0dd03",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-slides-when-shot",
+   "check": "jit-c3",
+   "specSha256": "7da40dd92454c919313f133c3c16d08b1f14441faa9fb9063b0d8a95a8890e46",
+   "sourceRun": "78fffb502c3049db07a9733bdfe960d49b5e396be99dd651f1e51dfda3f0dd03",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-slides-when-shot",
+   "check": "jit-c4",
+   "specSha256": "a32f10db3ea410cc7a6f95df03bd2191f2857ce3b8f5c49729c923776039a1d1",
+   "sourceRun": "78fffb502c3049db07a9733bdfe960d49b5e396be99dd651f1e51dfda3f0dd03",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": true,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "enemy-walks-backwards",
+   "check": "jit-enemy-faces-travel-wait",
+   "specSha256": "391b7b8dde3be3c4cf8fc412eaf3e22f055036fdd796257d9877146867e909dd",
+   "sourceRun": "da6b7e57c98a443d9ca01365937b6d0f148f837c3b5e0f05280cd4b3dc333a0e",
+   "class": "enemy",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "not_exercised"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "enemy-walks-backwards",
+   "check": "jit-enemy-faces-travel-right",
+   "specSha256": "a92758c0cec12a465c84a44480a9d23531e9868d18834b6058f08347849d6fb3",
+   "sourceRun": "da6b7e57c98a443d9ca01365937b6d0f148f837c3b5e0f05280cd4b3dc333a0e",
+   "class": "enemy",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-walks-backwards",
+   "check": "jit-enemy-faces-travel-left",
+   "specSha256": "36d9aa779b42c89901f31d60e0666faea98c695f2c1f0ea1613046e7fe12e06d",
+   "sourceRun": "da6b7e57c98a443d9ca01365937b6d0f148f837c3b5e0f05280cd4b3dc333a0e",
+   "class": "enemy",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-walks-backwards",
+   "check": "jit-enemy-faces-travel-reverse",
+   "specSha256": "09a8c8e40ee9b023e81856c068a7f7056d4589716079833185e28190eb416e89",
+   "sourceRun": "da6b7e57c98a443d9ca01365937b6d0f148f837c3b5e0f05280cd4b3dc333a0e",
+   "class": "enemy",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "enemy-walks-backwards",
+   "check": "jit-enemy-faces-travel-shootr",
+   "specSha256": "2ad54fd4f824e4b11edfcf625208a918295ff113b7ec5ef40d9873801616eafc",
+   "sourceRun": "da6b7e57c98a443d9ca01365937b6d0f148f837c3b5e0f05280cd4b3dc333a0e",
+   "class": "enemy",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "not_exercised"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "enemy-walks-backwards",
+   "check": "jit-enemy-faces-travel-shootl",
+   "specSha256": "31fa2c33d64a4857858084cd3af6fdc33a8bc4189c348680b82c7ce19f2b4600",
+   "sourceRun": "da6b7e57c98a443d9ca01365937b6d0f148f837c3b5e0f05280cd4b3dc333a0e",
+   "class": "enemy",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "camera-stops-right",
+   "check": "jit-r-far-e1",
+   "specSha256": "adfe615871925aa469dbabca5f534124dba5f5e86e7e243c1f8d09049e6c5689",
+   "sourceRun": "1dd10e5dce95df87bb36d57757b0c96a81ae77cc367dad3fedbbf4ed0a11a495",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-far-right-8s"
+  },
+  {
+   "defect": "camera-stops-right",
+   "check": "jit-r-far-e2",
+   "specSha256": "4fb4dae3b760351173c5edcc24da8bfeecdaaf53d95e6014ea6c84456cfaca47",
+   "sourceRun": "1dd10e5dce95df87bb36d57757b0c96a81ae77cc367dad3fedbbf4ed0a11a495",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-far-right-12s"
+  },
+  {
+   "defect": "camera-stops-right",
+   "check": "jit-r-far-e3",
+   "specSha256": "64104790ddd1bd1e91d3c2d23ed9a57746327603bb10839ddd1fff9553f1b5ed",
+   "sourceRun": "1dd10e5dce95df87bb36d57757b0c96a81ae77cc367dad3fedbbf4ed0a11a495",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-far-right-12s"
+  },
+  {
+   "defect": "camera-stops-right",
+   "check": "jit-r-far-e6",
+   "specSha256": "e99dd75fd034c3a73744fb0867c303e78d57dc6dc9c294d45a5f240b1a8d6bd9",
+   "sourceRun": "1dd10e5dce95df87bb36d57757b0c96a81ae77cc367dad3fedbbf4ed0a11a495",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-far-right-single"
+  },
+  {
+   "defect": "camera-stops-right",
+   "check": "jit-r-far-e7",
+   "specSha256": "6c3e1eca9e7eb446037ca2396badcb72d666e8cdf9ee3b65e61beefe8521de46",
+   "sourceRun": "1dd10e5dce95df87bb36d57757b0c96a81ae77cc367dad3fedbbf4ed0a11a495",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-far-right-double"
+  },
+  {
+   "defect": "camera-stops-right",
+   "check": "jit-r-far-e8",
+   "specSha256": "85214eef5694e399b07759377ed32422a996a155fa143a0d96e28ba1f131aa2d",
+   "sourceRun": "1dd10e5dce95df87bb36d57757b0c96a81ae77cc367dad3fedbbf4ed0a11a495",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "min_enemy_extent_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [],
+   "outcome": "not-run",
+   "reason": "route not in the probe library (a model-proposed probe) and not supplied beside the record: jit-r-far-right-double"
+  },
+  {
+   "defect": "camera-cut-top",
+   "check": "jit-c1-double-higher",
+   "specSha256": "e42e03690a64632e4acb330db69ae2c7706846badd8154311d6616a261bacd40",
+   "sourceRun": "c5485b94b25e02a41f02fc9c9118fe5add11e2ff90b02d14bdbc96d3a5cc5229",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "camera-cut-top",
+   "check": "jit-c2-only-one-air-jump",
+   "specSha256": "b868d4266506493c2a83b9614a3cd8828362659bd0db1fc01c450cef2778bc78",
+   "sourceRun": "c5485b94b25e02a41f02fc9c9118fe5add11e2ff90b02d14bdbc96d3a5cc5229",
+   "class": "player",
+   "operation": "relation",
+   "signal": "air_jumps",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "camera-cut-top",
+   "check": "jit-c3-cooldown-limits",
+   "specSha256": "d779f652846791e5fcefe05edcd3aae0bed222157794ba53625bdcfb990fe387",
+   "sourceRun": "c5485b94b25e02a41f02fc9c9118fe5add11e2ff90b02d14bdbc96d3a5cc5229",
+   "class": "projectile",
+   "operation": "relation",
+   "signal": "projectile_count",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "camera-cut-top",
+   "check": "jit-c4-facing",
+   "specSha256": "cbe86e51cf17773192a356fc7ad95a9edae280234e1e35be064f7a690ae86107",
+   "sourceRun": "c5485b94b25e02a41f02fc9c9118fe5add11e2ff90b02d14bdbc96d3a5cc5229",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "camera-cut-top",
+   "check": "jit-c5-no-fall",
+   "specSha256": "16c4bfbadf2df80960f2c58df4582878dbd262bf1dd1c167e72626754ebc1aef",
+   "sourceRun": "c5485b94b25e02a41f02fc9c9118fe5add11e2ff90b02d14bdbc96d3a5cc5229",
+   "class": "enemy",
+   "operation": "max_entity_drop",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "camera-cut-top",
+   "check": "jit-c6-patrol-moves",
+   "specSha256": "38881d11bc305c41d1b0576b458ce1c4cb96d15d09b956f53eaf1cb41fb609c1",
+   "sourceRun": "c5485b94b25e02a41f02fc9c9118fe5add11e2ff90b02d14bdbc96d3a5cc5229",
+   "class": "enemy",
+   "operation": "min_motion_extent",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d1",
+   "specSha256": "41ecf5fae3cd912c62b8590802e95c421d998fcd2c08d2c9dd3a9513562548b4",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "projectile",
+   "operation": "min_event_count",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d2",
+   "specSha256": "57504b9cf42de57690536bc18482364de4c982721af5121e743820db421b9289",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "projectile",
+   "operation": "min_event_interval",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d3",
+   "specSha256": "c0da10e831c276eb0322a95b925d9fbc9934cd38ce705ccc9f09dc878b21acb2",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "player",
+   "operation": "direction_agreement",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d4",
+   "specSha256": "836f8d98525de4c7348ae11a1217a1d5b84a46ca820dcb0fb1080f109b05b0fb",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "enemy",
+   "operation": "max_entity_drop",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "outcome": "passes",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d5",
+   "specSha256": "c608ca2dc22d548da1f7dab90f5c48a98de5bcf1cb44288a73c5ce1824e5ebee",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "enemy",
+   "operation": "relation",
+   "signal": "enemies_at_end",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d6",
+   "specSha256": "982a8a56d79798a2097c7ca7017f8716cfea850800f7945297bc97b7a2188d29",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "player",
+   "operation": "relation",
+   "signal": "max_rise_px",
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d7",
+   "specSha256": "45d9b6efae0f5d3d8a65bfcc4936c6a9afdd82b0cf00fb5cae896b1a7a37a953",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "projectile",
+   "operation": "event_response",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "fails",
+   "reason": null
+  },
+  {
+   "defect": "bullet-behind-scenery",
+   "check": "jit-r-jit-d8",
+   "specSha256": "a0a44e70648e74f867a57498493659f422634a2c20fae9bccba21a1bedee4419",
+   "sourceRun": "462729b751eca29347a139d20c435594a1aa37f32c0ff90fd4a34963355af040",
+   "class": "player",
+   "operation": "max_episode_rise",
+   "signal": null,
+   "recordedReference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "recordedValid": false,
+   "runs": [
+    "not_exercised",
+    "not_exercised",
+    "not_exercised"
+   ],
+   "outcome": "indeterminate",
+   "reason": null
+  }
+ ]
+}
