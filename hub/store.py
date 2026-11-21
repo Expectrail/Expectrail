@@ -68,6 +68,17 @@ class MemoryStore:
                 access.repositories.pop(installation_id, None)
                 access.accounts.pop(installation_id, None)
 
+    def suspended(self, installation_id):
+        """The App's access is paused: no signed-in user sees the installation until a refresh after
+        GitHub resumes it. The installation record stays, without its repositories."""
+        with self._lock:
+            entry = self.installations.get(installation_id)
+            if entry:
+                entry['repositories'] = set()
+            for access in self._access.values():
+                access.repositories.pop(installation_id, None)
+                access.accounts.pop(installation_id, None)
+
     def repositories_added(self, installation_id, account, names):
         with self._lock:
             entry = self.installations.setdefault(installation_id, {'account': account, 'repositories': set()})

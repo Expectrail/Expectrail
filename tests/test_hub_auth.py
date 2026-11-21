@@ -444,5 +444,48 @@ class SessionTest(unittest.TestCase):
                     session.sign(self.KEY, 'session', payload)
 
 
+HOSTILE = ('é.abc', '"é.abc"', '"\\u00e9.abc"', '.', 'a.', '.b', '..', 'a..b', 'a.b.c', '=', '"',
+           'x' * 5000, 'a' * 2000 + '.' + 'b' * 43, '\u2603' * 10 + '.' + 'b' * 43, '%00.%00', 'a.' + '\u00ff' * 43)
+
+
+class HostileCookieTest(HubCase):
+    """A cookie the hub did not sign is "signed out", never a 500 (merge guard on #763)."""
+
+    def test_verify_is_total(self):
+        for purpose in ('session', 'state'):
+            for value in HOSTILE + (None, 7, b'a.b', ['a', 'b']):
+                with self.subTest(purpose=purpose, value=value):
+                    self.assertIsNone(session.verify(hub_stub.COOKIE_KEY, purpose, value, NOW))
+
+    def test_a_valid_mac_over_a_non_json_or_non_utf8_body_is_none(self):
+        for body in ('_w', '__8', 'bnVsbA', 'W10', 'eyJ1aWQiOjd9'):  # b'\xff', junk, null, [], {"uid":7}
+            token = body + '.' + session._mac(hub_stub.COOKIE_KEY, 'session', body)
+            with self.subTest(body=body):
+                self.assertIsNone(session.verify(hub_stub.COOKIE_KEY, 'session', token, NOW))
+
+    def test_every_page_treats_a_hostile_cookie_as_signed_out(self):
+        for value in HOSTILE:
+            for name in ('er_session', 'er_state'):
+                header = f'{name}={value}'.encode('utf-8').decode('latin-1')  # as a WSGI server passes it
+                for method, path in (('GET', '/'), ('GET', '/projects'), ('GET', '/installed'),
+                                     ('GET', '/callback?code=c&state=s'), ('POST', '/sign-out')):
+                    with self.subTest(name=name, value=value[:20], path=path):
+                        response = self.client.request(method, path, cookies=False, headers={
+                            'Cookie': header, 'Origin': hub_stub.ORIGIN})
+                        self.assertLess(response.status, 500)
+                        self.assertNotIn('Signed in as', response.text)
+
+
+class SuspendTest(HubCase):
+    def test_a_suspended_installation_disappears_until_a_refresh(self):
+        self.sign_in()
+        response = self.deliver('installation', {'action': 'suspend',
+                                                 'installation': {'id': 42, 'account': {'login': 'studio'}}})
+        self.assertEqual(response.status, 200)
+        page = self.client.get('/projects').text
+        self.assertNotIn('studio/kart', page)
+        self.assertIn('ada/platformer', page)
+
+
 if __name__ == '__main__':
     unittest.main()

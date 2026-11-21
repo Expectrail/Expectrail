@@ -16,6 +16,7 @@ STATE_COOKIE = 'er_state'
 SESSION_SECONDS = 60 * 60
 STATE_SECONDS = 10 * 60
 MAX_TOKEN_CHARS = 2048
+TOKEN = re.compile(r'[A-Za-z0-9_-]{1,2000}\.[A-Za-z0-9_-]{43}')  # base64url payload, HMAC-SHA256
 LOGIN = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})')
 SHAPES = {
     'session': {'uid': int, 'login': str, 'exp': int},
@@ -44,17 +45,19 @@ def sign(key, purpose, payload):
 
 def verify(key, purpose, token, now):
     """The payload when `token` is ours, for `purpose`, well formed and unexpired; otherwise None."""
-    if not isinstance(token, str) or len(token) > MAX_TOKEN_CHARS or token.count('.') != 1:
-        return None
-    body, mac = token.split('.')
-    if not hmac.compare_digest(mac, _mac(key, purpose, body)):
+    # Total: anything that is not a token this hub signed is None, never an exception. The shape is
+    # checked before the MAC, so a non-ASCII, quoted, empty or oversized value never reaches encode().
+    if not isinstance(token, str) or len(token) > MAX_TOKEN_CHARS or not TOKEN.fullmatch(token):
         return None
     try:
+        body, mac = token.split('.')
+        if not hmac.compare_digest(mac, _mac(key, purpose, body)):
+            return None
         payload = json.loads(_unb64(body))
         check_shape(purpose, payload)
-    except (ValueError, TypeError):
-        return None
-    if payload['exp'] <= now:
+        if payload['exp'] <= now:
+            return None
+    except (ValueError, TypeError, UnicodeError, RecursionError):
         return None
     return payload
 

@@ -87,6 +87,8 @@ def events(request):
                 store.installed(iid, login, _names(payload.get('repositories')))
             elif action == 'deleted':
                 store.uninstalled(iid)
+            elif action == 'suspend':
+                store.suspended(iid)
             else:
                 return plain(202, f'installation {action}: nothing kept changes')
         elif event == 'installation_repositories':

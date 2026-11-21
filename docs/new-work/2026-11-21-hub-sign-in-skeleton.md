@@ -15,10 +15,13 @@ A first code slice of the hub service, standard library only, with no credential
 
 Found by looking in a browser: with `Referrer-Policy: no-referrer`, Chromium sends `Origin: null` on the sign-out form, and the origin check refused every real sign-out. The policy is now `same-origin`, and `Origin: null` stays refused.
 
+Merge guard review: a cookie value the hub did not sign, with a non-ASCII character in it, raised out of `session.verify()` and gave a 500 on every page. `verify()` is now total: a value that is not base64url payload, a dot and a 43-character MAC is refused before the MAC is computed, and every decoding error returns None. An `installation` delivery with action `suspend` now hides that installation from signed-in users until they refresh from GitHub.
+
 ## What was run
 - `python3 -m unittest tests.test_hub_auth tests.test_hub_runs_receipts`: OK.
 - Eleven mutations of the checks (state comparison, one-use state, delivery signature, sign-out origin, uninstall for signed-in users, both incomplete-list checks, session expiry, signing out a session that lost its access record) were each caught.
 - The pages in Chromium at 1280 px and 375 px against the stub: unconfigured, signed out, a full sign-in to the projects page, sign-out. No horizontal scroll.
+- After the review: `HostileCookieTest` (16 hostile values, through `verify()` and through five routes, as session and as state cookie) and `SuspendTest`. On the earlier `session.py`, the hostile tests give 5 failures and 8 errors; with the fix, `tests.test_hub_auth` passes (41 tests).
 - The full suite on the branch merged with main: see the pull request.
 
 ## Not done
