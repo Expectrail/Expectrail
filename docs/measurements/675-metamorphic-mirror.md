@@ -11,6 +11,8 @@ Engine: 4.7.2.stable.official.ed1daf0bf. Produced by `python3 tools/metamorphic_
 - Of those, on the do-nothing control: 28 indeterminate. **28 are kept** (usable, and not passing the control).
 - Public defects with at least one kept check failing on them: **1 of 24**: `slow-left`.
 
+_Added after the run (#719):_ a mirror check can only see a direction-dependent fault, since a fault that is the same both ways mirrors too. `slow-left` is the one public defect in the player's own left/right motion, so "1 of 24" describes a narrow detector, not a weak one. See "What these counts can and cannot say" in `675-metamorphic-outside.md`.
+
 ## Per check
 
 | Check | Pair | Clean (3) | Do-nothing (3) | Kept | Fails on (one run each) |

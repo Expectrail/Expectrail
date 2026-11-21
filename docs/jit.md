@@ -1119,6 +1119,36 @@ python3 -m expectrail.jit.counting public-bench \
   --out /tmp/public-counting.md
 ```
 
+### The counting audit re-run with the do-nothing, harmless and metamorphic controls (#675)
+
+[Re-run on November 20, 2026](measurements/675-public-counting-rerun.md), on the same 24 frozen records,
+with all three pieces of #675 (Godot 4.7.2, no model, nothing dispatched):
+
+- **Counting: 0 of 137, unchanged.** The records are candidate-shown and untrusted, and none of the controls
+  can make a check count. That needs a fresh candidate-withheld run under a trusted producer.
+- **Do-nothing control:** of the 91 checks the legacy rule kept, **41 pass the control and would now be
+  dropped, 50 stay**. All 91 were recorded catches, so 41 catches go too. Of the 50 that stay, only **24 fail
+  the control**, which shows they state an obligation. 22 are indeterminate and 4 were not run on it. Five
+  public defects lose every recorded catch: `air-jump`, `enemy-ledge`, `slow-left`, `slides-after-stop`
+  and `enemy-fast-left`.
+- **Harmless control (the registered comment-only edit):** 124 pass, **0 falsely reject it**, 2 are
+  indeterminate and 11 were not run. Those 11 use model-proposed routes that are only in the run's
+  artifacts, and this session could not download them. The November measurement, which had those
+  artifacts, ran all 137.
+- **Metamorphic rows in these records: 0.** The records predate the generator offering them. Their
+  measured counts are below, and they are never counted.
+
+The audit takes the do-nothing control's rows with `--do-nothing-rows` (the `rows.json` written by
+`tools/do_nothing_public.py`). A row is used only when it names its record and its check by digest.
+Otherwise the check is "cannot tell", neither kept nor dropped.
+
+```sh
+python3 tools/do_nothing_public.py --work /tmp/dn --out /tmp/do-nothing.md
+python3 -m expectrail.jit.counting public-bench \
+  --records bench/jit/recordings/public-43465090517/repro \
+  --harmless-work /tmp/harmless --do-nothing-rows /tmp/dn/rows.json --out /tmp/public-counting.md
+```
+
 ### Harmless control for each public trace check (#675)
 
 Add `--harmless-work NEW_DIRECTORY` to the public counting audit to replay the clean bundled game and a copy with the mutation bench's registered comment-only operator. Individual checks share captured repetitions when they require the same route and recording settings. The assessor requires complete observations and three consistent results on each arm. A false rejection requires three clean passes and three failures on the edit. An unavailable route is reported as unrun, and an unstable replay or inconclusive check remains indeterminate.
@@ -1208,8 +1238,15 @@ valid and **catch a comment-only candidate 4 of 4, and pass the revert 4 of 4**;
 check kills no near miss. 94 replays, $0.17 at the assumed runner price.
 
 Advisory: `metamorphic` rows are never in `proposed`, `validity`, `catches`, `counts`, the gate summary or
-the counting audit, and nothing here changes what may count or clear a change. `jit.yml` does not pass
-`--metamorphic` yet.
+the counting audit, and nothing here changes what may count or clear a change.
+
+**In `jit.yml`** (slice 4): every rehearsal passes `--metamorphic`, and its check
+(`tools/jit_rehearsal_check.py --metamorphic`) fails unless the record carries metamorphic rows and none of them
+is among the counted checks or the catches. A dispatch takes a boolean input `metamorphic`, off by default:
+when on, the replay, replay-final and pixel-judge jobs all pass `--metamorphic`, so the record kept is made with
+them whichever job writes it. It adds replays and no model call. The known-bugs bench is registered without
+them and refuses it. What the rows say on the rehearsal stand-ins is not asserted: the air-jump and gun
+cooldown defects are the same in both directions, so the mirror relation has nothing to catch there.
 
 ### The six rules on pixel checks (#286)
 

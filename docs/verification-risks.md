@@ -37,6 +37,10 @@ the two floor-state readings disagree.
 [Hand audit](measurements/675-do-nothing-control.md#hand-check-of-a-sample-requested-on-686) ·
 [Control code](../expectrail/jit/do_nothing.py)
 
+Fresh replays of the frozen checks confirmed all five predicted losses. Their 29 historical
+strong catches passed the do-nothing control and were dropped. A sixth case, gun-cooldown,
+retained four strong catches. [Replay measurement](measurements/285-frozen-proposal-replays.md)
+
 **Closure evidence (Q1–Q3, Q7).** Freeze checks and routes before a game owner independently labels
 paired wrong and correct repairs, harmless edits and disabled behavior. Publish all three verdict
 counts, missing triggers and counterexamples by family. Repeat the public reproduction audit under
