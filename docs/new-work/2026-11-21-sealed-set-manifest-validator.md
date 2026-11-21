@@ -23,7 +23,8 @@
 - Four mutations of `expectrail/blind_set.py` (the screen-only quarter rounded down, the half-the-set
   rule loosened, candidates checked on the clean project instead of on the defect, `confirmedBy` not
   checked): each made the tests fail.
-- Full suite: see the pull request for the run and its result.
+- Full suite, `python3 -m unittest discover -s tests -t .`, on main `bd44b5a` merged with this change (`83c30b2`):
+  5,818 tests, OK, 75 skipped.
 - Nothing was dispatched and nothing was spent. No blind set was read.
 
 ## Not done
