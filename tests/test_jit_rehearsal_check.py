@@ -196,5 +196,64 @@ class WorkflowMatrixMatchesTheCheck(unittest.TestCase):
                          [(p["spec"], p["applies"]) for p in rec["proposed"]])
 
 
+def _with_metamorphic(run, rows=None, on=True):
+    """A record as `jit run --metamorphic` writes it: the setting, and advisory rows apart from the counts."""
+    run = dict(run)
+    run["settings"] = {"reps": 3, "metamorphic": True} if on else {"reps": 3}
+    if rows is None:
+        rows = [{"spec": {"id": "mm-mirror-shoot-left-every48-player-dx-px"}, "valid": False,
+                 "reasons": ["killed no near-miss variant"], "outcome": "not-evaluated"}]
+    if on:
+        run["metamorphic"] = rows
+    return run
+
+
+class MetamorphicRows(unittest.TestCase):
+    """#675, piece 3: every rehearsal case offers the mirror checks; their rows stay advisory."""
+
+    def test_what_the_engine_gave_passes(self):
+        # Godot 4.7.2, 2026-11-20, the rehearsal's own command with --metamorphic: 16 rows, none valid.
+        self.assertEqual(rc.check(STRONG_CASE, _with_metamorphic(_gun_run()), metamorphic=True), [])
+        self.assertEqual(rc.check("air-jump-comment-only", _with_metamorphic(_run()), metamorphic=True), [])
+
+    def test_a_record_made_without_the_setting_fails(self):
+        problems = rc.check(STRONG_CASE, _with_metamorphic(_gun_run(), on=False), metamorphic=True)
+        self.assertTrue(any("metamorphic" in p for p in problems), problems)
+
+    def test_no_rows_fails(self):
+        problems = rc.check(STRONG_CASE, _with_metamorphic(_gun_run(), rows=[]), metamorphic=True)
+        self.assertTrue(any("no metamorphic row" in p for p in problems), problems)
+
+    def test_a_metamorphic_check_among_the_counted_rows_fails(self):
+        run = _with_metamorphic(_gun_run())
+        run["validity"] = run["validity"] + [{"specId": "mm-mirror-shoot-left-every48-player-dx-px", "valid": True}]
+        problems = rc.check(STRONG_CASE, run, metamorphic=True)
+        self.assertTrue(any("advisory" in p for p in problems), problems)
+
+    def test_a_metamorphic_check_among_the_catches_fails(self):
+        run = _with_metamorphic(_gun_run())
+        run["catches"] = run["catches"] + [{"specId": "mm-mirror-shoot-left-every48-player-dx-px",
+                                            "strength": "weak"}]
+        problems = rc.check(STRONG_CASE, run, metamorphic=True)
+        self.assertTrue(any("advisory" in p for p in problems), problems)
+
+    def test_without_the_flag_nothing_is_asked_of_the_rows(self):
+        self.assertEqual(rc.check(STRONG_CASE, _gun_run()), [])
+
+    def test_main_takes_the_flag(self):
+        import contextlib, io, json, os, tempfile
+        with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            p = os.path.join(d, "jit-run.json")
+            with open(p, "w") as f:
+                json.dump(_gun_run(), f)
+            self.assertEqual(rc.main(["--metamorphic", STRONG_CASE, p]), 1)
+            self.assertEqual(rc.main([STRONG_CASE, p]), 0)
+            with open(p, "w") as f:
+                json.dump(_with_metamorphic(_gun_run()), f)
+            self.assertEqual(rc.main(["--metamorphic", STRONG_CASE, p]), 0)
+            self.assertEqual(rc.main(["--metamorphic", "--x", STRONG_CASE, p]), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

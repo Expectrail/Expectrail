@@ -1238,8 +1238,15 @@ valid and **catch a comment-only candidate 4 of 4, and pass the revert 4 of 4**;
 check kills no near miss. 94 replays, $0.17 at the assumed runner price.
 
 Advisory: `metamorphic` rows are never in `proposed`, `validity`, `catches`, `counts`, the gate summary or
-the counting audit, and nothing here changes what may count or clear a change. `jit.yml` does not pass
-`--metamorphic` yet.
+the counting audit, and nothing here changes what may count or clear a change.
+
+**In `jit.yml`** (slice 4): every rehearsal passes `--metamorphic`, and its check
+(`tools/jit_rehearsal_check.py --metamorphic`) fails unless the record carries metamorphic rows and none of them
+is among the counted checks or the catches. A dispatch takes a boolean input `metamorphic`, off by default:
+when on, the replay, replay-final and pixel-judge jobs all pass `--metamorphic`, so the record kept is made with
+them whichever job writes it. It adds replays and no model call. The known-bugs bench is registered without
+them and refuses it. What the rows say on the rehearsal stand-ins is not asserted: the air-jump and gun
+cooldown defects are the same in both directions, so the mirror relation has nothing to catch there.
 
 ### The six rules on pixel checks (#286)
 
