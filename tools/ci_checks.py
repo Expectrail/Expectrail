@@ -326,6 +326,106 @@ def close_earlier_heads(api, publisher_api, ctx, pr, publisher, limit=EARLIER_HE
     return refused
 
 
+LOST_AFTER_S = 6 * 3600  # far longer than the trusted job's 30-minute timeout and its queue
+LOST_PULLS = 30  # the most recently updated open pull requests whose heads are looked at
+LOST = ("The trusted job for this capture never concluded its checks: the capture ended {ago} ago, "
+        "longer than the trusted job can run, so its runner was lost or it never started. This commit is "
+        "not cleared; re-run the Expectrail verify workflow for a clearance. If that trusted job does run "
+        "later, its judgment replaces this.")
+
+
+def _when(text):
+    """A GitHub timestamp as an aware datetime, or None when it cannot be read."""
+    from datetime import datetime, timezone
+
+    if not isinstance(text, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", text):
+        return None
+    try:
+        return datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def lost_for(attempt, sha, now, after_s=LOST_AFTER_S):
+    """How long ago the capture ``attempt`` ended, in seconds, when it is a completed ``pull_request``
+    run of the caller workflow on ``sha`` that ended at least ``after_s`` ago; otherwise None. Anything
+    that cannot be read, or does not match, is None: that check stays as it is."""
+    if not isinstance(attempt, dict):
+        return None
+    if (attempt.get("status") != "completed" or attempt.get("head_sha") != sha
+            or attempt.get("path") != CALLER or attempt.get("event") != "pull_request"):
+        return None
+    ended = _when(attempt.get("updated_at"))
+    if ended is None:
+        return None
+    ago = (now - ended).total_seconds()
+    return ago if ago >= after_s else None
+
+
+def close_lost(api, publisher_api, ctx, run, publisher, now, *, after_s=LOST_AFTER_S, pulls=LOST_PULLS):
+    """Conclude this publisher's open clearance on the heads of the repository's open pull requests
+    whose capture ended longer ago than the trusted job can run (#254).
+
+    That is the case nothing else reaches: the runner of the trusted job that judges the latest capture
+    of a head was lost, and nobody re-ran the capture, so no later trusted job for that head will run.
+    Any later trusted job in the repository runs this. The capture must be a completed ``pull_request``
+    run of the caller workflow on the same commit, and must have ended ``after_s`` ago or more.
+
+    Clearance ends failed, never success; the evidence check was created concluded (neutral) and is left.
+    This job's own capture is never touched. A run or a list of checks that cannot be read leaves those
+    checks as they are, with a warning. A later judgment of the same capture still concludes the check
+    with its own result (``start`` finds it by its key). Raises ValueError only when the open pull
+    requests cannot be read. Returns (concluded ids, ids GitHub refused to update)."""
+    query = urllib.parse.urlencode({"state": "open", "sort": "updated", "direction": "desc", "per_page": int(pulls)})
+    items = api("GET", f"/repos/{ctx.repo}/pulls?{query}")
+    if not isinstance(items, list):
+        raise ValueError("cannot tell: the open pull requests could not be read")
+    mine = key_of(ctx, run)
+    concluded, refused, unread = [], [], 0
+    for item in items[:int(pulls)]:
+        sha = (item.get("head") or {}).get("sha") if isinstance(item, dict) else None
+        if not isinstance(sha, str) or not re.fullmatch("[0-9a-f]{40}", sha):
+            continue
+        check_query = urllib.parse.urlencode({"check_name": CLEARANCE, "filter": "all", "per_page": 100})
+        try:
+            found = publisher_api("GET", f"/repos/{ctx.repo}/commits/{sha}/check-runs?{check_query}")["check_runs"]
+            if not isinstance(found, list):
+                raise TypeError("check runs")
+        except (OSError, LookupError, TypeError, ValueError):
+            unread += 1
+            continue
+        for check in found:
+            if not isinstance(check, dict):
+                continue
+            key = check.get("external_id") or ""
+            match = KEY.fullmatch(key)
+            if (not match or key == mine or check.get("status") == "completed"
+                    or check.get("name", CLEARANCE) != CLEARANCE or check.get("head_sha", sha) != sha
+                    or (check.get("app") or {}).get("slug") != publisher):
+                continue
+            try:
+                attempt = api("GET", f"/repos/{ctx.repo}/actions/runs/{int(match[1])}/attempts/{int(match[2])}")
+            except (OSError, LookupError, TypeError, ValueError):
+                unread += 1
+                continue
+            ago = lost_for(attempt, sha, now, after_s)
+            if ago is None:
+                continue
+            hours = int(ago // 3600)
+            summary = LOST.format(ago=f"{hours} hours" if hours != 1 else "1 hour")
+            try:
+                publisher_api("PATCH", f"/repos/{ctx.repo}/check-runs/{int(check['id'])}",
+                              dict(status="completed", conclusion="failure",
+                                   output={"title": CLEARANCE, "summary": summary}))
+                concluded.append(check["id"])
+            except urllib.error.URLError:
+                refused.append(check["id"])
+    if unread:
+        print(f"::warning::Could not read {unread} open clearance check list(s) or capture run(s); "
+              "those checks stay in progress and are not cleared.")
+    return concluded, refused
+
+
 def current(api, ctx, run, state):
     pr = comment.find_pull_request(api, ctx)
     return (pr and intent.pull_request_metadata(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
@@ -401,6 +501,19 @@ def main(mode):
                       "progress and are not cleared.")
         except (OSError, LookupError, TypeError, ValueError) as exc:
             print(f"::warning::Could not sweep earlier heads ({type(exc).__name__}: {str(exc)[:120]}); "
+                  "any open checks there stay in progress and are not cleared.")
+        # And the repository's other open heads whose latest capture's judge was lost with no re-run.
+        try:
+            from datetime import datetime, timezone
+            concluded, refused = close_lost(api, comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run,
+                                            os.environ["CHECKS_APP"], datetime.now(timezone.utc))
+            if concluded:
+                print(f"Concluded lost clearance checks {concluded} as failed: not cleared.")
+            if refused:
+                print(f"::warning::Could not conclude lost clearance checks {refused}; they stay in "
+                      "progress and are not cleared.")
+        except Exception as exc:  # housekeeping only: it must never stop this capture's judgment
+            print(f"::warning::Could not sweep lost captures ({type(exc).__name__}: {str(exc)[:120]}); "
                   "any open checks there stay in progress and are not cleared.")
         if event["action"] != "completed":
             return

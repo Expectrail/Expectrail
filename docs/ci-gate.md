@@ -27,7 +27,15 @@ capture or pull request", never left in progress. If the trusted job's start ste
 creating the checks, its finish step concludes them (clearance failed, evidence neutral: "The
 trusted job stopped before it judged this capture"); if posting the comment fails, the checks are
 concluded before the error is reported. If the finish step never runs (the runner is lost, say),
-clearance stays in progress, which never counts as cleared. Re-running the verify workflow gives the
+clearance stays in progress, which never counts as cleared, until one of two things happens. Any
+later trusted job in the repository looks at the heads of the 30 most recently updated open pull
+requests and concludes this App's open clearance there as failed ("The trusted job for this capture
+never concluded its checks ... This commit is not cleared") once that capture's run is a completed
+`pull_request` run of the verify workflow on the same commit that ended six hours ago or more. The
+trusted job's own timeout is 30 minutes, and a test holds the six hours at four times that or more.
+A run or a list of checks that cannot be read is left as it is, with a warning, and the job's own
+capture is never touched. If the lost trusted job does run later (a queue, say), it finds the same
+check by its key and concludes it with its own result. Or re-running the verify workflow gives the
 head a new clearance, and that run's trusted job concludes the open checks of every earlier capture
 of the same head (clearance failed, evidence neutral, "Superseded capture or pull request"). An
 earlier capture could never clear anyway: only the latest capture of a head is judged. The same
