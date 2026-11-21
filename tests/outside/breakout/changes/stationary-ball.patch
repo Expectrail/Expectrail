@@ -1,0 +1,9 @@
+--- a/scripts/ball.gd
++++ b/scripts/ball.gd
+@@ -15,4 +15,6 @@
+ 	speed = base_spped * level_factor
+ func _physics_process(delta):
++	if position.y >= 300.0:
++		return
+ 	var collision = move_and_collide(direction * speed * delta)
+ 	if collision:

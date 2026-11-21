@@ -12,6 +12,15 @@
     "assertion"
   ],
   "additionalProperties": false,
+  "if": {"properties": {"approval": {"required": ["specSha256"]}}},
+  "else": {
+    "description": "An approval from before content binding can cover only the previously supported checkpoint kinds. A spec with role displacement is a draft until a person approves its exact content.",
+    "properties": {
+      "coverage": {"properties": {"reached": {"items": {"properties": {
+        "type": {"enum": ["on-floor", "position-region", "coin-count-change", "position-at-tick"]}
+      }}}}}
+    }
+  },
   "properties": {
     "format": {
       "enum": [
@@ -416,6 +425,20 @@
                   }
                 },
                 "description": "Named world position at exactly tick; inclusive Euclidean tolerance. player is the bound player; enemy-N and projectile-N are tracked engine instance ids. Missing or ambiguous data is unknown."
+              },
+              {
+                "type": "object",
+                "required": ["type", "role", "fromTick", "toTick", "axis", "minIncreasePx"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {"const": "role-displacement"},
+                  "role": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,39}$"},
+                  "fromTick": {"type": "integer", "minimum": 0},
+                  "toTick": {"type": "integer", "minimum": 1},
+                  "axis": {"enum": ["x", "y"]},
+                  "minIncreasePx": {"type": "number", "exclusiveMinimum": 0}
+                },
+                "description": "The same uniquely bound visible drawing's world-box midpoint must move at least minIncreasePx right (x) or down (y) from exactly fromTick to the later toTick. Each tick in the interval must identify the same visible drawing. Only equal-size endpoint boxes are comparable. Missing or ambiguous evidence is unknown."
               }
             ]
           },
