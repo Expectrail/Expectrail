@@ -719,7 +719,8 @@ Expectrail reads material it did not write: games, their files, specs drafted fr
 verdict must not move because of text in that material. **The invariant: no text from a game's
 files reaches a model that has a say in a verdict, and the one piece of spec text that does is a
 short noun phrase given to a model that returns boxes, never one that follows instructions alone.**
-Read this before you change an observer, add a vision backend, or pass a spec field to a model.
+Two switches turn part of this off, and both are named below with the one use allowed for each
+(rules 2 and 3); a test pins where they may be set. Read this before you change an observer, add a vision backend, or pass a spec field to a model.
 `tests/test_untrusted_text.py` fails if any part below stops being true.
 
 1. **The anchored paths ask by place.** `expectrail/gate/anchor.py`, `expectrail/anchored.py` and
@@ -732,8 +733,11 @@ Read this before you change an observer, add a vision backend, or pass a spec fi
    spec object's `prompt` as the one text of a one-message request, built by `request_body()`. This
    is a correction to the trace on #745, which said the default verdict path sends no spec text: it
    sends this field. Nothing else from the spec is sent, the `instruction` least of all. Specs judge
-   a verdict only once a person has approved them, and checks come from the base commit, never from
-   the change being judged.
+   a verdict only once a person has approved them. On a pull request the checks come from the base
+   commit, so the change being judged cannot edit them. The switch: the verify action's
+   `compare-base: false` (and a push, which has no base) reads them from the head instead; the
+   record then says `checksFrom: head` and the comment says the checks are the pull request's own
+   ([ci-gate.md](ci-gate.md)). No workflow in this repository sets it, and a test fails if one does.
 3. **No instruction-following model decides alone.** Every backend in
    `agents.sam_observations.BACKENDS` is one of these, and a new one fails the test until it is
    classified here:
@@ -742,9 +746,20 @@ Read this before you change an observer, add a vision backend, or pass a spec fi
    | --- | --- |
    | `sam` | A segmenter: returns masks and boxes, and cannot be talked to |
    | `local-http` | An open-vocabulary detector: returns boxes |
-   | `glimmer`, `byo-vlm` | A vision-language model: refused for a verdict (`default_client(verdict=True)`) |
+   | `glimmer`, `byo-vlm` | A vision-language model: refused for a verdict (`default_client(verdict=True)`), unless its switch is set (below) |
    | `both` | SAM's boxes, kept only where Glimmer also sees the object: Glimmer can only remove |
    | `glimmer-engine`, `byo-vlm-engine` | Each box counts only where it agrees with the engine's position |
+
+   **The switches.** `EXPECTRAIL_GLIMMER_ALONE=1` lets `default_client(verdict=True)` return
+   Glimmer alone, and `EXPECTRAIL_BYO_VLM_ALONE=1` does the same for `byo-vlm`. With either set, a
+   vision-language model does decide a verdict alone. They exist to measure a model on known
+   fixtures. The only place in this repository that sets one is `.github/workflows/glimmer-probe.yml`,
+   which a person dispatches by hand: its `verify` mode with `judge: glimmer` sets
+   `EXPECTRAIL_GLIMMER_ALONE=1` and runs Gate 1 on a seeded fixture. That verdict is a measurement and
+   clears no change. A test fails if any other file sets or names either switch (tests and prose
+   aside), if the probe sets the second one, or if the probe gains any trigger but
+   `workflow_dispatch`. Anyone running Expectrail elsewhere can set them too; a verdict made that
+   way is not covered by this invariant.
 
    Under `both` and the engine-checked backends, the noun phrase is part of an instruction to a
    vision-language model (`user_prompt()` in `agents/glimmer_client.py`). That model still cannot
@@ -768,10 +783,10 @@ words or failure evidence into drafts and reports; a draft has no approval until
 `outside_judge` is a benchmark. None of them is imported by a verdict module (rule 4).
 
 **Not done, on purpose.** No sanitiser, blocklist or escaping layer. The invariant is that the text
-never becomes an instruction to a model that decides, not that it has been scrubbed; a scrubber
-would suggest the path is safe to widen. Pixels are the other way in: the candidate draws the frames,
-and text drawn into the game is why a vision-language model never decides alone (rule 3). That risk
-is in [verification-risks.md](verification-risks.md#10-capture-is-inside-the-games-trust-boundary).
+is not an instruction to a model that decides alone (outside the measurement switches of rule 3),
+not that it has been scrubbed; a scrubber would suggest the path is safe to widen. Pixels are the
+other way in: the candidate draws the frames, and text drawn into the game is why a vision-language
+model does not decide alone outside those switches. That risk is in [verification-risks.md](verification-risks.md#10-capture-is-inside-the-games-trust-boundary).
 
 ## When SAM fails
 

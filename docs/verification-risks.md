@@ -226,8 +226,10 @@ calibrated physical-capture lane.
 
 **Text from the judged material.** The same boundary holds for text. No text from a game's files
 reaches a model that has a say in a verdict; the one spec field sent, an approved object's noun
-phrase, goes to a segmenter, and a vision-language model never decides alone. A test fails if
-that changes. [What text reaches a model](sam.md#what-text-reaches-a-model-745)
+phrase, goes to a segmenter, and a vision-language model does not decide alone. Two switches,
+`EXPECTRAIL_GLIMMER_ALONE` and `EXPECTRAIL_BYO_VLM_ALONE`, let one decide alone to measure it on
+known fixtures; only the hand-dispatched Glimmer probe sets one, and its verdict clears no change.
+A test fails if that changes. [What text reaches a model](sam.md#what-text-reaches-a-model-745)
 
 **Closure evidence (Q1, Q4–Q6).** Compare candidate-written frames and traces with an independently
 owned capture of behavior. Bind that capture to a named build and policy in a deployed signed judge

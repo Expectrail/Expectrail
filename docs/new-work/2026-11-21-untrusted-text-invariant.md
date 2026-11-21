@@ -38,6 +38,29 @@
 - `python3 -m unittest tests.test_observer_calibration`: OK.
 - Full suite: see the pull request.
 
+## Review round 1 (merge guard on 1723682)
+The page said a vision-language model never decides alone, but two switches turn the refusal off
+on the verdict path, and the test removed them before asserting it.
+- `docs/sam.md` rule 3 and the §10 paragraph of `docs/verification-risks.md` now name
+  `EXPECTRAIL_GLIMMER_ALONE` and `EXPECTRAIL_BYO_VLM_ALONE`, what they are for (measuring a model on
+  known fixtures) and the one place that sets one (`glimmer-probe.yml`, dispatched by hand).
+- Following the guard's general rule, every other "never" in the section was checked for a switch.
+  One more was found: rule 2's "checks come from the base commit" is off with the verify action's
+  `compare-base: false` (or on a push). Rule 2 now names it. The anchored paths, the spec fields
+  sent and the calibration names have no switch (no environment read in those modules).
+- `tests/test_untrusted_text.py`, 6 more tests (20 in all): each switch does turn the refusal off;
+  no file but `glimmer-probe.yml`, `agents/sam_observations.py` and `agents/glimmer_client.py` names
+  either switch, outside `tests/`, `docs/` and Markdown (the whole repository is scanned, from
+  `git ls-files` or a walk of the tree when git is missing, so an imported constant counts too); the
+  probe sets only the Glimmer switch, only with `glimmer`; the probe runs only on
+  `workflow_dispatch`; no workflow sets `compare-base` to false.
+- `python3 -m unittest tests.test_untrusted_text`: 20 OK. Five mutations, each caught, then
+  reverted: a new workflow setting `EXPECTRAIL_BYO_VLM_ALONE=1`; a module importing
+  `GLIMMER_ALONE_ENV`; a `pull_request` trigger on the probe; the probe also setting the BYO switch;
+  `compare-base: false` in `ci.yml`.
+- Full suite on the branch merged with main at 879cff4: `Ran 5838 tests in 880.565s`,
+  `OK (skipped=75)`.
+
 ## Not done
 - No sanitiser, blocklist or escaping, as the issue scopes it.
 - `contracts/test-spec.schema.json` still allows any string as an object `prompt`. A limit there

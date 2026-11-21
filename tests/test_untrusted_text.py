@@ -17,6 +17,10 @@ of its parts stops being true:
 5. Calibration's concept names from a game's own texture files and node names are lowercase ASCII
    words, one space apart, or they are not proposed at all. Nothing is rewritten into a word.
 
+Rule 3 has one way around it, and it is pinned too: the switches EXPECTRAIL_GLIMMER_ALONE and
+EXPECTRAIL_BYO_VLM_ALONE are set only by the hand-dispatched Glimmer probe, which measures a model
+on a known fixture. Rule 2's base-commit checks have one too: no workflow sets `compare-base: false`.
+
 No live model and no live Godot. The models are stand-ins that answer in SAM 3.1's wire format.
 """
 from __future__ import annotations
@@ -233,6 +237,114 @@ class NoInstructionFollowerDecidesAlone(unittest.TestCase):
 
         self.assertIs(EngineCheckedGlimmer.engine_checked, True)
         self.assertIs(EngineCheckedBYOVLM.engine_checked, True)
+
+
+# The two switches that let a vision-language model decide alone (docs/sam.md, rule 3). They exist to
+# measure a model on known fixtures. The one place in this repository allowed to set either is the
+# Glimmer probe, a workflow a person dispatches by hand; the code that reads them is the one module
+# that holds the refusal, and glimmer_client's docstring names the first.
+ALONE_SWITCHES = ("GLIMMER_ALONE", "BYO_VLM_ALONE")
+ALONE_ALLOWED = {".github/workflows/glimmer-probe.yml", "agents/sam_observations.py", "agents/glimmer_client.py"}
+PROBE = ".github/workflows/glimmer-probe.yml"
+# Files that may name a switch without setting it: tests (which set it inside a mock) and prose.
+NOT_CODE = ("tests/", "docs/")
+SKIP_DIRS = {".git", "runs", "node_modules", "__pycache__", ".venv", "venv"}
+
+
+def repository_files() -> list[str]:
+    """Every file of the repository, relative to its root. ``git ls-files`` when it works; a walk of
+    the tree otherwise, so the scan below never sees fewer files because git is missing."""
+    import subprocess
+
+    try:
+        out = subprocess.run(["git", "ls-files", "-z"], cwd=REPO, capture_output=True, check=True, timeout=60)
+        files = [f for f in out.stdout.decode("utf-8", "surrogateescape").split("\0") if f]
+        if files:
+            return files
+    except (OSError, subprocess.SubprocessError):
+        pass
+    found = []
+    for root, dirs, names in os.walk(REPO):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for name in names:
+            found.append(str((Path(root) / name).relative_to(REPO)))
+    return found
+
+
+def names_a_switch(path: Path) -> bool:
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return False
+    return any(s.encode() in data for s in ALONE_SWITCHES)
+
+
+def workflow_triggers(path: Path) -> set[str]:
+    import yaml
+
+    doc = yaml.safe_load(path.read_text())
+    on = doc.get("on", doc.get(True))  # YAML 1.1 reads a bare `on` as true
+    if isinstance(on, str):
+        return {on}
+    if isinstance(on, list):
+        return set(on)
+    return set(on or {})
+
+
+class TheAloneSwitchesAreForMeasurementOnly(unittest.TestCase):
+    """Rule 3's exception, held as a fact: the switches that turn the refusal off are set only by the
+    hand-dispatched Glimmer probe, so no workflow that judges a change can let a vision-language model
+    decide alone. A string in a new file, a constant imported elsewhere or a workflow that sets either
+    switch fails here."""
+
+    def test_each_switch_turns_the_refusal_off_as_the_page_says(self):
+        for backend, switch in (("glimmer", sam.GLIMMER_ALONE_ENV), ("byo-vlm", sam.BYO_VLM_ALONE_ENV)):
+            with self.subTest(backend=backend), mock.patch.dict(os.environ, {sam.BACKEND_ENV: backend, switch: "1"}):
+                try:
+                    sam.default_client(verdict=True)
+                except SamError as exc:
+                    self.assertNotIn("does not decide a verdict", str(exc))
+
+    def test_the_switches_are_named_only_where_allowed(self):
+        files = repository_files()
+        self.assertIn(PROBE, files, "the scan did not see the probe workflow: it cannot be trusted")
+        offenders = sorted(f for f in files
+                           if f not in ALONE_ALLOWED and not f.startswith(NOT_CODE) and not f.endswith(".md")
+                           and names_a_switch(REPO / f))
+        self.assertEqual(offenders, [],
+                         "only .github/workflows/glimmer-probe.yml may set EXPECTRAIL_GLIMMER_ALONE or "
+                         "EXPECTRAIL_BYO_VLM_ALONE: either switch lets a vision-language model decide a verdict "
+                         "alone (docs/sam.md, 'What text reaches a model', rule 3)")
+
+    def test_the_probe_sets_only_the_glimmer_switch_and_only_with_glimmer(self):
+        lines = [line.strip() for line in (REPO / PROBE).read_text().splitlines()
+                 if any(s in line for s in ALONE_SWITCHES)]
+        self.assertEqual(lines, ["export EXPECTRAIL_VISION_BACKEND=glimmer EXPECTRAIL_GLIMMER_ALONE=1"])
+
+    def test_the_probe_runs_only_when_a_person_dispatches_it(self):
+        self.assertEqual(workflow_triggers(REPO / PROBE), {"workflow_dispatch"},
+                         "the Glimmer probe sets a switch that lets Glimmer decide alone: it must never run "
+                         "on a push, a pull request, a schedule or another workflow's run")
+
+    def test_the_trigger_reader_sees_every_form(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for text, want in (("on: push\n", {"push"}), ("on: [push, pull_request]\n", {"push", "pull_request"}),
+                               ("on:\n  workflow_dispatch:\n  schedule:\n    - cron: '0 0 * * *'\n",
+                                {"workflow_dispatch", "schedule"})):
+                path = Path(tmp) / "w.yml"
+                path.write_text(text + "jobs: {}\n")
+                self.assertEqual(workflow_triggers(path), want)
+
+    def test_no_workflow_reads_the_checks_from_the_change_being_judged(self):
+        # docs/sam.md rule 2: on a pull request the checks come from the base commit. The verify
+        # action's `compare-base: false` reads them from the head instead; no workflow here sets it.
+        offenders = []
+        for path in sorted((REPO / ".github").rglob("*.y*ml")):
+            for n, line in enumerate(path.read_text().splitlines(), start=1):
+                if re.search(r"compare-base\s*:\s*['\"]?(false|no|off|0)\b", line, re.I) or \
+                        re.search(r"COMPARE_BASE\s*[:=]\s*['\"]?(false|no|off|0)\b", line, re.I):
+                    offenders.append(f"{path.relative_to(REPO)}:{n}")
+        self.assertEqual(offenders, [])
 
 
 def imported(tree: ast.AST) -> set[str]:
