@@ -218,7 +218,7 @@ class FailsClosed(Fixture):
                 run.put(row["id"], rec)
                 self.refuse(run, row["id"])
                 return
-        self.skipTest("no check in the baseline failed its reference")
+        self.fail("the fixture needs a check that failed its reference; the baseline has two")
 
     def test_a_reproducing_check_with_no_validity_row(self):
         run = LiveRun(self.tmp).controlled()
