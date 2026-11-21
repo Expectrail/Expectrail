@@ -99,6 +99,35 @@ class DoctorTest(Machine):
         self.assertEqual([c.id for c in doctor.checks()],
                          ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip", "vision-key", "vision-cap", "chromium"])
 
+    def test_project_argument_must_name_an_existing_folder(self):
+        for path in (self.tmp / "missing", self.engine):
+            with self.subTest(path=path), mock.patch.object(doctor, "godot", wraps=doctor.godot) as probe:
+                code, out, err = self.run_doctor("--project", str(path), "--json")
+                self.assertEqual(code, 5)
+                self.assertEqual(out, "")
+                self.assertIn("--project", err)
+                self.assertIn("folder containing project.godot", err)
+                probe.assert_not_called()
+
+    def test_config_without_godot_descriptor_cannot_pass_project_readiness(self):
+        from tests.test_app_projects import configured_project
+
+        project = configured_project(self.tmp / "game")
+        self.assertEqual(self.run_doctor("--project", str(project), "--json")[0], 0)
+        (project / "project.godot").unlink()
+        for args in (["--project", str(project)], []):
+            with self.subTest(args=args), mock.patch.object(Path, "cwd", return_value=project), \
+                    mock.patch.object(doctor, "godot", wraps=doctor.godot) as probe:
+                code, out, err = self.run_doctor("--json", *args)
+                self.assertEqual((code, err), (3, ""))
+                doc = json.loads(out)
+                self.assertFalse(doc["ok"])
+                self.assertEqual(doctor.problems(doc), [])
+                problem, = doc["checks"]
+                self.assertEqual((problem["status"], problem["required"]), ("missing", True))
+                self.assertIn("project.godot", problem["fix"])
+                probe.assert_not_called()
+
     def test_each_required_tool_removed_fails_and_names_the_fix(self):
         for gone, check, fix in (("xvfb-run", "display", "sudo apt-get install xvfb"),
                                  ("patch", "patch", "sudo apt-get install patch")):
