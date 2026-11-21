@@ -149,6 +149,8 @@ class RevisionUnderThePixelSetting(unittest.TestCase):
 class OtherSettingsDoNotMove(unittest.TestCase):
     def test_the_revision_prompt_is_unchanged_without_pixel_checks(self):
         for which in offer_mod.OFFERS:
+            if offer_mod.tells_control(which):   # the control setting adds its own text (tests/test_jit_offer_control.py)
+                continue
             self.assertEqual(intent_mod.revise_system(which), intent_mod.REVISE_SYSTEM, which)
         self.assertEqual(intent_mod.revise_system(PX), intent_mod.REVISE_SYSTEM + intent_mod.REVISE_PIXEL_TEXT)
 

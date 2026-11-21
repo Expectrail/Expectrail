@@ -61,7 +61,7 @@ def answer_on(*signals_used) -> str:
 class TheSetting(unittest.TestCase):
     def test_three_settings_and_the_default_is_the_baseline(self):
         self.assertEqual(offer.OFFERS, ("baseline", "signals-reach", "signals-reach-evidence",
-                                        "signals-reach-evidence-menu"))
+                                        "signals-reach-evidence-menu", "signals-reach-evidence-menu-control"))
         self.assertEqual(offer.DEFAULT, "baseline")
         for bad in ("", "all", None, "Baseline", 1):
             with self.assertRaises(offer.OfferError):
@@ -413,7 +413,8 @@ class TheWorkflow(unittest.TestCase):
         self.assertEqual(plan["outputs"]["offer"], "${{ steps.plan.outputs.offer }}")
         step = next(s["run"] for s in plan["steps"] if s.get("id") == "plan")
         self.assertLess(step.index("offer must be baseline, signals-reach, signals-reach-evidence, "
-                                   "signals-reach-evidence-menu or signals-reach-evidence-pixel"),
+                                   "signals-reach-evidence-menu, signals-reach-evidence-menu-control or "
+                                   "signals-reach-evidence-pixel"),
                         step.index('if [[ "$MODE" == "bench" ]]'))
         self.assertIn("registered under the baseline offer", step)
 

@@ -36,7 +36,7 @@
         "reps": {"type": "integer", "minimum": 1},
         "variantLimit": {"type": "integer", "minimum": 0},
         "budgetUsd": {"type": "number", "minimum": 0},
-        "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence", "signals-reach-evidence-menu", "signals-reach-evidence-pixel"],
+        "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence", "signals-reach-evidence-menu", "signals-reach-evidence-menu-control", "signals-reach-evidence-pixel"],
                   "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."},
         "metamorphic": {"const": true,
                         "description": "Present when the run also offered mirror-inputs metamorphic checks (#675, expectrail/jit/metamorphic.py); the rows are the record's metamorphic. Absent: none were offered."},

@@ -330,7 +330,24 @@ both counter defects (#628); only this run can show whether a model proposes one
 the menu probes, so its result is a measurement of the menu setting, not a replacement for the
 evidence run's: the step-by-step comparison needs both.
 
-All four dispatches together select $192 of assessed budgets, plus overhead; do them only when
+**Update, November 21: the control run.** Since #675 the generator drops a check that passes the
+do-nothing control, and the section on why the dropped defects' checks state no obligation (#755) found
+that a check's form decides that. No setting told the proposer. `signals-reach-evidence-menu-control`
+offers exactly what the menu setting offers and adds that explanation to the system prompt and to the
+revision's (`expectrail/jit/intent.py`, `CONTROL_TEXT` and `REVISE_CONTROL_TEXT`;
+`tests/test_jit_offer_control.py`). Every other setting's prompts are unchanged byte for byte. Not run:
+whether the proposer then writes checks that survive the control is only shown by this run, read beside
+the menu run's:
+
+```sh
+gh workflow run jit.yml --repo Expectrail/Expectrail --ref main \
+  -f mode=repro -f offer=signals-reach-evidence-menu-control -f candidate=withheld -f budget_usd=2
+```
+
+The same bounds as the menu run: **$48 assessed** across 24 defects, at most 48 Muse calls, zero SAM
+images, and a 75-minute measure job per defect ($14.40 at the assumed runner price).
+
+All five dispatches together select $240 of assessed budgets, plus overhead; do them only when
 Sean is ready to spend. A current combined evidence run cannot retroactively measure the earlier
 evidence-only implementation before this UI addition. Exact historical attribution would require
 Sean to prepare the chosen public source revision on main and identify its commit in the run.

@@ -75,13 +75,13 @@ class TheLibrary(unittest.TestCase):
 
     def test_no_other_setting_has_a_menu_probe(self):
         for which in offer.ALL:
-            if which != offer.MENU:
+            if not offer.offers_menu(which):   # the menu setting, and the control setting built on it
                 self.assertFalse([p for p in lib(which) if p.get("family") == "menu"], which)
 
     def test_every_setting_but_menu_ignores_the_profile(self):
         bare = {k: v for k, v in PROF.items() if k != "menuActions"}
         for which in offer.ALL:
-            if which != offer.MENU:
+            if not offer.offers_menu(which):   # the menu setting, and the control setting built on it
                 self.assertEqual(lib(which, bare), offer.library(PROF["actions"], which, REPORT), which)
 
     def test_the_bundled_profile_names_the_pause_action_and_it_validates(self):
@@ -179,7 +179,7 @@ class WhoMayPressIt(unittest.TestCase):
 class ThePrompt(unittest.TestCase):
     def test_only_the_menu_setting_says_so_and_the_evidence_prompt_is_unchanged(self):
         for which in offer.ALL:
-            self.assertEqual(intent.MENU_TEXT in intent.system_for(which), which == offer.MENU, which)
+            self.assertEqual(intent.MENU_TEXT in intent.system_for(which), offer.offers_menu(which), which)
         self.assertEqual(intent.system_for(offer.MENU).replace(intent.MENU_TEXT, "", 1),
                          intent.system_for(offer.EVIDENCE))
 
