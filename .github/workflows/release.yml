@@ -1,9 +1,10 @@
-# Release (#333): build the wheel for a version tag and attach it to the run.
+# Release (#249, #333): build the wheel and recorded-sample image for a version tag.
 #
 # A tag named v<version> builds the wheel from that commit. The tag must equal the package's own
 # version (expectrail/__init__.py), or nothing is built. The wheel is installed into a clean venv,
 # its command must say "installed package", and the wheel goes up as an artifact of this run with its
-# SHA-256. A dispatch from main builds the same wheel without a tag, to try the workflow.
+# SHA-256 after the recorded-sample image passes its offline smoke. A dispatch from main
+# runs the same checks without a tag.
 #
 # It publishes nowhere. Publishing to PyPI or a container registry needs an account and a token, which
 # only a person sets up; so does pushing a tag. It holds no secret and reads only.
@@ -25,7 +26,7 @@ concurrency:
 jobs:
   wheel:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -68,6 +69,43 @@ jobs:
           venv/bin/expectrail --version | tee version.txt
           grep -q "installed package" version.txt
           grep -q "$VERSION" version.txt
+      - uses: ./.github/actions/get-godot
+        with:
+          restore-only: 'true'
+      - name: Build the recorded sample image
+        id: sample_image
+        shell: bash
+        run: |
+          context=$(mktemp -d "$RUNNER_TEMP/sample-context.XXXXXX")
+          mkdir "$context/dist" "$context/engine-cache"
+          cp dist/expectrail-*.whl "$context/dist/"
+          cp tools/godot_cache/*.zip "$context/engine-cache/"
+          cp Dockerfile.sample "$context/"
+          docker build --platform linux/amd64 --iidfile "$RUNNER_TEMP/sample-image-id" \
+            -f "$context/Dockerfile.sample" "$context"
+          echo "id=$(cat "$RUNNER_TEMP/sample-image-id")" >> "$GITHUB_OUTPUT"
+      - name: Smoke the recorded sample image
+        shell: bash
+        env:
+          IMAGE_ID: ${{ steps.sample_image.outputs.id }}
+        run: |
+          docker run --rm --network none "$IMAGE_ID" expectrail doctor
+          if ! docker run --rm --network none "$IMAGE_ID" expectrail sample --json > "$RUNNER_TEMP/sample-verdicts.json"; then
+            cat "$RUNNER_TEMP/sample-verdicts.json"
+            exit 1
+          fi
+          python - "$RUNNER_TEMP/sample-verdicts.json" <<'PYTHON'
+          import json
+          import sys
+          from pathlib import Path
+
+          rows = json.loads(Path(sys.argv[1]).read_text())
+          verdicts = [(row["status"]["phase"], row["status"]["decision"]) for row in rows]
+          expected = [("completed", decision) for decision in ("accept", "reject", "accept")]
+          if verdicts != expected or not all(row["asExpected"] for row in rows):
+              raise SystemExit(f"Unexpected recorded sample verdicts: {verdicts!r}")
+          print("Recorded sample: accept / reject / accept")
+          PYTHON
       - name: Checksum
         working-directory: dist
         run: |
@@ -86,6 +124,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
+          IMAGE_ID: ${{ steps.sample_image.outputs.id }}
         run: |
           {
             echo "### Expectrail $VERSION, wheel built"
@@ -97,6 +136,8 @@ jobs:
             echo "expectrail doctor"
             echo "expectrail sample"
             echo '```'
+            echo
+            echo "Recorded-sample image ID: \`$IMAGE_ID\` (local build). Doctor and sample passed with networking disabled."
             echo
             echo "SHA-256: \`$(cut -d' ' -f1 dist/SHA256SUMS)\`. Not published to PyPI."
           } >> "$GITHUB_STEP_SUMMARY"
