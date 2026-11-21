@@ -3,7 +3,8 @@
     python3 -m agents.check_pages docs              # CI: every .html page under docs/
     python3 -m agents.check_pages docs --offline    # a machine without internet (see below)
 
-The command also requires the signed-out hub and follows its four screen links with scripts off.
+The command also requires the signed-out hub and follows its four screen links with scripts off, from the hub
+and from the site's root page, which must reach the hub and the same four screens in one click.
 
 For each page, served over HTTP from the folder (as GitHub Pages serves it), it reports:
 - a script error: an uncaught exception, including a syntax error that stops a whole script;
@@ -31,6 +32,7 @@ from pathlib import Path
 from urllib.parse import unquote, urljoin, urlparse
 
 SETTLE_MS = 1500
+LANDING_MS = 5000
 OPTION_MS = 150
 
 
@@ -70,38 +72,66 @@ def _exists(target: Path) -> bool:
     return target.is_file() or (target.is_dir() and any((target / n).is_file() for n in ("index.html", "README.md")))
 
 
-def check_hub(browser, base: str) -> list[dict]:
-    """Read the signed-out workspace and its four linked screens without scripts."""
-    destinations = {
-        "verify.html": "Verify a change to your game",
-        "../onboarding-examples/breakout.html": "Does this describe your game?",
-        "../viewer-samples/clean.html": "Accepted",
-        "../viewer-samples/fixture-repair.html": "Repair evidence",
-    }
+HUB_SCREENS = {
+    "verify.html": "Verify a change to your game",
+    "../onboarding-examples/breakout.html": "Does this describe your game?",
+    "../viewer-samples/clean.html": "Accepted",
+    "../viewer-samples/fixture-repair.html": "Repair evidence",
+}
+
+# The site's root page: the hub itself (no heading asked of it; the hub is checked on its own) and the
+# same four screens, each one click from expectrail.tech.
+ROOT_SCREENS = {"hub/": None, **{("hub/" + href if not href.startswith("../") else href[3:]): heading
+                                 for href, heading in HUB_SCREENS.items()}}
+
+
+def _follow(browser, start: str, page_name: str, screens: dict, *, sign_in: bool) -> list[dict]:
+    """From ``start``, with scripts off at a phone and a desktop width, each screen's link is visible and
+    lands on a page whose first-level heading names it."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
     findings = []
     for width in (375, 1280):
         context = browser.new_context(java_script_enabled=False, viewport={"width": width, "height": 900})
         try:
             page = context.new_page()
-            hub = urljoin(base, "hub/")
-            page.goto(hub)
-            sign_in = page.get_by_role("button", name="Sign in with GitHub", exact=True)
-            if sign_in.count() != 1 or not sign_in.is_visible() or not sign_in.is_disabled():
-                findings.append({"page": "hub/index.html", "what": "sign-in state", "detail": f"{width}px"})
+            page.goto(start)
+            if sign_in:
+                button = page.get_by_role("button", name="Sign in with GitHub", exact=True)
+                if button.count() != 1 or not button.is_visible() or not button.is_disabled():
+                    findings.append({"page": page_name, "what": "sign-in state", "detail": f"{width}px"})
             if page.evaluate("document.documentElement.scrollWidth > innerWidth"):
-                findings.append({"page": "hub/index.html", "what": "horizontal overflow", "detail": f"{width}px"})
-            for href, heading in destinations.items():
-                page.goto(hub)
+                findings.append({"page": page_name, "what": "horizontal overflow", "detail": f"{width}px"})
+            for href, heading in screens.items():
+                page.goto(start)
                 link = page.locator(f'a[href="{href}"]').first
-                if not link.is_visible():
-                    findings.append({"page": "hub/index.html", "what": "missing screen link", "detail": href})
+                if not link.count() or not link.is_visible():
+                    findings.append({"page": page_name, "what": "missing screen link", "detail": href})
                     continue
                 link.click()
-                if not page.get_by_role("heading", level=1).filter(has_text=heading).first.is_visible():
+                page.wait_for_load_state()
+                if heading is None:
+                    continue
+                try:
+                    # A click returns before the next page has finished loading, so wait for the heading
+                    # rather than read it once: reading at once gave a false finding on a slow load.
+                    page.get_by_role("heading", level=1).filter(has_text=heading).first.wait_for(
+                        state="visible", timeout=LANDING_MS)
+                except PlaywrightTimeout:
                     findings.append({"page": href, "what": "unreadable without scripts", "detail": f"{width}px"})
         finally:
             context.close()
     return findings
+
+
+def check_hub(browser, base: str) -> list[dict]:
+    """Read the signed-out workspace and its four linked screens without scripts."""
+    return _follow(browser, urljoin(base, "hub/"), "hub/index.html", HUB_SCREENS, sign_in=True)
+
+
+def check_root(browser, base: str) -> list[dict]:
+    """The site's root reaches the hub and each of its four screens in one click, without scripts."""
+    return _follow(browser, base, "index.html", ROOT_SCREENS, sign_in=False)
 
 
 def check(root: Path, *, offline: bool = False, browser=None, require_hub: bool = False) -> list[dict]:
@@ -120,6 +150,7 @@ def check(root: Path, *, offline: bool = False, browser=None, require_hub: bool 
         if require_hub or (domain.is_file() and domain.read_text().strip() == "expectrail.tech"):
             if (root / "hub/index.html").is_file():
                 findings.extend(check_hub(browser, base))
+                findings.extend(check_root(browser, base))
             else:
                 findings.append({"page": "hub/index.html", "what": "missing hub", "detail": "hub/index.html"})
         for path in pages(root):

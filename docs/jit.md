@@ -315,6 +315,23 @@ catalog, and a probe the model writes is compiled with the catalog alone (`offer
 under this setting with a profile that names no menu action generates nothing. Records say `menu` as the
 source of such a probe. Every other setting's prompt and probe list are unchanged. Not yet run live.
 
+**The control setting** (November 21, 2026, issue #285 step 5; `--offer signals-reach-evidence-menu-control`).
+Since #675 a generated check that passes every run of the do-nothing control (the actor it is about frozen,
+or for a projectile never made) is dropped, and the revision is sent the reason
+`passed-with-the-actor-doing-nothing`. #755 found the form of a check decides that: a relation with `eq`,
+`lte` or `gte` and a tolerance of zero or more, or a bound on activity (`max_entity_drop`,
+`max_episode_rise`, `entity_present`, `min_event_interval`), cannot fail with the actor still, and on the
+public baseline none did. No prompt said so. This setting offers exactly what the menu setting offers and
+adds `intent.CONTROL_TEXT` to the system prompt and `intent.REVISE_CONTROL_TEXT` to the revision's: what
+the control is, which forms a still actor cannot fail or cannot pass, and what the reason means. The text
+is tested against the evaluator's comparators and `expectrail/repro/control_form.py`, so it cannot drift
+from them unnoticed. What decides a check does not change. Every other setting's prompts are unchanged
+byte for byte (the menu setting's digests are pinned in `tests/test_jit_offer_control.py`).
+The operation lists in `CONTROL_TEXT` describe what the evaluator does with a still actor. They are not
+a menu of approved forms: a check of a form that survives the control is not better for that, and it is
+kept only if it also fails on the bug build. Not yet run live. What the live run will be read on, and the
+two outcomes stated before it, are in `docs/repro-audit.md` under the control run.
+
 **What the proposer is shown on a menu probe** (November 18, 2026, issue #285). The harness records the
 counter only when asked, and until this change the measure step and the evidence asked on no replay: on
 Godot 4.7.2 the measure step read `ui_integer_at_end` as no reading on every menu probe, clean and bug

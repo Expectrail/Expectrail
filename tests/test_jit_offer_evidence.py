@@ -330,7 +330,7 @@ class TheWorkflow(unittest.TestCase):
     def test_the_plan_takes_the_setting(self):
         step = next(s["run"] for s in self.jobs["plan"]["steps"] if s.get("id") == "plan")
         self.assertIn("^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-menu|"
-                      "signals-reach-evidence-pixel)$", step)
+                      "signals-reach-evidence-menu-control|signals-reach-evidence-pixel)$", step)
 
     def test_the_measure_job_gets_a_display_and_more_time_only_under_the_settings_that_offer_evidence(self):
         # The evidence setting and the pixel setting, which offers the evidence too (#286); the two names that

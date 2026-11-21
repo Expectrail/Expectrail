@@ -244,6 +244,26 @@ may press a menu action: a probe you write may use only the actions listed in "a
 """
 
 
+# Added under the control setting only (expectrail/jit/offer.py, ``CONTROL``; #285 step 5, after #675 and #755),
+# so every other setting's prompt is byte for byte what it was. The forms named here are those of
+# expectrail/repro/control_form.py, read with the evaluator's comparators (tests/test_jit_offer_control.py).
+CONTROL_TEXT = """
+Each check is also replayed on a do-nothing control: the clean game with the actor the check is about \
+("class": "player", "enemy" or "projectile") doing nothing. A player or enemy is frozen in place; a \
+projectile is never made. A check that passes every replay of that control states no obligation and is \
+dropped, however it does on the two builds. So write checks that a still actor makes fail. A still actor \
+measures the same on two probes, never moves, falls, rises, vanishes or fires, so these cannot fail with \
+it: a relation whose comparator is "eq", "lte" or "gte" (with a tolerance of zero or more), and the \
+operations "max_entity_drop", "max_episode_rise", "entity_present" and "min_event_interval". These \
+cannot pass with it, and so are the checks that survive the control: a relation whose comparator is \
+"gt" or "lt", which asks the two probes to differ, and the operations "min_event_count", \
+"min_motion_extent" and "event_response", which ask the actor to act. When the bug is that something \
+happens too much (too high, too fast, too often), a bound the bug build exceeds is not enough on its \
+own: also state what the clean game must do, as a strict difference between two probes or as a demand \
+for activity.
+"""
+
+
 def _system_shown(offer: str) -> str:
     meanings = _offered(offer)
     return """You write checks for one proposed change to a 2D platformer. You are given a bug report, the \
@@ -273,7 +293,7 @@ wrong guess does not leave the change unchecked.
          "For a report about a collected-coin counter, compare ui_integer_at_end with coins_collected; "
          "an undefined or ambiguous reading is never a pass. This reads engine UI state, not pixels.\n")
         if offer_mod.shows_evidence(offer) else "") + (MENU_TEXT if offer_mod.offers_menu(offer) else "") \
-        + (PIXEL_TEXT if offer_mod.offers_pixel(offer) else "") + """
+        + (CONTROL_TEXT if offer_mod.tells_control(offer) else "") + (PIXEL_TEXT if offer_mod.offers_pixel(offer) else "") + """
 What each signal measures, over one replay:
 """ + "\n".join(f"- {k}: {v}" for k, v in sorted(meanings.items())) + """
 
@@ -302,9 +322,18 @@ REVISE_PIXEL_TEXT = """ Pixel checks are not revised: the first attempt's pixel 
 write no "pixelChecks" in this answer."""
 
 
+# Added to REVISE_SYSTEM under the control setting only (#285 step 5), so every other setting's revision
+# prompt is byte for byte what it was. ``feedback`` sends this reason; before this setting nothing explained it.
+REVISE_CONTROL_TEXT = """ A check rejected as "passed-with-the-actor-doing-nothing" passed on the clean game \
+and failed on the bug build, but also passed every replay of the do-nothing control, so it states no \
+obligation: replace it with a check of a form a still actor cannot pass ("gt" or "lt" between probes, or \
+a demand for activity), not with the same rule on another probe."""
+
+
 def revise_system(offer: str) -> str:
     """What is added to the system prompt for the one revision under ``offer``."""
-    return REVISE_SYSTEM + (REVISE_PIXEL_TEXT if offer_mod.offers_pixel(offer) else "")
+    return REVISE_SYSTEM + (REVISE_PIXEL_TEXT if offer_mod.offers_pixel(offer) else "") \
+        + (REVISE_CONTROL_TEXT if offer_mod.tells_control(offer) else "")
 
 
 class IntentUnavailable(RuntimeError):

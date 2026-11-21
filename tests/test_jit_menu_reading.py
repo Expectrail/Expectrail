@@ -85,7 +85,7 @@ class WhichReplaysAsk(unittest.TestCase):
 
     def test_no_other_setting_has_a_probe_that_asks(self):
         for which in offer.ALL:
-            if which != offer.MENU:
+            if not offer.offers_menu(which):
                 probes = offer.library(PROF["actions"], which, REPORT, profile=PROF)
                 self.assertFalse([p["id"] for p in probes if offer.replay_options(p)], which)
 

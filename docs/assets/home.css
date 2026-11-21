@@ -221,3 +221,11 @@ body.home .hero .actions .button{padding:10px 18px;font-size:16px}
 .eq-rows b{white-space:nowrap}
 body.home .top.has-toggle nav,body.home .top.has-toggle nav a{border-color:var(--edge)}
 body.home .top.has-toggle nav a{color:var(--text)}
+/* #709: the four recorded product screens, one click from the root. */
+body.home .product .grid.four{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:24px}
+body.home .card.screen{display:block;text-decoration:none}
+body.home .card.screen h3{margin:4px 0 6px;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+body.home .card.screen p{color:var(--soft)}
+body.home .card.screen:hover,body.home .card.screen:focus-visible{border-color:var(--yellow)}
+@media(max-width:1080px){body.home .product .grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){body.home .product .grid.four{grid-template-columns:1fr}}
