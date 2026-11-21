@@ -9,7 +9,10 @@ beyond the local engine.
     python3 tools/do_nothing_public.py --work NEW_FOLDER --out docs/measurements/675-do-nothing-control.md
 
 Public records only: a held-out or ``fresh-*`` path is refused. The work folder keeps every control patch,
-route, trace and the per-check rows (``rows.json``). Advisory: this changes no record and no rule.
+route, trace and the per-check rows (``rows.json``). Each row names its record and its check by digest
+(``sourceRun``, ``specSha256``), so ``expectrail.jit.counting public-bench --do-nothing-rows`` can bind it. A
+model-proposed probe's route is used when it is supplied in ``jit-routes`` beside its record with the digest the
+record names; otherwise its checks are not run. Advisory: this changes no record and no rule.
 """
 from __future__ import annotations
 
@@ -26,6 +29,7 @@ if str(REPO) not in sys.path:
 
 from expectrail.contracts import digest_v1  # noqa: E402
 from expectrail.jit import assess, bench, do_nothing  # noqa: E402
+from expectrail.jit.counting import public_custom_route  # noqa: E402
 
 RECORDS = REPO / "bench/jit/recordings/public-43465090517/repro"
 
@@ -108,7 +112,8 @@ def measure(work: Path, records: Path = RECORDS, game: Path = REPO / "game/platf
             spec = entry["spec"]
             cls = spec["scope"]["class"]
             v = validity.get(spec["id"], {})
-            row = {"defect": defect["id"], "check": spec["id"], "class": cls,
+            row = {"defect": defect["id"], "check": spec["id"], "specSha256": digest_v1(spec),
+                   "sourceRun": digest_v1(run), "class": cls,
                    "operation": spec["operation"]["type"], "signal": spec["operation"].get("signal"),
                    "recordedReference": v.get("reference", []), "recordedValid": bool(v.get("valid")),
                    "runs": [], "outcome": "not-run", "reason": None}
@@ -116,14 +121,19 @@ def measure(work: Path, records: Path = RECORDS, game: Path = REPO / "game/platf
             if cls not in patches:
                 row["reason"] = controls[cls]["reason"]
                 continue
-            missing = [pid for pid in entry["probeIds"] if probes.get(pid) not in routes]
+            # A model-proposed probe's route is used when it is supplied beside the record (``jit-routes``,
+            # from the run's public artifact) with the digest the record names; otherwise the check is not run.
+            found = {pid: routes.get(probes.get(pid)) or public_custom_route(path.parent, pid, probes.get(pid))
+                     for pid in entry["probeIds"]}
+            missing = [pid for pid, route in found.items() if route is None]
             if missing:
-                row["reason"] = "route not in the probe library (a model-proposed probe): " + ", ".join(missing)
+                row["reason"] = ("route not in the probe library (a model-proposed probe) and not supplied beside "
+                                 "the record: " + ", ".join(missing))
                 continue
             ui = needs_ui_integers([spec])
             eps_by_probe = {}
             for pid in entry["probeIds"]:
-                eps_by_probe[pid] = replays.get(cls, patches[cls], probes[pid], routes[probes[pid]], ui)
+                eps_by_probe[pid] = replays.get(cls, patches[cls], probes[pid], found[pid], ui)
             if any(e is None for e in eps_by_probe.values()):
                 row["reason"] = "replay failed or its three traces differed"
                 continue
