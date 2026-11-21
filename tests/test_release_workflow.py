@@ -1,4 +1,4 @@
-"""The release workflow (#333): a version tag builds the wheel and attaches it to the run, and nothing else.
+"""The release workflow (#249, #333) checks the wheel and recorded-sample image on a version tag.
 
 It holds no secret, reads only, publishes nowhere, and builds nothing when the tag is not the package's
 own version. The version step is run here in bash, as the runner runs it.
@@ -62,6 +62,23 @@ class ReleaseWorkflowTest(unittest.TestCase):
         install = next(s for s in self.job["steps"] if "clean venv" in s.get("name", ""))["run"]
         self.assertIn('grep -q "installed package"', install)
         self.assertIn("--no-deps", install)
+
+    def test_sample_image_is_built_and_smoked_before_artifact_upload(self):
+        steps = self.job["steps"]
+        build = next(i for i, step in enumerate(steps) if step.get("id") == "sample_image")
+        smoke = next(i for i, step in enumerate(steps) if step.get("name") == "Smoke the recorded sample image")
+        upload = next(i for i, step in enumerate(steps) if "actions/upload-artifact" in step.get("uses", ""))
+        wheel = next(i for i, step in enumerate(steps) if step.get("name") == "Build the wheel")
+        engine = next(i for i, step in enumerate(steps) if step.get("uses") == "./.github/actions/get-godot")
+        self.assertLess(wheel, engine)
+        self.assertLess(engine, build)
+        self.assertLess(build, smoke)
+        self.assertLess(smoke, upload)
+        self.assertIn('-f "$context/Dockerfile.sample" "$context"', steps[build]["run"])
+        self.assertIn("--iidfile", steps[build]["run"])
+        self.assertEqual(steps[smoke]["env"]["IMAGE_ID"], "${{ steps.sample_image.outputs.id }}")
+        for command in ("doctor", "sample --json"):
+            self.assertIn(f'docker run --rm --network none "$IMAGE_ID" expectrail {command}', steps[smoke]["run"])
 
     def test_events_reach_shells_only_through_the_environment(self):
         for step in self.job["steps"]:
