@@ -1,0 +1,55 @@
+{
+  "format": "expectrail.blind-manifest/v1",
+  "name": "example-set",
+  "notes": "A synthetic example of the format only. It is far below the minimum counts, its files do not exist, and nothing in it is a real defect.",
+  "projects": {
+    "bundled": { "source": "this repository, game/platformer", "commit": "f864af5dc974b3c65b3413116130c6af6c2337d4" },
+    "kinematic-character": {
+      "source": "https://github.com/godotengine/godot-demo-projects.git",
+      "path": "2d/kinematic_character",
+      "commit": "b761b4cd5718a7118f2c95eb55f181d0a5f004f1"
+    }
+  },
+  "entries": [
+    {
+      "id": "e01",
+      "project": "bundled",
+      "description": "After I jump off the second ledge the player keeps going up for a moment before falling.",
+      "howItShouldBehave": "The jump should end at the same height whichever ledge it starts from.",
+      "family": "movement-input",
+      "whereItShows": "both",
+      "difficulty": "medium",
+      "exercised": true,
+      "defectPatch": "e01/defect.patch",
+      "reproduction": {
+        "steps": ["Start the level.", "Run right to the second ledge.", "Jump at its edge and watch the height."],
+        "recording": "e01/defect.mp4"
+      },
+      "candidates": [
+        { "id": "wrong-1", "truth": "wrong", "wrongFixKind": "hides-symptom-on-route", "patch": "e01/wrong-1.patch",
+          "reproduction": { "steps": ["Apply the fix.", "Jump from the third ledge instead."], "recording": "e01/wrong-1.mp4" } },
+        { "id": "correct-1", "truth": "correct", "style": "minimal", "patch": "e01/correct-1.patch", "confirmedBy": "a second person" },
+        { "id": "correct-2", "truth": "correct", "style": "restructures", "patch": "e01/correct-2.patch", "confirmedBy": "a second person" }
+      ]
+    },
+    {
+      "id": "n01",
+      "project": "kinematic-character",
+      "description": "Rename a local variable in the player script.",
+      "notAFixKind": "refactor",
+      "expectedVerdict": "accept",
+      "exercised": true,
+      "patch": "n01/change.patch",
+      "whyHarmless": "Only a local name changes; every value and call is the same."
+    }
+  ],
+  "declaredCounts": {
+    "wrongFixes": 1,
+    "correctFixes": 2,
+    "notAFix": 1,
+    "byProject": { "bundled": 3, "kinematic-character": 1 }
+  },
+  "exclusions": [],
+  "sealedAt": null,
+  "sha256": null
+}
