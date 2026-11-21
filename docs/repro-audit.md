@@ -330,7 +330,57 @@ both counter defects (#628); only this run can show whether a model proposes one
 the menu probes, so its result is a measurement of the menu setting, not a replacement for the
 evidence run's: the step-by-step comparison needs both.
 
-All four dispatches together select $192 of assessed budgets, plus overhead; do them only when
+**Update, November 21: the control run.** Since #675 the generator drops a check that passes the
+do-nothing control, and the section on why the dropped defects' checks state no obligation (#755) found
+that a check's form decides that. No setting told the proposer. `signals-reach-evidence-menu-control`
+offers exactly what the menu setting offers and adds that explanation to the system prompt and to the
+revision's (`expectrail/jit/intent.py`, `CONTROL_TEXT` and `REVISE_CONTROL_TEXT`;
+`tests/test_jit_offer_control.py`). Every other setting's prompts are unchanged byte for byte. Not run:
+whether the proposer then writes checks that survive the control is only shown by this run, read beside
+the menu run's:
+
+```sh
+gh workflow run jit.yml --repo Expectrail/Expectrail --ref main \
+  -f mode=repro -f offer=signals-reach-evidence-menu-control -f candidate=withheld -f budget_usd=2
+```
+
+The same bounds as the menu run: **$48 assessed** across 24 defects, at most 48 Muse calls, zero SAM
+images, and a 75-minute measure job per defect ($14.40 at the assumed runner price).
+
+**What will be read, stated before the run.** The control has become predictable from a check's form,
+and this prompt names the forms. So the proposer can make a check survive the control by changing its
+comparator alone (`gt` or `min_motion_extent` where it would have written `eq`), without the check
+asserting anything it has reason to assert. Surviving the control is necessary, not sufficient. The run
+is read on three numbers, each for the control setting against the menu setting on the same 24 defects:
+
+1. **Survival:** of the checks proposed, the share whose do-nothing row in the record is not `passes`.
+   The prompt can move this by form alone.
+2. **Valid catches:** the checks that survive the control *and* pass the clean game 3 of 3 *and* fail
+   the public defect's bug build 3 of 3, and the defects they reproduce. The prompt cannot move this by
+   form alone: a check of the right form still has to fail on the real defect.
+3. **The form histogram:** the proposals' checks counted by comparator and operation, and by the forms
+   of `expectrail/repro/control_form.py`.
+
+The two outcomes, read in advance:
+
+- **Survival rises, valid catches stay flat, and the histogram shifts toward `gt`, `lt` and
+  `min_motion_extent`:** the prompt taught form, not substance. That is a finding about the prompt, not a
+  gain in reproduction, and the setting is not adopted on it.
+- **Valid catches rise with survival:** the intervention worked, and the rise in reproduced defects is the
+  number to report.
+
+A rise in valid catches within the run-to-run variation of one dispatch per setting is not read as
+either outcome. That variation is not known, because each setting has been dispatched at most once.
+
+**What exists today.**
+- **Valid catches:** the score produces them. Under today's generator, a check the record keeps has
+  already survived the control (`assess.validity`). The score's `reproducing` checks per defect, and its
+  reproduced count, are exactly the valid catches (`python3 -m expectrail.repro score`).
+- **Survival and the form histogram over a live run's records:** not built. `control-form` reads the
+  baseline only, through separately replayed rows, and a live record carries its own do-nothing rows
+  (`validity[].doNothing`). A reader of those rows is to be built on #285 before the run is published.
+
+All five dispatches together select $240 of assessed budgets, plus overhead; do them only when
 Sean is ready to spend. A current combined evidence run cannot retroactively measure the earlier
 evidence-only implementation before this UI addition. Exact historical attribution would require
 Sean to prepare the chosen public source revision on main and identify its commit in the run.

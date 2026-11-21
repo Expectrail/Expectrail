@@ -27,6 +27,8 @@ name: Generated checks
 # probes; signals-reach-evidence also gives the proposer step 5's evidence, which the measure job makes
 # by replaying every probe with frames (repro-evidence.json); signals-reach-evidence-menu also offers the
 # menu probes, each a library walk and then one tap of the profile's menu action (expectrail/repro/menu.py).
+# signals-reach-evidence-menu-control offers what the menu setting does and also tells the proposer and the
+# revision what the do-nothing control is (expectrail/jit/intent.py, CONTROL_TEXT); only the prompts differ.
 # The known-bugs bench is registered under baseline and refuses any other.
 #
 # signals-reach-evidence-pixel (#286) also lets the proposer propose pixel checks, about what is drawn, judged
@@ -92,7 +94,7 @@ on:
       offer:
         description: What the generator is offered (expectrail/jit/offer.py); bench mode takes baseline only
         type: choice
-        options: ['baseline', 'signals-reach', 'signals-reach-evidence', 'signals-reach-evidence-menu', 'signals-reach-evidence-pixel']
+        options: ['baseline', 'signals-reach', 'signals-reach-evidence', 'signals-reach-evidence-menu', 'signals-reach-evidence-menu-control', 'signals-reach-evidence-pixel']
         default: 'baseline'
       candidate:
         description: Whether the model is shown the candidate patch (shown) or given no byte of it (withheld); bench mode takes shown only
@@ -231,7 +233,7 @@ jobs:
       - name: Plan the cases
         id: plan
         run: |
-          [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-menu|signals-reach-evidence-pixel)$ ]] || { echo "::error::offer must be baseline, signals-reach, signals-reach-evidence, signals-reach-evidence-menu or signals-reach-evidence-pixel"; exit 1; }
+          [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-menu|signals-reach-evidence-menu-control|signals-reach-evidence-pixel)$ ]] || { echo "::error::offer must be baseline, signals-reach, signals-reach-evidence, signals-reach-evidence-menu, signals-reach-evidence-menu-control or signals-reach-evidence-pixel"; exit 1; }
           echo "offer=$OFFER" >> "$GITHUB_OUTPUT"
           [[ "$CANDIDATE_TO_MODEL" =~ ^(shown|withheld)$ ]] || { echo "::error::candidate must be shown or withheld"; exit 1; }
           echo "candidate=$CANDIDATE_TO_MODEL" >> "$GITHUB_OUTPUT"

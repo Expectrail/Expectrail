@@ -49,6 +49,14 @@ baseline stays what it was:
   own (expectrail/repro/score.py). It is in every list but ``OFFERS`` (the settings without pixel checks).
   The workflow names it (``WORKFLOW``): jit.yml captures the pixel checks' frames in the final replay,
   asks SAM about them in a job that runs no game, and judges them in a last job (pixel-ask, pixel-judge).
+- ``signals-reach-evidence-menu-control`` (#285 step 5, after #675 and #755): everything the menu setting
+  offers (the same probes, signals and evidence), and the proposer is **told what the do-nothing control
+  is**. Since #675 a check that passes every run of the control, where the actor it is about does nothing
+  (expectrail/jit/do_nothing.py), is dropped; #755 found that a check's form decides that (a relation that
+  holds when both probes measure the same, or a bound on activity, cannot fail with the actor still). The
+  system prompt says so (``intent.CONTROL_TEXT``) and so does the revision's (``intent.REVISE_CONTROL_TEXT``),
+  which is otherwise sent the reason ``passed-with-the-actor-doing-nothing`` with nothing to explain it.
+  Only the text differs from the menu setting: what decides a check does not.
 
 Nothing about what decides a check changes: a check is kept or dropped by replays only
 (expectrail/jit/assess.py), under either setting.
@@ -72,12 +80,13 @@ BASELINE = "baseline"
 SIGNALS_REACH = "signals-reach"
 EVIDENCE = "signals-reach-evidence"
 MENU = "signals-reach-evidence-menu"
+CONTROL = "signals-reach-evidence-menu-control"
 PIXEL = "signals-reach-evidence-pixel"
 # ``OFFERS`` are the settings without pixel checks. Every step takes every setting: ``measure`` and
 # ``propose`` (``ALL``); ``run.generate`` and the command line's ``run`` (``REPLAYABLE``), since they judge
 # pixel checks with the observer they are given; the reproduction score (``SCORED``); a revision
 # (``REVISABLE``), which carries pixel checks to its second round unchanged; and jit.yml (``WORKFLOW``).
-OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE, MENU)
+OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE, MENU, CONTROL)
 ALL = (*OFFERS, PIXEL)
 REPLAYABLE = ALL
 SCORED = ALL
@@ -104,12 +113,17 @@ def of_record(value) -> str:
 
 def shows_evidence(offer) -> bool:
     """Whether the proposer is given step 5's evidence (what the bug build changes, record and screen)."""
-    return check(offer) in (EVIDENCE, MENU, PIXEL)
+    return check(offer) in (EVIDENCE, MENU, CONTROL, PIXEL)
 
 
 def offers_menu(offer) -> bool:
     """Whether the probe list has the menu probes (expectrail/repro/menu.py)."""
-    return check(offer) == MENU
+    return check(offer) in (MENU, CONTROL)
+
+
+def tells_control(offer) -> bool:
+    """Whether the proposer and the revision are told what the do-nothing control is (#285 step 5, #675, #755)."""
+    return check(offer) == CONTROL
 
 
 def offers_pixel(offer) -> bool:
@@ -162,7 +176,7 @@ def library(actions, offer: str, report: str = "", *, profile: dict | None = Non
     from expectrail.repro.reach import reach
 
     probes = probes + reach(report if isinstance(report, str) else "", actions, probes)["probes"]
-    if offer != MENU:
+    if not offers_menu(offer):
         return probes
     return probes + _menu_probes(actions, profile, game)
 

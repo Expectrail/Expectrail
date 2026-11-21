@@ -209,7 +209,7 @@ class NotOfferedToTheGenerator(unittest.TestCase):
         code = ("import sys\n"
                 "from expectrail.jit import offer\n"
                 "for o in offer.ALL:\n"
-                "    if o != offer.MENU:\n"
+                "    if not offer.offers_menu(o):\n"
                 "        offer.library(['move_left', 'move_right', 'jump', 'shoot'], o, 'the pause menu says 0')\n"
                 "print('expectrail.repro.menu' in sys.modules)\n")
         got = subprocess.run([sys.executable, "-c", code], cwd=REPO, capture_output=True, text=True, check=True)
