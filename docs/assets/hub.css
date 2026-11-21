@@ -42,3 +42,6 @@ main.verify { max-width: 850px; }
   .place { padding-left: 8px; }
   nav { gap: 10px; }
 }
+/* The hub service's signed-in account control (hub/web.py). */
+.account { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: .9rem; }
+.account button { margin-top: 0; }
