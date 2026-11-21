@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/blind-manifest.v1.schema.json",
+  "title": "expectrail.blind-manifest/v1",
+  "description": "A blind set's own index (#742, the set itself is #281, the protocol #282). Its contents are held out; its format is public so the runner and the validator (python3 -m expectrail.blind_set validate) can read it. Paths are relative to the folder that holds the manifest. Counts are of candidates: the fix candidates of defect entries, and one per entry that is not a fix.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "projects", "entries", "declaredCounts", "exclusions", "sealedAt", "sha256"],
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,59}$" },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+      "not": { "pattern": "(^|/)\\.\\.?(/|$)" },
+      "description": "A file under the folder that holds the manifest. No absolute path and no '..'; the reader also refuses a path reached through a link."
+    },
+    "notes": { "type": "string", "maxLength": 4000, "description": "Free text for the author. Never read by the runner." },
+    "count": { "type": "integer", "minimum": 0 },
+    "counts": { "type": "object", "additionalProperties": { "$ref": "#/$defs/count" } },
+    "family": {
+      "enum": ["collision-physics", "movement-input", "state-counters", "visibility-rendering",
+               "layering-draw-order", "assets", "camera-viewport", "timing-cooldowns",
+               "spawning-enemies", "hud-text"],
+      "description": "The ten defect families of #282 section 3, with the slugs the public reproduction bench uses (repro-bench/v1)."
+    },
+    "whereItShows": { "enum": ["trace-only", "screen-only", "both"] },
+    "wrongFixKind": {
+      "enum": ["does-nothing", "partial", "hides-symptom-on-route", "breaks-something-else", "changes-what-is-measured"],
+      "description": "#282 section 3: a fix that does nothing; a partial fix; one that hides the symptom on the reported route only; one that repairs the bug and breaks something else; one that changes what is measured instead of the behaviour."
+    },
+    "notAFixKind": {
+      "enum": ["intentional-with-contract", "intentional-without-contract", "refactor", "comment-or-formatting",
+               "asset-rename", "performance"],
+      "description": "#282 section 3, changes that are not fixes."
+    },
+    "verdict": { "enum": ["accept", "reject", "needs-review", "not-accept"],
+                 "description": "not-accept: anything but accept (#282: an intentional change without its contract update must not pass silently)." },
+    "reproduction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps", "recording"],
+      "properties": {
+        "steps": { "type": "array", "minItems": 1, "maxItems": 50, "items": { "$ref": "#/$defs/text" } },
+        "recording": { "$ref": "#/$defs/path", "description": "A recording of a person playing the build (#282 section 4)." },
+        "notes": { "$ref": "#/$defs/notes" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "truth", "patch"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "truth": { "enum": ["wrong", "correct"] },
+        "wrongFixKind": { "$ref": "#/$defs/wrongFixKind" },
+        "style": { "enum": ["minimal", "restructures"] },
+        "patch": { "$ref": "#/$defs/path", "description": "A unified diff (-p1) on top of the defect." },
+        "confirmedBy": { "$ref": "#/$defs/text", "description": "For a correct fix: the second person, not its author, who confirmed it." },
+        "reproduction": { "$ref": "#/$defs/reproduction", "description": "For a wrong fix: how a person shows it is still wrong without Expectrail (#282 section 4)." },
+        "notes": { "$ref": "#/$defs/notes" }
+      },
+      "allOf": [
+        { "if": { "properties": { "truth": { "const": "wrong" } } },
+          "then": { "required": ["wrongFixKind"], "not": { "anyOf": [{ "required": ["style"] }, { "required": ["confirmedBy"] }] } } },
+        { "if": { "properties": { "truth": { "const": "correct" } } },
+          "then": { "required": ["style"], "not": { "required": ["wrongFixKind"] } } }
+      ]
+    },
+    "defectEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "project", "description", "howItShouldBehave", "family", "whereItShows", "difficulty",
+                   "exercised", "defectPatch", "reproduction", "candidates"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "project": { "$ref": "#/$defs/id" },
+        "description": { "$ref": "#/$defs/text", "description": "With howItShouldBehave, what the generator reads as the bug report." },
+        "howItShouldBehave": { "$ref": "#/$defs/text" },
+        "family": { "$ref": "#/$defs/family" },
+        "whereItShows": { "$ref": "#/$defs/whereItShows" },
+        "difficulty": { "enum": ["easy", "medium", "hard"], "description": "The author's guess, written before sealing." },
+        "exercised": { "type": "boolean", "description": "The author's statement: an approved route reaches the changed behaviour." },
+        "checkMeasured": { "type": "boolean", "description": "Optional, proposed on #282 and not decided: an approved check measures the behaviour the defect changes. Readers must not require it." },
+        "defectPatch": { "$ref": "#/$defs/path", "description": "A unified diff (-p1) against the project at its pinned commit." },
+        "reproduction": { "$ref": "#/$defs/reproduction" },
+        "candidates": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/candidate" } },
+        "notes": { "$ref": "#/$defs/notes" }
+      }
+    },
+    "notAFixEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "project", "description", "notAFixKind", "expectedVerdict", "exercised", "patch"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "project": { "$ref": "#/$defs/id" },
+        "description": { "$ref": "#/$defs/text" },
+        "howItShouldBehave": { "$ref": "#/$defs/text" },
+        "notAFixKind": { "$ref": "#/$defs/notAFixKind" },
+        "expectedVerdict": { "$ref": "#/$defs/verdict" },
+        "exercised": { "type": "boolean" },
+        "checkMeasured": { "type": "boolean" },
+        "family": { "$ref": "#/$defs/family" },
+        "whereItShows": { "$ref": "#/$defs/whereItShows" },
+        "difficulty": { "enum": ["easy", "medium", "hard"] },
+        "patch": { "$ref": "#/$defs/path", "description": "A unified diff (-p1) against the clean project at its pinned commit." },
+        "whyHarmless": { "$ref": "#/$defs/text", "description": "#281: for a harmless change, why behaviour cannot differ." },
+        "notes": { "$ref": "#/$defs/notes" }
+      }
+    }
+  },
+  "properties": {
+    "format": { "const": "expectrail.blind-manifest/v1" },
+    "name": { "$ref": "#/$defs/id", "description": "The set's name." },
+    "projects": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 10,
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["commit"],
+        "properties": {
+          "source": { "$ref": "#/$defs/text" },
+          "path": { "type": "string", "maxLength": 300, "description": "The project's folder inside its source, when it is not the root." },
+          "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+          "notes": { "$ref": "#/$defs/notes" }
+        }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "oneOf": [
+        { "$ref": "#/$defs/defectEntry" },
+        { "$ref": "#/$defs/notAFixEntry" }
+      ] }
+    },
+    "declaredCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wrongFixes", "correctFixes", "notAFix"],
+      "description": "The author's count of the set as it would run, after exclusions. The validator recomputes each one from the entries.",
+      "properties": {
+        "wrongFixes": { "$ref": "#/$defs/count" },
+        "correctFixes": { "$ref": "#/$defs/count" },
+        "notAFix": { "$ref": "#/$defs/count" },
+        "byProject": { "$ref": "#/$defs/counts" },
+        "wrongFixesByWhereItShows": { "$ref": "#/$defs/counts" },
+        "byFamily": { "$ref": "#/$defs/counts" },
+        "byWrongFixKind": { "$ref": "#/$defs/counts" },
+        "byNotAFixKind": { "$ref": "#/$defs/counts" }
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "reason"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id", "description": "An entry id; the whole entry is left out of the run." },
+          "reason": { "enum": ["patch-does-not-apply", "project-does-not-build", "not-reproducible"],
+                      "description": "The only reasons #282 section 4 allows." },
+          "notes": { "$ref": "#/$defs/notes" }
+        }
+      }
+    },
+    "sealedAt": { "type": ["string", "null"], "format": "date-time", "description": "Null until a person seals the set." },
+    "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$",
+                "description": "Null until sealed. Then the sha256 of the manifest's canonical JSON (sorted keys, no spaces) with sha256 itself removed." },
+    "notes": { "$ref": "#/$defs/notes" }
+  }
+}

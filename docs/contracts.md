@@ -373,3 +373,21 @@ Neither is in `expectrail.contracts.KINDS`. Both are read with a size cap, stric
 standard-library validator in `expectrail.gate.record`, and the store then checks what a schema
 cannot: only a completed job has a decision or an output, and no history leaves a final phase.
 
+
+## The blind set's manifest (added November 21)
+
+The format of a blind set's own index, for blind test 4 (#742; the set is #281, the protocol #282). The
+set's contents are held out; only the format, its example and its validator are public, and they are
+tested on synthetic sets only.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `blind-manifest` (`expectrail.blind-manifest/v1`, [`contracts/blind-manifest.v1.schema.json`](../contracts/blind-manifest.v1.schema.json), example [`blind-manifest.v1.json`](../contracts/examples/blind-manifest.v1.json)) | The set's author, by hand; `expectrail.blind_set.write` | `expectrail.blind_set.read`; `python3 -m expectrail.blind_set validate MANIFEST --project NAME=FOLDER ...` |
+
+The validator reports every unmet minimum of #282 section 3 with how many more it needs (size, no
+project above half the set, a quarter of wrong fixes screen-only, four candidates per family, six per kind
+of wrong fix, two correct fixes per defect written differently, each kind of change that is not a fix),
+missing ground truth, declared counts that disagree with the entries, and patches that are missing or do
+not apply (`git apply --check` on a copy of the project; a candidate on top of its defect). It never runs
+Expectrail on the set, and it prints ids and counts, never a description. `checkMeasured` is optional
+because Sean has not decided it.
