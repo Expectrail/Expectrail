@@ -1149,6 +1149,34 @@ python3 -m expectrail.jit.counting public-bench \
   --harmless-work /tmp/harmless --do-nothing-rows /tmp/dn/rows.json --out /tmp/public-counting.md
 ```
 
+### November 21, 2026 follow-up with all public routes (#675)
+
+Restoring four public route archives resolved all 11 checks that the November 20 audit could not run.
+**Seven passed the do-nothing control and four failed it. All 11 passed on both the clean game and the
+comment-only edit.** Each pass or fail below repeated three times on its arm. The other 126 checks
+reproduced their earlier repetitions and outcomes on both controls. [Commands and verification](new-work/2026-11-21-public-route-controls.md)
+
+| Public defect | Previously unrun check IDs | Do-nothing | Harmless |
+| --- | --- | --- | --- |
+| platforms-not-solid | `jit-r-jit-c4-repl-38`, `jit-r-jit-c5-repl-42` | 2 fail | 2 pass |
+| jump-always-full | `jit-hold-higher-than-tap` | 1 fail | 1 pass |
+| no-shooting-in-air | `jit-c4` | 1 pass | 1 pass |
+| no-shooting-in-air | `jit-c5` | 1 fail | 1 pass |
+| camera-stops-right | `jit-r-far-e1`, `jit-r-far-e2`, `jit-r-far-e3`, `jit-r-far-e6`, `jit-r-far-e7`, `jit-r-far-e8` | 6 pass | 6 pass |
+
+Of **91 legacy catches, 42 now drop and 49 remain** (previously 41 and 50). The newly dropped catch,
+`no-shooting-in-air / jit-c4`, requires equal projectile counts on the ground and in the air. With
+projectile creation disabled, both routes produced zero shots in each repetition, so the equality passed
+three times. This removes that defect's only legacy catch, bringing the number of defects losing every
+recorded catch from five to six. Of the 49 that remain, 27 fail the control and 22 are indeterminate.
+
+Across all 137 checks, the do-nothing control recorded **63 passes, 39 failures, 35 indeterminate and
+0 unrun**. Among the 135 that passed the recorded clean reference three times, the counts were 63, 39,
+33 and 0. The harmless control recorded **135 passes, 0 false rejections, 2 indeterminate and 0 unrun**.
+The same two enemy-facing checks lacked observations on both arms. All 137 checks remain advisory
+(0 counting), and the 24 frozen records contain 0 metamorphic rows. The candidate was visible when the
+checks were generated, and the public records lack authenticated producer and per-arm coverage provenance.
+
 ### Harmless control for each public trace check (#675)
 
 Add `--harmless-work NEW_DIRECTORY` to the public counting audit to replay the clean bundled game and a copy with the mutation bench's registered comment-only operator. Individual checks share captured repetitions when they require the same route and recording settings. The assessor requires complete observations and three consistent results on each arm. A false rejection requires three clean passes and three failures on the edit. An unavailable route is reported as unrun, and an unstable replay or inconclusive check remains indeterminate.
