@@ -37,9 +37,11 @@ of the verify workflow's earlier `pull_request` runs from the same head reposito
 include a head that was force-pushed away, and then the pull request's own commits. If those runs
 cannot be read, only the pull request's commits are swept and the job warns. A commit that is the
 head of any open pull request, such as a stacked branch's, is never touched, and if the open pull
-requests cannot be read in full nothing is swept and the job warns. A head older than the verify
-workflow's newest 100 runs on the branch is not reached; its clearance stays in progress, which
-never counts as cleared.
+requests cannot be read in full nothing is swept and the job warns. The runs are read 100 at a
+time until 20 earlier heads are found, up to 1,000 runs, so a head behind many re-runs is still
+reached. If a later page cannot be read, the heads already read are swept and the job warns. A head
+beyond that (older than the newest 20 earlier heads, or than 1,000 runs) is not reached; its
+clearance stays in progress, which never counts as cleared.
 
 Install a dedicated GitHub App on this repository with Checks read/write. In the protected
 `main-only` environment, set the variable `EXPECTRAIL_CHECKS_APP_ID` and secret
