@@ -2,17 +2,17 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Verification for coding agents’ changes | Expectrail</title><meta name="description" content="Expectrail checks a coding agent’s change against the running software: the runtime’s record and vision must agree, plain code decides, and an opt-in repair goes to a person for review.">
 <link rel="icon" href="brand/favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0b0a1d">
-<link rel="stylesheet" href="assets/front-door.css?v=023b8687d5"><script src="assets/nav.js?v=d863df3f97" defer></script><link rel="stylesheet" href="assets/home.css?v=e3bffdfda3"><script>document.documentElement.classList.add('js')</script><script src="assets/home.js?v=c6a7261ea5" defer></script></head><body class="home">
+<link rel="stylesheet" href="assets/front-door.css?v=023b8687d5"><script src="assets/nav.js?v=d863df3f97" defer></script><link rel="stylesheet" href="assets/home.css?v=4e65334dfd"><script>document.documentElement.classList.add('js')</script><script src="assets/home.js?v=c6a7261ea5" defer></script></head><body class="home">
 <a class="skip" href="#main">Skip to content</a>
 <div class="wrap"><header class="top"><a class="logo" href="./" aria-label="Expectrail, home"><img src="brand/expectrail-logo-reverse.svg" alt="Expectrail" width="150" height="35"></a>
-<button class="menu-toggle" type="button" aria-expanded="false" hidden><span class="menu-bars" aria-hidden="true"><i></i></span><span class="menu-label">Menu</span></button><nav aria-label="Sections"><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="guides.html">Guides</a><a href="positioning.html">Positioning</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Evidence ledger</a><a href="run-it/">Run it</a></nav></header></div>
+<button class="menu-toggle" type="button" aria-expanded="false" hidden><span class="menu-bars" aria-hidden="true"><i></i></span><span class="menu-label">Menu</span></button><nav aria-label="Sections"><a href="hub/">Hub</a><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="guides.html">Guides</a><a href="positioning.html">Positioning</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Evidence ledger</a><a href="run-it/">Run it</a></nav></header></div>
 <main id="main" class="wrap">
 <section class="hero" id="why-now" aria-labelledby="hero-title">
 <div class="hero-copy">
 <a class="hero-pill" href="#outside-vision"><span aria-hidden="true"></span>First outside game verified with vision</a>
 <h1 id="hero-title" class="reveal">Your agent says it fixed the bug. <em>Expectrail watches.</em></h1>
 <p class="lead reveal">It replays Godot changes on approved checks and routes, compares the engine’s record with available live or recorded visual evidence, and lets plain code decide. Repair is opt-in, and a person reviews any patch.</p>
-<div class="actions"><a class="button primary" href="quickstart.html">Start in six steps</a><a class="button" href="concepts.html">Understand a verdict</a><a class="button" href="run-it/">Run it status</a></div>
+<div class="actions"><a class="button primary" href="hub/">See the product</a><a class="button" href="quickstart.html">Start in six steps</a><a class="button" href="run-it/">Run it status</a></div>
 <p class="hero-install"><code>python3 -m pip install .</code> <span>Linux, Python 3.12+, from a checkout. Not on PyPI.</span></p>
 </div>
 <div class="switch" id="switch" data-switch aria-labelledby="switch-title">
@@ -37,6 +37,17 @@
 </dl>
 <p class="source">Case <code>bad/fall-through-sink-player</code>: <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/README.md">judge bench</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/detection/README.md">detection bench</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/glimmer/README.md">run 41230177124</a></p>
 </div>
+</div>
+</section>
+
+<section class="section product" id="product" aria-labelledby="product-title">
+<p class="eyebrow">The product, as recorded</p><h2 id="product-title">See what you would use, before you install</h2>
+<p>Four screens from recorded runs, each labelled with its date. Nothing here runs now. <a href="hub/">Open the project hub</a> to see them together.</p>
+<div class="grid four">
+<a class="card screen" href="hub/verify.html"><span class="pill">Recorded <time datetime="2026-11-17">17 Nov 2026</time></span><h3>Verify a change</h3><p>The local app, on Crate Run: pick the game before and after a change.</p></a>
+<a class="card screen" href="onboarding-examples/breakout.html"><span class="pill">Recorded <time datetime="2026-11-16">16 Nov 2026</time></span><h3>Set up a game</h3><p>The setup review for Breakout: the paddle and ball bindings, checks still drafts.</p></a>
+<a class="card screen" href="viewer-samples/clean.html"><span class="pill">Recorded <time datetime="2026-11-13">13 Nov 2026</time></span><h3>An accepted result</h3><p>The evidence viewer for the unchanged bundled game, frame by frame.</p></a>
+<a class="card screen" href="viewer-samples/fixture-repair.html"><span class="pill">Fixture, published <time datetime="2026-11-14">14 Nov 2026</time></span><h3>Repair evidence</h3><p>A patch and the fresh verdict on the repaired copy, from a stand-in fixer.</p></a>
 </div>
 </section>
 
@@ -246,6 +257,6 @@
 </ul></section>
 </main>
 
-<footer><div class="wrap"><div class="links"><a href="./">Expectrail</a><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="guides.html">Guides</a><a href="positioning.html">Positioning</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Capability ledger</a><a href="run-it/">Run it</a><a href="release/">Release dossier</a><a href="https://github.com/Expectrail/Expectrail">Source</a></div>
+<footer><div class="wrap"><div class="links"><a href="./">Expectrail</a><a href="hub/">Hub</a><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="guides.html">Guides</a><a href="positioning.html">Positioning</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Capability ledger</a><a href="run-it/">Run it</a><a href="release/">Release dossier</a><a href="https://github.com/Expectrail/Expectrail">Source</a></div>
 <p>Read the scope of a result before relying on it. <a href="concepts.html#clearance">A verdict is not release clearance.</a></p></div></footer>
 </body></html>
