@@ -12,7 +12,7 @@ STATUS = {200: 'OK', 202: 'Accepted', 204: 'No Content', 302: 'Found', 303: 'See
           405: 'Method Not Allowed', 413: 'Content Too Large', 500: 'Internal Server Error',
           502: 'Bad Gateway', 503: 'Service Unavailable'}
 SECURITY_HEADERS = [
-    ('Content-Security-Policy', "default-src 'none'; style-src 'self'; img-src 'self'; "
+    ('Content-Security-Policy', "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; "
                                 "form-action 'self' https://github.com; frame-ancestors 'none'; base-uri 'none'"),
     ('X-Content-Type-Options', 'nosniff'),
     # same-origin, not no-referrer: a browser sends `Origin: null` on a form POST under no-referrer, and
@@ -84,6 +84,7 @@ def page(title, body, *, status=200, headers=(), signed_in=None):
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{escape(title)} · Expectrail</title>
 <link rel="stylesheet" href="/assets/expectrail.css"><link rel="stylesheet" href="/assets/hub.css">
+<link rel="stylesheet" href="/assets/hub-fonts.css">
 </head>
 <body>
 <header class="mast"><div class="bar"><a class="wordmark" href="/">Expectrail</a><span class="place">Hub</span>{account}</div></header>
