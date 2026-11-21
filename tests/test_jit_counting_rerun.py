@@ -112,7 +112,9 @@ class CustomRoutes(unittest.TestCase):
         probe = jit_library(actions)[0]
         route = compile_route(probe['program'], name=probe['id'], description=probe['description'], actions=actions)
         with tempfile.TemporaryDirectory() as tmp:
-            folder = Path(tmp) / 'repro-example'
+            # CI's temporary folder is reached through a link, which the reader refuses: work in the real path.
+            tmp = Path(tmp).resolve()
+            folder = tmp / 'repro-example'
             (folder / 'jit-routes').mkdir(parents=True)
             (folder / 'jit-routes' / 'jit-r-made-up.json').write_text(json.dumps(route))
             self.assertEqual(counting.public_custom_route(folder, 'r-made-up', digest_v1(route)), route)
@@ -121,6 +123,9 @@ class CustomRoutes(unittest.TestCase):
             self.assertIsNone(counting.public_custom_route(folder, 'r-made-up', None))
             self.assertIsNone(counting.public_custom_route(folder, 'r-absent', digest_v1(route)))
             self.assertIsNone(counting.public_custom_route(folder, '../r-made-up', digest_v1(route)))
+            # A route reached through a link is refused even with the right digest.
+            (folder / 'jit-routes' / 'jit-r-linked.json').symlink_to(folder / 'jit-routes' / 'jit-r-made-up.json')
+            self.assertIsNone(counting.public_custom_route(folder, 'r-linked', digest_v1(route)))
 
     def test_the_do_nothing_tool_runs_a_supplied_custom_route(self):
         from tests.test_discovery import FakeGame
@@ -133,9 +138,10 @@ class CustomRoutes(unittest.TestCase):
             return {"engine": {"version": "stand-in"}, "game": {"patchSha256": None}}
 
         with tempfile.TemporaryDirectory() as tmp:
-            recs = Path(tmp) / 'records'
+            tmp = Path(tmp).resolve()  # the record reader refuses a path through a link
+            recs = tmp / 'records'
             shutil.copytree(RECORDS, recs)
-            base = tool.measure(Path(tmp) / 'w1', records=recs, runner=runner)
+            base = tool.measure(tmp / 'w1', records=recs, runner=runner)
             custom = [r for r in base['rows'] if r['reason'] and r['reason'].startswith('route not in the probe library')]
             self.assertTrue(custom)
             # Every row names its record and check by digest, so the audit can bind it.
@@ -153,7 +159,7 @@ class CustomRoutes(unittest.TestCase):
             folder.mkdir(exist_ok=True)
             for pid in missing:
                 (folder / ('jit-' + pid.removeprefix('jit-') + '.json')).write_text(json.dumps(next(iter(library.values()))))
-            again = tool.measure(Path(tmp) / 'w2', records=recs, runner=runner)
+            again = tool.measure(tmp / 'w2', records=recs, runner=runner)
             row = next(r for r in again['rows'] if (r['defect'], r['check']) == (target['defect'], target['check']))
             self.assertEqual(row['outcome'], 'not-run')
             self.assertIn('not supplied beside the record', row['reason'])
