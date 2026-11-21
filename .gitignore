@@ -2,6 +2,7 @@
 .godot/
 /runs/
 /tools/*
+!/tools/build_deb.py
 !/tools/template_sensor_closeout.py
 !/tools/__init__.py
 !/tools/merge_guard.py

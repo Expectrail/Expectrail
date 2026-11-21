@@ -187,8 +187,8 @@ or **Cancel**. Reloading the page clears the selected job from the screen; it do
 it. Stop the app with Ctrl+C to cancel unfinished jobs. A restart uses a new token and
 lists the same stored jobs without granting access to their report or viewer files.
 
-An installer and a trial with a person unfamiliar with terminals remain open. Browser and
-real-replay evidence for this slice is named in its work log; automated use is not a first-user trial.
+Ubuntu 24.04 amd64 has a [desktop package for internal rehearsal](install.md#install-and-open-the-local-app).
+A timed first session with a developer on their own project remains open.
 
 ## Auto-fix checkbox
 
