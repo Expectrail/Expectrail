@@ -9,10 +9,9 @@ demonstration until after their session record is closed.
 **Before they start.** Ask permission to observe and take redacted notes. Use
 trusted local copies they have permission to run. Ask whether they allow draft
 files to be written to those copies. Omit private source, screenshots without
-permission, credentials and app access URLs. Agree on a time limit. Give them
-the wheel and the [install instructions](install.md#install-and-open-the-local-app),
-or access to the installed app if that is what you are testing. Record what you
-prepared, including project setup and available observers. This protocol uses
+permission, credentials and app access URLs. Agree on a time limit. For a fresh installation,
+give them the package for their platform and the [install instructions](install.md#install-and-open-the-local-app). For an installed-app session, record that starting point.
+In both cases, record what you prepared, including project setup and available observers. This protocol uses
 existing check approvals and requires no paid model calls.
 
 **Read aloud.** “Use Expectrail to check a change you care about in your game.
