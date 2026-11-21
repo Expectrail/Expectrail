@@ -169,9 +169,13 @@ the patch the fixer writes.
 
 When the camera tracks the subject, express a positional predicate relative to another object
 in the same captured coordinate space. Use `relativeTo` where the assertion supports it, or a
-named reference binding for an assertion such as `reaches`. An absolute captured coordinate is
-sound only when the camera stays fixed on the asserted axis. World-space measurements from the
-engine trace use the trace's own coordinate system.
+named reference binding for an assertion such as `reaches`. An absolute captured coordinate
+can stand in for a world-position requirement only when the camera stays fixed on the asserted
+axis. World-space measurements from the engine trace use the trace's own coordinate system.
+
+For a viewport requirement, the capture edges are the reference. The
+[rightward traversal check](measurements/727-camera-viewport.md) compares the projected box
+with those edges and uses a separate world-space checkpoint to establish the traversal.
 
 In the [opening walk measurement](measurements/727-opening-walk.md), the player moved from
 world x=90 to x=216.25. The camera followed the player, so the projected left edge remained at
