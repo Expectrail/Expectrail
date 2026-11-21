@@ -197,6 +197,41 @@ class CheckTest(unittest.TestCase):
         doc["recordSha256"] = contracts.digest_v1(findings)
         self.assertTrue(xpl.check(doc, findings, "reject"))
 
+    def test_a_route_name_cannot_override_the_meaning_of_a_word(self):
+        for name, text in (("accepted", "The change is accepted."),
+                           ("not", "It is not a regression."),
+                           ("always", "It always fails."),
+                           ("unchanged", "The result is unchanged.")):
+            with self.subTest(route=name):
+                findings = record()
+                row = findings["checks"][0]
+                route = next(r for r in findings["routes"] if r["name"] == row["route"])
+                finding = next(f for f in findings["findings"] if f["id"] == row["findingId"])
+                route["name"] = row["route"] = finding["route"] = name
+                row["findingId"] = finding["id"] = rec.finding_id(row["spec"], name, finding["kind"])
+                rec.check_record(findings)
+                cid = f"check:{row['spec']}@{name}"
+                doc = one_point(text, cites=[cid], says={cid: {"after": "fail"}})
+                doc["recordSha256"] = contracts.digest_v1(findings)
+                self.assertFalse(xpl.shown(doc, findings, "reject")["shown"])
+                doc["points"][0]["text"] = f"{cid} fails."
+                self.assertEqual(xpl.check(doc, findings, "reject"), [])
+
+    def test_a_matching_run_decision_cannot_mislabel_a_cited_check(self):
+        findings = record()
+        smoke = next(c for c in findings["checks"] if c["route"] == "smoke")
+        smoke.update(after="pass", comparison="PRESERVED", findingId=None)
+        findings["findings"] = [f for f in findings["findings"] if f["id"] == FINDING]
+        findings["counts"].update(passed=1, failed=1)
+        findings["reasons"][0] = "1 of 2 public checks fail after the change"
+        rec.check_record(findings)
+        cid = "check:player-stays-above-ground@smoke"
+        for cites in ([cid], [FINDING, cid]):
+            with self.subTest(cites=cites):
+                doc = one_point("The smoke check is rejected.", cites=cites, says={cid: {"after": "pass"}})
+                doc["recordSha256"] = contracts.digest_v1(findings)
+                self.assertFalse(xpl.shown(doc, findings, "reject")["shown"])
+
     def test_on_an_accept_a_fixed_check_is_not_the_same(self):
         # The accept-side mirror: the check failed before and passes after.
         fixed = accept_record()
