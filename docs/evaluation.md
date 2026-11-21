@@ -165,6 +165,19 @@ That gives each verdict a label, so "defects caught" and "false alarms" are meas
 eye. The trace is the verifier's instrumentation: it is added at run time by the harness, outside
 the patch the fixer writes.
 
+## Frame of reference for positional predicates
+
+When the camera tracks the subject, express a positional predicate relative to another object
+in the same captured coordinate space. Use `relativeTo` where the assertion supports it, or a
+named reference binding for an assertion such as `reaches`. An absolute captured coordinate is
+sound only when the camera stays fixed on the asserted axis. World-space measurements from the
+engine trace use the trace's own coordinate system.
+
+In the [opening walk measurement](measurements/727-opening-walk.md), the player moved from
+world x=90 to x=216.25. The camera followed the player, so the projected left edge remained at
+x=370.5 across frames 15–34. The draft measures arrival against a named coin in the same captured
+coordinate space.
+
 ## Gameplay checks (verifier side)
 
 A fix must keep the game playable. On the smoke route, the clean game:

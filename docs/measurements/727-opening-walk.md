@@ -27,10 +27,12 @@ within each arm.
 | [Comment-only edit](../../agents/fixtures/operators/comment-only.patch) | 3/3 pass | Reached at frame 23 | 90 → 216.25 |
 | [Half speed](../../bugs/verification-727/opening-walk-half-speed.patch) | 3/3 pass | Reached at frame 34 | 90 → 159.375 |
 
-The draft returned a decisive failure under the same-input freeze. Half speed was the first tested
-defect and made contact on the final eligible frame. The draft's content stayed fixed when the
-wrong-direction case was added. This is evidence for the specific arrival obligation in Q1 and
-for observed opportunity in Q3.
+The frozen-player do-nothing control gave a decisive fail in all three runs, with a complete
+31-frame window each time. Half speed was the first tested defect and made contact on the final
+eligible frame. The draft's content stayed fixed when the wrong-direction case was added. The
+draft checks direction and arrival within the window. A speed check requires a separate
+obligation. The [family coverage table](721-family-coverage.md) records that limit alongside
+the Q1 and Q3 evidence.
 
 In six separate engine-only comparisons with the legacy bundled observation mapping, the
 [existing ground assertion](../../agents/specs/player-stays-above-ground.json) passed wrong
