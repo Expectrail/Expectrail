@@ -1,0 +1,17 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "player-reaches-opening-coin",
+  "instruction": "On the smoke route, the player reaches the first coin in the opening row before the first jump.",
+  "objects": {
+    "player": {"prompt": "blue player robot"},
+    "goal": {"prompt": "first gold coin in the opening row"}
+  },
+  "assertion": {
+    "type": "reaches",
+    "object": "player",
+    "goal": "goal",
+    "distancePx": 0
+  },
+  "window": {"fromFrame": 4, "toFrame": 34},
+  "coverage": {"routes": ["smoke"], "minFrames": 31}
+}
