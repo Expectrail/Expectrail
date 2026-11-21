@@ -19,6 +19,10 @@ table records the precise scope and the four public controls for Q1–Q3.
 - The documented command reproduced the four main controls with identical verdicts. Verified
   16 relative documentation links and fetched the required historic commit.
 - `python3 -m unittest discover -s tests -t .` passed with 5,805 tests reported and 82 skipped.
+- During review, measured the spawn overhang and all four clean edge clearances, and linked
+  the upper-enemy result to the Q1 coverage proposal. The updated command ran 18 replays on
+  `6335e61`. All judged the full window. The new post-turn freeze passed 3/3 at x=669.941.
+  The full suite rerun reported 5,855 tests, 82 skipped and zero failures.
 
 ## Not done
 
