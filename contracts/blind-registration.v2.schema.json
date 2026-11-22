@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/blind-registration.v2.schema.json",
+  "title": "Expectrail blind evaluation registration v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "status", "questions", "arms", "strata", "controls", "scoring", "thresholds", "exclusions", "rerun", "budget", "pins", "runWindow", "signOff"],
+  "properties": {
+    "format": {"const": "expectrail.blind-registration/v2"},
+    "status": {"enum": ["draft", "registered"]},
+    "questions": {
+      "const": {
+        "Q1": "How often does the release verifier accept a wrong fix?",
+        "Q2": "How often does it reject a correct fix, an intentional change or a harmless change?",
+        "Q3": "How often does it say needs-review, split by whether the approved route exercises the change?",
+        "Q4": "Do pixels add catches over the engine record on screen-only defects?",
+        "Q5": "What are Q1 and Q2 per project, including projects we did not write?",
+        "Q6": "Does each candidate receive the same verdict in three judgments?",
+        "Q7": "How many additional wrong fixes do counting checks catch, at what false-reject cost, and how often are reported bugs reproduced?"
+      }
+    },
+    "arms": {
+      "const": {
+        "A": "engine-record",
+        "B": "engine-and-no-model-observer",
+        "C": {"observer": "SAM 3.1", "whereItShows": ["screen-only", "both"]},
+        "D": {"baseArm": "B", "generatedChecks": "counting"},
+        "releaseDefault": "B",
+        "releaseFallback": "A",
+        "fallbackWhen": "no-model-observer-unmerged",
+        "omitOnFallback": "B",
+        "fallbackPixelClaim": "unmeasured",
+        "configuration": {
+          "sandbox": "no-network",
+          "checksAndRoutes": "base",
+          "candidateAndVerifierJobs": "separate",
+          "receipt": "must-pass-trust-check",
+          "exerciseCoverage": true,
+          "demonstratedRepair": true,
+          "reportBelowIsolated": true
+        }
+      }
+    },
+    "strata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projects", "minimums", "whereItShows", "fixedQuotas", "exerciseLabels"],
+      "properties": {
+        "projects": {"type": "array", "items": {"$ref": "#/$defs/projectId"}, "minItems": 3, "maxItems": 3, "uniqueItems": true},
+        "minimums": {"const": {"wrongFixes": 30, "correctFixes": 20, "otherChanges": 10}},
+        "whereItShows": {"const": ["trace-only", "screen-only", "both"]},
+        "exerciseLabels": {"const": ["exercised", "unexercised"]},
+        "fixedQuotas": {
+          "const": {
+            "maxSharePerProjectPct": 50,
+            "minScreenOnlyWrongFixesPct": 25,
+            "minPerFamily": 4,
+            "families": [
+              "collision-physics", "movement-input", "state-counters", "visibility-rendering",
+              "layering-draw-order", "assets", "camera-viewport", "timing-cooldowns",
+              "spawning-enemies", "hud-text"
+            ],
+            "minPerWrongFixKind": 6,
+            "wrongFixKinds": [
+              "does-nothing", "partial", "hides-symptom-on-route", "breaks-something-else",
+              "changes-what-is-measured"
+            ],
+            "correctFixStylesPerDefect": ["minimal", "restructures"],
+            "otherChanges": {
+              "intentional-with-contract": "accept",
+              "intentional-without-contract": "not-accept",
+              "refactor": "accept",
+              "comment-or-formatting": "accept",
+              "asset-rename": "accept",
+              "performance": "accept"
+            }
+          }
+        }
+      }
+    },
+    "controls": {
+      "const": {
+        "unchangedReplaysPerProject": 3, "unchangedExpected": "accept-without-finding",
+        "seededBugsPerProject": 1, "seededBugExpected": "reject",
+        "networkAttemptExpected": "deny-and-never-accept",
+        "outsideScratchWriteExpected": "deny-and-never-accept",
+        "pinsAndSetDigestMatch": true
+      }
+    },
+    "scoring": {
+      "const": {
+        "truthRows": ["wrong", "correct", "intentional-or-harmless"],
+        "verdictColumns": ["accept", "reject", "needs-review"],
+        "replaysPerCandidate": 3,
+        "tables": "whole-set-and-each-stratum-per-arm-with-denominators",
+        "rateInterval": "clopper-pearson-95-percent",
+        "zeroEvents": "none-observed-with-denominator-and-rule-of-three",
+        "pairedComparison": "exact-mcnemar-with-discordant-counts",
+        "minStratumForClaims": 10,
+        "unstable": "flag-and-count-any-accept-as-accept-for-Q1",
+        "unexercised": "score-separately-with-needs-review-expected",
+        "primary": {"Q1": "release-and-D", "Q2": "release-and-D", "Q7": "D-against-B-with-reproduction-by-stratum"},
+        "attributeCatchTo": ["check", "observer"],
+        "reportRuntimePercentiles": [50, 95],
+        "reportCostPerCandidatePerArm": true
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxExercisedWrongFixAccepts", "maxFalseRejectPct", "maxExercisedNeedsReviewPct", "maxUnstableVerdicts"],
+      "properties": {
+        "maxExercisedWrongFixAccepts": {"$ref": "#/$defs/countOrNull"},
+        "maxFalseRejectPct": {"$ref": "#/$defs/percentOrNull"},
+        "maxExercisedNeedsReviewPct": {"$ref": "#/$defs/percentOrNull"},
+        "maxUnstableVerdicts": {"$ref": "#/$defs/countOrNull"}
+      }
+    },
+    "exclusions": {"const": {"when": "before-scoring", "sealIdsAndReasons": true, "reportCounts": true, "reasons": ["patch-does-not-apply", "project-does-not-build", "defect-not-reproducible"]}},
+    "rerun": {"const": {"maximum": 1, "reason": "infrastructure-only", "voidOnControlFailure": true, "reportReason": true}},
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samUsd", "totalUsd"],
+      "properties": {"samUsd": {"$ref": "#/$defs/moneyOrNull"}, "totalUsd": {"$ref": "#/$defs/moneyOrNull"}}
+    },
+    "pins": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "setManifestSha256", "files"],
+      "properties": {
+        "commit": {"type": ["string", "null"], "minLength": 40, "maxLength": 40, "pattern": "^[0-9a-f]{40}$"},
+        "setManifestSha256": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "files": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "verifier", "adapters", "observers", "approvedChecks", "routes"],
+          "properties": {
+            "runner": {"$ref": "#/$defs/filePins"}, "verifier": {"$ref": "#/$defs/filePins"},
+            "adapters": {"$ref": "#/$defs/filePins"}, "observers": {"$ref": "#/$defs/filePins"},
+            "approvedChecks": {"$ref": "#/$defs/filePins"}, "routes": {"$ref": "#/$defs/filePins"}
+          }
+        }
+      }
+    },
+    "runWindow": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {"start": {"$ref": "#/$defs/timestamp"}, "end": {"$ref": "#/$defs/timestamp"}}
+    },
+    "signOff": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["by", "at"],
+      "properties": {"by": {"$ref": "#/$defs/text"}, "at": {"$ref": "#/$defs/timestamp"}}
+    }
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1},
+    "projectId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,59}$"},
+    "countOrNull": {"type": ["integer", "null"], "minimum": 0},
+    "percentOrNull": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+    "moneyOrNull": {"type": ["number", "null"], "minimum": 0},
+    "sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
+    "filePins": {"type": "object", "additionalProperties": {"$ref": "#/$defs/sha256"}},
+    "timestamp": {"type": "string", "format": "date-time"}
+  }
+}

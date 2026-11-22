@@ -391,3 +391,28 @@ missing ground truth, declared counts that disagree with the entries, and patche
 not apply (`git apply --check` on a copy of the project; a candidate on top of its defect). It never runs
 Expectrail on the set, and it prints ids and counts, never a description. `checkMeasured` is optional
 because Sean has not decided it.
+
+## The public evaluation registration (added November 22)
+
+[`expectrail.blind-registration/v2`](../contracts/blind-registration.v2.schema.json) records the evaluation
+protocol fixed before a release run. It carries Q1–Q7, the four arms and the release fallback, set minima and
+strata, controls, scoring, thresholds, exclusions, the one infrastructure rerun, budgets, file pins, the run
+window and sign-off. The allowed controls, scoring and quota values come from the [public protocol](https://github.com/Expectrail/Expectrail/issues/282).
+
+The [synthetic example](../contracts/examples/blind-registration.v2.json) is a draft with empty decision
+fields. A registered record must provide all four claim thresholds, both budget caps, the set digest, a
+verifier commit, file digests by role and a reviewer's sign-off dated before the run window. Sean supplies
+those values. The reader checks the document and its internal consistency. A recorded sign-off is metadata
+and the operator remains responsible for confirming it and matching the run inputs to the pins.
+
+From a checkout:
+
+```sh
+python3 -m expectrail.jit.registration check contracts/examples/blind-registration.v2.json
+python3 -m expectrail.jit.registration check REGISTRATION.json --require-registered
+python3 -m expectrail.jit.registration write REGISTRATION.json CANONICAL_COPY.json
+```
+
+The writer preserves the caller's decisions and creates a new file with canonical JSON. The v0
+`jit-blind-preregistration` format used by the November 10 measurement is out of format for this reader.
+The existing v0 runner retains its existing reader.

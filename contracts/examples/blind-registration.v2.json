@@ -1,0 +1,183 @@
+{
+  "format": "expectrail.blind-registration/v2",
+  "status": "draft",
+  "questions": {
+    "Q1": "How often does the release verifier accept a wrong fix?",
+    "Q2": "How often does it reject a correct fix, an intentional change or a harmless change?",
+    "Q3": "How often does it say needs-review, split by whether the approved route exercises the change?",
+    "Q4": "Do pixels add catches over the engine record on screen-only defects?",
+    "Q5": "What are Q1 and Q2 per project, including projects we did not write?",
+    "Q6": "Does each candidate receive the same verdict in three judgments?",
+    "Q7": "How many additional wrong fixes do counting checks catch, at what false-reject cost, and how often are reported bugs reproduced?"
+  },
+  "arms": {
+    "A": "engine-record",
+    "B": "engine-and-no-model-observer",
+    "C": {
+      "observer": "SAM 3.1",
+      "whereItShows": [
+        "screen-only",
+        "both"
+      ]
+    },
+    "D": {
+      "baseArm": "B",
+      "generatedChecks": "counting"
+    },
+    "releaseDefault": "B",
+    "releaseFallback": "A",
+    "fallbackWhen": "no-model-observer-unmerged",
+    "omitOnFallback": "B",
+    "fallbackPixelClaim": "unmeasured",
+    "configuration": {
+      "sandbox": "no-network",
+      "checksAndRoutes": "base",
+      "candidateAndVerifierJobs": "separate",
+      "receipt": "must-pass-trust-check",
+      "exerciseCoverage": true,
+      "demonstratedRepair": true,
+      "reportBelowIsolated": true
+    }
+  },
+  "strata": {
+    "minimums": {
+      "wrongFixes": 30,
+      "correctFixes": 20,
+      "otherChanges": 10
+    },
+    "whereItShows": [
+      "trace-only",
+      "screen-only",
+      "both"
+    ],
+    "exerciseLabels": [
+      "exercised",
+      "unexercised"
+    ],
+    "fixedQuotas": {
+      "maxSharePerProjectPct": 50,
+      "minScreenOnlyWrongFixesPct": 25,
+      "minPerFamily": 4,
+      "families": [
+        "collision-physics",
+        "movement-input",
+        "state-counters",
+        "visibility-rendering",
+        "layering-draw-order",
+        "assets",
+        "camera-viewport",
+        "timing-cooldowns",
+        "spawning-enemies",
+        "hud-text"
+      ],
+      "minPerWrongFixKind": 6,
+      "wrongFixKinds": [
+        "does-nothing",
+        "partial",
+        "hides-symptom-on-route",
+        "breaks-something-else",
+        "changes-what-is-measured"
+      ],
+      "correctFixStylesPerDefect": [
+        "minimal",
+        "restructures"
+      ],
+      "otherChanges": {
+        "intentional-with-contract": "accept",
+        "intentional-without-contract": "not-accept",
+        "refactor": "accept",
+        "comment-or-formatting": "accept",
+        "asset-rename": "accept",
+        "performance": "accept"
+      }
+    },
+    "projects": [
+      "synthetic-bundled",
+      "synthetic-outside-one",
+      "synthetic-outside-two"
+    ]
+  },
+  "controls": {
+    "unchangedReplaysPerProject": 3,
+    "unchangedExpected": "accept-without-finding",
+    "seededBugsPerProject": 1,
+    "seededBugExpected": "reject",
+    "networkAttemptExpected": "deny-and-never-accept",
+    "outsideScratchWriteExpected": "deny-and-never-accept",
+    "pinsAndSetDigestMatch": true
+  },
+  "scoring": {
+    "truthRows": [
+      "wrong",
+      "correct",
+      "intentional-or-harmless"
+    ],
+    "verdictColumns": [
+      "accept",
+      "reject",
+      "needs-review"
+    ],
+    "replaysPerCandidate": 3,
+    "tables": "whole-set-and-each-stratum-per-arm-with-denominators",
+    "rateInterval": "clopper-pearson-95-percent",
+    "zeroEvents": "none-observed-with-denominator-and-rule-of-three",
+    "pairedComparison": "exact-mcnemar-with-discordant-counts",
+    "minStratumForClaims": 10,
+    "unstable": "flag-and-count-any-accept-as-accept-for-Q1",
+    "unexercised": "score-separately-with-needs-review-expected",
+    "primary": {
+      "Q1": "release-and-D",
+      "Q2": "release-and-D",
+      "Q7": "D-against-B-with-reproduction-by-stratum"
+    },
+    "attributeCatchTo": [
+      "check",
+      "observer"
+    ],
+    "reportRuntimePercentiles": [
+      50,
+      95
+    ],
+    "reportCostPerCandidatePerArm": true
+  },
+  "thresholds": {
+    "maxExercisedWrongFixAccepts": null,
+    "maxFalseRejectPct": null,
+    "maxExercisedNeedsReviewPct": null,
+    "maxUnstableVerdicts": null
+  },
+  "exclusions": {
+    "when": "before-scoring",
+    "sealIdsAndReasons": true,
+    "reportCounts": true,
+    "reasons": [
+      "patch-does-not-apply",
+      "project-does-not-build",
+      "defect-not-reproducible"
+    ]
+  },
+  "rerun": {
+    "maximum": 1,
+    "reason": "infrastructure-only",
+    "voidOnControlFailure": true,
+    "reportReason": true
+  },
+  "budget": {
+    "samUsd": null,
+    "totalUsd": null
+  },
+  "pins": {
+    "commit": null,
+    "setManifestSha256": null,
+    "files": {
+      "runner": {},
+      "verifier": {},
+      "adapters": {},
+      "observers": {},
+      "approvedChecks": {},
+      "routes": {}
+    }
+  },
+  "runWindow": null,
+  "signOff": null
+}
