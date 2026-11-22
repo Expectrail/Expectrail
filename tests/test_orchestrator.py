@@ -1354,8 +1354,8 @@ class LostWorkerTest(Case):
         wait_for(lambda: other.poll() is not None, what="the job's other process stopping")
 
     def test_a_process_is_signalled_only_while_it_still_names_the_job(self):
-        # Between the look and the signal a process number can pass to another program. The signal goes
-        # to a handle on the process, after its environment is read again through that hold.
+        # Both signalling paths must recheck the marker. The /proc path must use the handle
+        # when one is available, even if the number is also still valid.
         job = self.job()
         proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
         self.started.append(proc)
@@ -1365,9 +1365,14 @@ class LostWorkerTest(Case):
             st._signal(proc.pid, marker, signal.SIGKILL)
         time.sleep(0.2)
         self.assertIsNone(proc.poll())
-        with mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
-            st._signal(proc.pid, marker, signal.SIGKILL)
-        wait_for(lambda: proc.poll() is not None, what="the process stopping through its handle")
+        if Path("/proc/self/environ").exists():
+            with mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+                self.assertEqual(st._signal(proc.pid, marker, signal.SIGKILL), "handle")
+        else:
+            with mock.patch.object(st.os, "kill", wraps=os.kill) as kill:
+                self.assertEqual(st._signal(proc.pid, marker, signal.SIGKILL), "number")
+            kill.assert_called_once_with(proc.pid, signal.SIGKILL)
+        wait_for(lambda: proc.poll() is not None, what="the marked process stopping")
         st._signal(proc.pid, marker, signal.SIGKILL)   # gone: nothing happens, nothing is raised
 
     def marked(self, job: str) -> subprocess.Popen:
@@ -1578,10 +1583,16 @@ class LostWorkerTest(Case):
     def test_where_processes_cannot_be_looked_for_the_job_says_so(self):
         job = self.job()
         with mock.patch.object(st, "processes_of", return_value=None):
-            self.assertIsNone(st.stop_job(job))
+            if Path("/proc/self/environ").exists():
+                self.assertIsNone(st.stop_job(job))
+                detail = "could not be looked for on this system"
+            else:
+                detail = "could not look for the job's processes; could not confirm they stopped"
+                with self.assertRaisesRegex(st.StoreError, detail):
+                    st.stop_job(job)
             status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
         self.assertEqual(status["phase"], "failed")
-        self.assertIn("could not be looked for on this system", " ".join(status["reasons"]))
+        self.assertIn(detail, " ".join(status["reasons"]))
 
     def test_the_harness_passes_the_jobs_id_on_and_nothing_else_new(self):
         from harness import run as hr
