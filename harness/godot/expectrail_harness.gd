@@ -8,6 +8,7 @@ extends Node
 ## [--bindings=<json>]  the project's bindings, passed as values (a node or a group, and its texture).
 ##                      The runner reads expectrail.project.json and puts only those values here, so
 ##                      the path is not one from the host: inside the sandbox the game is a copy.
+## [--ui-label-paths=<json>]  exact scene-relative paths of visible integer Labels to record.
 ##
 ## Each trace row also carries, when the level has tile layers:
 ##   ground: world y of the solid surface under the player (see _ground_under), from the level's
@@ -55,6 +56,7 @@ var _tick: int = 0
 var _trace: Array = []
 var _trace_path: String = ""
 var _record_ui_integers := false
+var _ui_label_paths: Array[String] = []
 var _player_name: String = "Player"
 var _player_node: String = ""
 var _player_group: String = ""
@@ -127,6 +129,9 @@ func _ready() -> void:
 			int(ProjectSettings.get_setting("display/window/size/viewport_height", get_window().size.y)))
 	_trace_path = args.get("trace", "")
 	_record_ui_integers = args.get("ui-integers", "false") == "true"
+	if args.has("ui-label-paths") and not _take_ui_label_paths(args["ui-label-paths"]):
+		_stop("expectrail: --ui-label-paths must contain at most 16 valid scene-relative Label paths")
+		return
 	_capture_fps = int(args.get("capture-fps", "0"))
 	if _capture_fps > 0:
 		RenderingServer.frame_pre_draw.connect(_capture_placement)
@@ -407,6 +412,8 @@ func record() -> void:
 	var row := {"tick": _tick, "frame": Engine.get_frames_drawn()}
 	if _record_ui_integers:
 		row["uiIntegers"] = _ui_integers()
+	if not _ui_label_paths.is_empty():
+		row["uiLabelIntegers"] = _bound_ui_integers()
 	if _player != null:
 		row["player"] = [snappedf(_player.global_position.x, 0.001), snappedf(_player.global_position.y, 0.001)]
 		# Lifecycle state, not evidence that the sprite was drawn (vision still judges that).
@@ -558,6 +565,38 @@ func _finish() -> void:
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
 	get_tree().quit(0)
+
+
+func _take_ui_label_paths(value: String) -> bool:
+	var paths = JSON.parse_string(value)
+	if not paths is Array or paths.size() > 16:
+		return false
+	var pattern := RegEx.create_from_string("\\A[A-Za-z0-9_][A-Za-z0-9_-]*(/[A-Za-z0-9_][A-Za-z0-9_-]*)*\\z")
+	for path in paths:
+		if not path is String or path.length() > 512 or pattern.search(path) == null:
+			return false
+		if not _ui_label_paths.has(path):
+			_ui_label_paths.append(path)
+	_ui_label_paths.sort()
+	return true
+
+
+func _bound_ui_integers() -> Dictionary:
+	var scene := get_tree().current_scene
+	var values := {}
+	for path in _ui_label_paths:
+		values[path] = null
+		if scene == null:
+			continue
+		var label := scene.get_node_or_null(NodePath(path)) as Label
+		if label == null or not label.is_visible_in_tree():
+			continue
+		var text := label.text
+		if text.length() <= 12 and text.is_valid_int():
+			var number := text.to_int()
+			if absi(number) <= 1000000000:
+				values[path] = number
+	return values
 
 
 func _ui_integers():

@@ -177,11 +177,73 @@ def browser_rehearsal():
                   'concurrent chooser prevention, manual-edit preservation and field errors passed. '
                   'Recent folders reopened on both sides, with stale entries and late replies checked. '
                   '6 empty-body chooser requests, 0 jobs, 0 page errors, no overflow at 390 px.')
+            rehearse_before_suggestion(browser, fixture, native)
             rehearse_folder_drop(browser, fixture, native)
             browser.close()
     finally:
         release.set()
         fixture.doCleanups()
+
+
+def rehearse_before_suggestion(browser, fixture, native):
+    from playwright.sync_api import expect
+
+    after = test_app_projects.configured_project(fixture.root / 'Garden-after')
+    before = test_app_projects.configured_project(fixture.root / 'Garden-before')
+    page = browser.new_page(viewport={'width': 390, 'height': 844})
+    url = f'http://127.0.0.1:{fixture.port}/?token={fixture.token}'
+    page.goto(url)
+    before_field, after_field = page.locator('#before'), page.locator('#after')
+    use = page.get_by_role('button', name='Use as Before', exact=True)
+    native.return_value = str(after)
+    page.get_by_role('button', name='Choose After folder', exact=True).click()
+    expect(use).to_be_visible()
+    expect(page.locator('#suggested-folder')).to_have_text(str(before))
+    expect(before_field).to_have_value('')
+    fixture.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'), 390)
+    use.focus()
+    use.press('Enter')
+    expect(before_field).to_have_value(str(before))
+    expect(use).to_be_hidden()
+    page.get_by_role('button', name='Check folders').click()
+    expect(page.locator('#inspection-before')).to_contain_text('smoke')
+    expect(page.locator('#inspection-after')).to_contain_text('smoke')
+
+    page.goto(url)
+    recent = page.get_by_label('Recent After folders', exact=True)
+    recent.select_option(str(after))
+    expect(use).to_be_visible()
+    before_field.fill('my own choice')
+    expect(use).to_be_hidden()
+    recent.select_option(str(after))
+    expect(page.locator('#after-feedback')).to_contain_text('After folder selected.')
+    expect(use).to_be_hidden()
+    expect(before_field).to_have_value('my own choice')
+
+    before_field.fill('')
+    after_field.fill(str(after / 'project.godot'))
+    after_field.press('Tab')
+    expect(use).to_be_visible()
+    after_field.fill(str(fixture.root))
+    expect(use).to_be_hidden()
+    with page.expect_response(lambda response: response.url.endswith('/api/projects/check')):
+        after_field.press('Tab')
+
+    def edit_while_checking(route):
+        reply = route.fetch()
+        # Both fields return to their original values before the older reply arrives.
+        before_field.fill('my own choice')
+        before_field.fill('')
+        route.fulfill(response=reply)
+
+    page.route('**/api/projects/check', edit_while_checking, times=1)
+    with page.expect_response(lambda response: response.url.endswith('/api/projects/check')):
+        recent.select_option(str(after))
+    expect(page.locator('#after-feedback')).to_contain_text('After folder selected.')
+    expect(use).to_be_hidden()
+    expect(before_field).to_have_value('')
+    fixture.assertEqual(fixture.server.app.history()['jobs'], [])
+    page.close()
 
 
 def rehearse_folder_drop(browser, fixture, native):

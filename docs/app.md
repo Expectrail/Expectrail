@@ -17,6 +17,11 @@ The app serves its own page without downloading scripts, styles or fonts.
 1. Select **Choose Before folder** and pick the copy from before your change. Select
    **Choose After folder** and pick the changed copy. In each dialog, choose the folder
    containing `project.godot`. The selected path appears in the corresponding field.
+   You can also start with After. With Before empty, the app looks for a neighboring
+   `<game>-before` folder or a copy in another registered Git worktree. If you recognize
+   the suggested path as your earlier version, select **Use as Before**. Otherwise,
+   choose your own Before folder. When typing an After path, leave the field to see
+   any suggestion.
    After your first choice, **Recent Before folders** and **Recent After folders** let you
    reuse a folder. Each lists the six most recently remembered folders on this computer.
    Selecting one checks that folder and shows any setup problem beside the field.
