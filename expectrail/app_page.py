@@ -22,13 +22,14 @@ button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;curs
 <section aria-labelledby="project-heading"><h2 id="project-heading">1. Your project and versions</h2>
 <p>Choose a copy from before the change and a copy from after it. Both must have the same folder layout.
 For your own checks, the routes and approvals come from <strong>Before</strong>. Checking folders and verifying leave your source files unchanged.</p>
-<div class="grid"><div><label for="before">Before: full folder path or project.godot file path</label>
+<p id="drop-help" hidden>Drop one project folder on Before or After, then select it in the desktop dialog to confirm its full path.</p>
+<div class="grid"><div data-folder-side="before"><label for="before">Before: full folder path or project.godot file path</label>
 <div class="folder-entry"><button id="choose-before" type="button">Choose Before folder</button>
 <input id="before" autocomplete="off" spellcheck="false" aria-describedby="before-feedback"></div>
 <div id="recent-before-group" hidden><label for="recent-before">Recent Before folders</label>
 <select id="recent-before"></select></div>
 <div id="before-feedback" class="folder-feedback" role="status"></div></div>
-<div><label for="after">After: full folder path or project.godot file path</label>
+<div data-folder-side="after"><label for="after">After: full folder path or project.godot file path</label>
 <div class="folder-entry"><button id="choose-after" type="button">Choose After folder</button>
 <input id="after" autocomplete="off" spellcheck="false" aria-describedby="after-feedback"></div>
 <div id="recent-after-group" hidden><label for="recent-after">Recent After folders</label>
@@ -177,6 +178,25 @@ async function poll() {
   catch(error){if(job===current)problem(error);}
 }
 const sideNames = {before:'Before', after:'After'};
+el('drop-help').hidden=false;
+document.addEventListener('dragover',event=>{
+  if(!event.dataTransfer?.types.includes('Files')) return;
+  event.preventDefault();
+  const target=event.target.closest?.('[data-folder-side]');
+  event.dataTransfer.dropEffect=target && !busy && !job ? 'copy' : 'none';
+});
+document.addEventListener('drop',event=>{
+  if(!event.dataTransfer?.types.includes('Files')) return;
+  event.preventDefault();
+  const side=event.target.closest?.('[data-folder-side]')?.dataset.folderSide;
+  if(!side || busy || job) return;
+  const files=Array.from(event.dataTransfer.items).filter(item=>item.kind==='file');
+  if(files.length===1 && files[0].webkitGetAsEntry?.()?.isDirectory) {
+    el('choose-'+side).click();
+  } else {
+    el(side+'-feedback').textContent='Drop one project folder here, or use Choose '+sideNames[side]+' folder.';
+  }
+});
 function textElement(tag, text) {
   const node=document.createElement(tag);
   node.textContent=text;
