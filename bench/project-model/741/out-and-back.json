@@ -1,0 +1,12 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "out-and-back",
+  "description": "Move right to the contact mark, then left toward the home mark.",
+  "ticks": 32,
+  "seed": 1,
+  "events": [
+    {"tick": 0, "action": "right", "pressed": true},
+    {"tick": 16, "action": "right", "pressed": false},
+    {"tick": 16, "action": "left", "pressed": true}
+  ]
+}

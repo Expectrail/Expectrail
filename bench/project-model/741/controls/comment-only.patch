@@ -1,0 +1,6 @@
+--- a/actor.gd
++++ b/actor.gd
+@@ -7 +7,3 @@
+         position.x -= 2.0
++
++# Harmless documentation for the public control.

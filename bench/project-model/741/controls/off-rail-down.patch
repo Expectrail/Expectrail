@@ -1,0 +1,7 @@
+--- a/main.tscn
++++ b/main.tscn
+@@ -15,3 +15,3 @@
+ [node name="Actor" type="CharacterBody2D" parent="."]
+-position = Vector2(100, 80)
++position = Vector2(100, 82)
+ script = ExtResource("1")
