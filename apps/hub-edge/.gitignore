@@ -1,0 +1,4 @@
+/wrangler.toml
+/.wrangler/
+/.public/
+/.dev.vars*
