@@ -1,0 +1,9 @@
+# Binding and migration fragment for the expectrail-hub Worker's config (#785).
+# Export createHubSessions(createService) as HubSessions from its worker.js.
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "HubSessions"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["HubSessions"]
