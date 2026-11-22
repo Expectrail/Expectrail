@@ -1,22 +1,30 @@
 # First-user trial for the Expectrail local app
 
-**Sean runs this session.** Recruit one person who does not develop software and
-has never used the terminal workflow. Use a clean account on a supported Linux
-machine. Record every prerequisite you set up beforehand and the exact wheel,
-its SHA-256, and the install instructions revision. Prepare two copies of the
-bundled platformer with the same route and check files, one clean and one with
-the published fall-through patch. Use `sample.checkout` from the checkout's
-`expectrail.orchestrator.sample` module to prepare each folder. Give the
-participant the wheel link, the install instructions and the two folder locations.
-Record whether the machine
-has vision configured and which observer actually answered. Keep keys and
-personal information out of the notes.
+**Sean prepares the session.** Recruit one person who does not develop software
+and has never used a terminal. On a clean Ubuntu 24.04 amd64 account, provide
+the rehearsal desktop package and the [graphical install steps](../install.md#install-and-open-the-local-app).
+Record its filename and SHA-256, the install instructions revision and any
+prerequisites you supply. For a no-spend trial, leave the vision key and spend
+cap unset. Record which observer actually answered. Keep keys and personal
+information out of the notes.
 
-**Include this on the instruction card:** In Expectrail, open **Older projects
-without a config** and tick **Enter paths manually**. Enter `game/platformer`
-for Game folder, `harness/routes/smoke.json` for Route files, and `agents/specs`
-for Checks folder. Use the two supplied locations for Before and After. Click
-**Check folders**, then **Verify**. Swap Before and After for the second run.
+Before the participant arrives, run this once from the matching Expectrail
+checkout. Choose a new destination whose parent already exists.
+
+```sh
+python3 -m tools.prepare_app_trial "$HOME/Expectrail trial"
+```
+
+Give the participant the two folders it prints. **Clean** contains the bundled
+game. **Broken** has the published fall-through patch. Both have the smoke route
+and the same existing ground check.
+
+**Participant card**
+
+1. Install Expectrail using the supplied instructions and open it from Applications.
+2. Select **Choose Before folder** and choose **Clean**. Select **Choose After folder** and choose **Broken**.
+3. Select **Check folders**, then **Verify**. When the job finishes, select **Open this job’s evidence viewer** and explain the result.
+4. Choose **Broken** for Before and **Clean** for After. Repeat the check and read the second result.
 
 **Read to the participant:** “Install and open Expectrail using these
 instructions. Check a change from the clean copy to the broken copy. Find and
