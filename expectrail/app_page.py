@@ -35,6 +35,9 @@ For your own checks, the routes and approvals come from <strong>Before</strong>.
 <div id="recent-after-group" hidden><label for="recent-after">Recent After folders</label>
 <select id="recent-after"></select></div>
 <div id="after-feedback" class="folder-feedback" role="status"></div></div></div>
+<div id="before-suggestion" class="folder-feedback" hidden>
+<p><span id="suggestion-source"></span> <strong id="suggested-folder"></strong></p>
+<button id="use-before" type="button" class="secondary" aria-describedby="suggested-folder">Use as Before</button></div>
 <p>Each folder needs <code>project.godot</code>. If <code>expectrail.project.json</code> is missing, check the folder to review and save a draft setup.
 The config names the routes and checks. A draft config cannot give an accept.
 The kinematic-character example uses the same config path as your project.</p>
@@ -92,7 +95,7 @@ const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and too
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['manual','choose-before','before','recent-before','choose-after','after','recent-after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent','isolated']) el(id).disabled=active;
+  for (const id of ['manual','choose-before','before','recent-before','use-before','choose-after','after','recent-after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent','isolated']) el(id).disabled=active;
 }
 
 async function api(path, body) {
@@ -293,29 +296,54 @@ async function refreshRecentFolders() {
     // The desktop chooser and path fields remain usable if local history is unavailable.
   }
 }
+let folderRevision=0;
+el('use-before').onclick=()=>{
+  const before=el('before');
+  if(busy || job || before.value.trim() || el('before-suggestion').hidden) return;
+  before.value=el('suggested-folder').textContent;
+  before.dispatchEvent(new Event('input',{bubbles:true}));
+  el('before-feedback').textContent='Before folder selected.';
+  before.focus();
+};
 for(const side of Object.keys(sideNames)) {
   const input=el(side), choose=el('choose-'+side), feedback=el(side+'-feedback');
   const recent=el('recent-'+side);
   let selection=0;
   input.addEventListener('input',()=>{
     selection++;
+    folderRevision++;
+    el('before-suggestion').hidden=true;
     if(recent.value!==input.value) recent.value='';
     el('inspection-'+side).replaceChildren();
     feedback.textContent='';
   });
-  recent.onchange=async()=>{
+  async function checkFolder(showFeedback) {
+    const folder=input.value, revision=folderRevision, current=selection;
+    const offerBefore=side==='after' && !el('before').value.trim();
+    if(!showFeedback && (!offerBefore || !folder.trim())) return;
+    if(showFeedback) feedback.textContent='Checking the selected folder…';
+    try {
+      const checked=await api('/api/projects/check',{[side]:folder});
+      if(current!==selection || input.value!==folder) return;
+      if(showFeedback) feedback.textContent=checked[side].problem || sideNames[side]+' folder selected.';
+      const suggestion=checked.beforeSuggestion;
+      if(offerBefore && revision===folderRevision && !el('before').value.trim() && suggestion) {
+        el('suggestion-source').textContent=suggestion.source==='worktree'
+          ? 'Possible Before in another Git worktree:' : 'Possible Before in a neighboring folder:';
+        el('suggested-folder').textContent=suggestion.folder;
+        el('before-suggestion').hidden=false;
+      }
+    } catch(error) {
+      if(showFeedback && current===selection) feedback.textContent=error.message;
+    }
+  }
+  if(side==='after') input.addEventListener('change',()=>checkFolder(false));
+  recent.onchange=()=>{
     const folder=recent.value;
     if(!folder || busy || job) return;
     input.value=folder;
     input.dispatchEvent(new Event('input',{bubbles:true}));
-    const current=selection;
-    feedback.textContent='Checking the selected folder…';
-    try {
-      const checked=await api('/api/projects/check',{[side]:folder});
-      if(current===selection) feedback.textContent=checked[side].problem || sideNames[side]+' folder selected.';
-    } catch(error) {
-      if(current===selection) feedback.textContent=error.message;
-    }
+    checkFolder(true);
   };
   choose.onclick=async()=>{
     if(busy || job) return;
@@ -335,6 +363,7 @@ for(const side of Object.keys(sideNames)) {
       input.value=folder;
       input.dispatchEvent(new Event('input',{bubbles:true}));
       feedback.textContent=sideNames[side]+' folder selected.';
+      if(side==='after') checkFolder(false);
     } catch(error) {
       if(!edited) feedback.textContent=error.message+' You can also paste the full path here.';
     } finally {
