@@ -26,6 +26,10 @@ def read_config(root):
     except (ValueError, OSError) as exc:
         guidance = 'Use expectrail init to draft a config, then review it.'
         if not os.path.lexists(root / project_config.FILENAME):
+            descriptor = root / 'project.godot'
+            if not descriptor.is_symlink() and descriptor.is_file():
+                guidance = ('Choose Check folders in the local app to review the project setup. '
+                            'Use expectrail init to draft a config for review if you prefer the terminal.')
             guidance = pending_guidance(root) or guidance
         raise request.RequestError(f'Project config: {exc}. {guidance}') from exc
 
