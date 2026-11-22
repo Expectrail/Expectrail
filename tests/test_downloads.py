@@ -15,6 +15,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -195,6 +196,49 @@ exec "{shutil.which('unzip')}" "$@"
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(self.source(), "source=cache")
         self.assertEqual(subprocess.check_output([done.stdout.strip(), "--version"], text=True), "stand-in engine\n")
+
+
+class MacGodotLookup(unittest.TestCase):
+    def test_doctor_finds_the_engine_on_the_first_install(self):
+        from expectrail import doctor
+        from harness import run
+        from tests.tool_requirements import executable
+
+        for tool in ("bash", "shasum", "unzip"):
+            executable(tool)
+        with tempfile.TemporaryDirectory(prefix="mac engine ") as tmp:
+            root = Path(tmp).resolve()
+            executable_name = "Godot.app/Contents/MacOS/Godot"
+            expected = root / "tools" / "godot_mac" / executable_name
+            served = root / "served"
+            version = run.GODOT_VERSION.replace("-", ".")
+            with zipfile.ZipFile(served, "w") as archive:
+                archive.writestr(executable_name, f'#!/bin/sh\n[ "$1" = --version ] && echo "{version}"\n')
+
+            helper = root / "harness" / "macos" / "get_godot_mac.sh"
+            helper.parent.mkdir(parents=True)
+            script = (REPO / "harness" / "macos" / helper.name).read_text(encoding="utf-8")
+            digest = hashlib.sha512(served.read_bytes()).hexdigest()
+            script, pins = re.subn(r'^SHA512="[0-9a-f]{128}"$', f'SHA512="{digest}"', script, flags=re.M)
+            self.assertEqual(pins, 1)
+            helper.write_text(script, encoding="utf-8")
+            helper.chmod(0o755)
+            curl = root / "curl"
+            curl.write_text(CURL, encoding="utf-8")
+            curl.chmod(0o755)
+            env = {"EXPECTRAIL_GODOT": "", "STATE": str(root), "PATH": str(root) + os.pathsep + os.environ["PATH"]}
+            with (
+                mock.patch.object(run, "REPO", root),
+                mock.patch("sys.platform", "darwin"),
+                mock.patch.dict(os.environ, env),
+            ):
+                self.assertFalse(expected.exists())
+                check, found = doctor.godot()
+                self.assertTrue(os.access(expected, os.X_OK))
+                self.assertEqual(check.status, "ok", check.found)
+                self.assertEqual(found, expected)
+                self.assertEqual(run.find_godot(), expected)
+            self.assertEqual((root / "calls").read_text().splitlines(), ["curl"])
 
 
 class EveryWorkflowUsesTheActions(unittest.TestCase):
