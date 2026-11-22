@@ -282,6 +282,23 @@ class HTTPTest(unittest.TestCase):
                 self.assertIn(b'<!doctype html>', page.lower())
                 self.assertIn("script-src 'none'", headers['Content-Security-Policy'])
 
+    def test_reject_without_repair_names_the_form_controls_in_results_and_history(self):
+        (self.after / 'game/platformer/BUG').touch()
+        job_id = self.create()
+        result = self.finished(job_id)
+        self.assertEqual(result['decision'], 'reject')
+        page = self.http('GET', '/')[1].decode()
+        checkbox = 'Try to fix the game if verification rejects it'
+        cap = 'Maximum fixer spend in US dollars'
+        for label in (checkbox, cap):
+            self.assertIn(label, page)
+            self.assertIn(label, result['summary'])
+        self.assertNotIn('--auto-fix', result['summary'])
+        self.assertNotIn('autoFix', self.store.request(job_id))
+        self.server.app.owned.clear()
+        past, = self.http('GET', '/api/history')[1]['jobs']
+        self.assertEqual((past['id'], past['summary']), (job_id, result['summary']))
+
     def test_stand_in_and_empty_or_failed_workers(self):
         self.engine = STAND_INS['instant']
         result = self.finished(self.create())

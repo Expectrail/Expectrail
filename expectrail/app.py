@@ -612,9 +612,14 @@ class App:
         repair = doc.get('repair') or {}
         summary = OUTCOMES[state]
         if state == 'reject':
-            summary += ' ' + viewer.auto_fix_words(doc)
-            if 'review' in repair:
-                summary += ' ' + repair['review']
+            if repair:
+                summary += ' ' + viewer.auto_fix_words(doc)
+                if 'review' in repair:
+                    summary += ' ' + repair['review']
+            else:
+                summary += (' No repair was recorded. To try one on a new run, select '
+                            '“Try to fix the game if verification rejects it” and set '
+                            '“Maximum fixer spend in US dollars” before choosing Verify.')
         findings = self.findings(job_id, doc)
         return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics', 'createdAt')} | {
             'state': state, 'screen': screen, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
