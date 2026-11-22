@@ -10,12 +10,16 @@ hub-edge slice's tests in the required job the moment they are written. It also 
 JavaScript signer and the Python signer in `hub/session.py` still agree byte for byte, because a
 port that silently drifts from its reference is the one failure this slice cannot survive.
 
+Node is required, not conditional. A machine without it cannot build or run this Worker at all, and
+a quietly passed-over verifier test is a smaller version of the hole the guard asked us to close, so
+a missing Node fails here and says to install it. The run-it harness next door is gentler; this is
+the stricter of the two on purpose.
+
 No network, no account, no credential: `apps/hub-edge/fixtures/stub.mjs` stands in for GitHub.
 """
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -28,7 +32,6 @@ REPO = Path(__file__).resolve().parent.parent
 EDGE = REPO / "apps" / "hub-edge"
 TESTS = sorted(EDGE.glob("test/*.test.mjs"))
 NODE = shutil.which("node")
-IN_CI = bool(os.environ.get("CI"))
 SECRET = re.compile(r"(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_)[A-Za-z0-9_]{10,}")
 
 
@@ -44,11 +47,9 @@ class FolderTest(unittest.TestCase):
         # Without this, a renamed folder would leave every test below passing on nothing.
         self.assertTrue(TESTS, f"no test/*.test.mjs under {EDGE}")
 
-    def test_node_is_installed_in_ci(self):
-        # The class below skips when Node is absent, which must never happen in CI: a skipped
-        # verifier test is the hole the merge guard asked us to close, not a smaller version of it.
-        if IN_CI:
-            self.assertIsNotNone(NODE, "CI must have Node for the hub-edge tests")
+    def test_node_is_installed(self):
+        self.assertIsNotNone(
+            NODE, "Node is needed to run the hub-edge tests; the ubuntu-24.04 runners have it")
 
     def test_no_credential_is_in_the_folder(self):
         for path in EDGE.rglob("*"):
@@ -56,11 +57,10 @@ class FolderTest(unittest.TestCase):
                 self.assertNotRegex(path.read_text(encoding="utf-8"), SECRET, path.name)
 
 
-@unittest.skipIf(NODE is None and not IN_CI, "Node is not installed (the ubuntu-24.04 runners have it)")
 class EdgeTest(unittest.TestCase):
     def setUp(self):
         if NODE is None:
-            self.fail("Node is not installed and CI must have it")
+            self.fail("Node is not installed; install Node 22 or later to run the hub-edge tests")
 
     def test_every_javascript_test_passes(self):
         proc = subprocess.run([NODE, "--test", "--test-reporter=tap", *[str(p) for p in TESTS]],
