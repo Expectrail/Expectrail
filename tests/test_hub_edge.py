@@ -32,7 +32,7 @@ REPO = Path(__file__).resolve().parent.parent
 EDGE = REPO / "apps" / "hub-edge"
 TESTS = sorted(EDGE.glob("test/*.test.mjs"))
 NODE = shutil.which("node")
-SECRET = re.compile(r"(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_)[A-Za-z0-9_]{10,}")
+SECRET = re.compile(rb"(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_)[A-Za-z0-9_]{10,}")
 
 
 def node_env() -> dict:
@@ -54,7 +54,10 @@ class FolderTest(unittest.TestCase):
     def test_no_credential_is_in_the_folder(self):
         for path in EDGE.rglob("*"):
             if path.is_file():
-                self.assertNotRegex(path.read_text(encoding="utf-8"), SECRET, path.name)
+                # Staged public assets include binary fonts. Search every file and
+                # report only its name if a credential matches.
+                if SECRET.search(path.read_bytes()):
+                    self.fail(f"possible GitHub credential in {path.name}")
 
 
 class EdgeTest(unittest.TestCase):
