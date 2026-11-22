@@ -194,8 +194,8 @@ A tagged release remains open. [Hosted rehearsal](https://github.com/Expectrail/
 - Repository `python3 -m harness...` entry points remain unchanged. In the wheel, use the private
   qualified modules; the package no longer installs top-level `harness` or `agents` aliases.
 - The end-to-end package rehearsal ran on Linux. On macOS, the installed wheel keeps Godot under `godot_mac/Godot.app` in the same tools cache
-  described above. If an older wheel already holds an executable and the user cache is empty,
-  Expectrail can reuse it offline. Setting `EXPECTRAIL_TOOLS` selects that directory explicitly.
+  described above. Expectrail can reuse an older wheel's executable offline until the default
+  user cache contains an executable. Setting `EXPECTRAIL_TOOLS` selects that directory explicitly.
   The installed macOS lookup and helper were exercised on Linux with a stand-in archive.
   Installation and rendering on a native Mac remain unmeasured here.
 - Not shown: Python below 3.12; an install from PyPI. The engine download itself from an installed

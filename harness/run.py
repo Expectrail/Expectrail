@@ -52,6 +52,10 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _is_executable_file(path: Path) -> bool:
+    return path.is_file() and os.access(path, os.X_OK)
+
+
 def cached_godot_path() -> Path:
     """Locate the configured engine without starting a download."""
     named = os.environ.get("EXPECTRAIL_GODOT")
@@ -62,10 +66,10 @@ def cached_godot_path() -> Path:
     bundle = Path("godot_mac/Godot.app/Contents/MacOS/Godot")
     cached = tools_dir() / bundle
     # Older wheels kept a downloaded app inside the package. Reuse it offline until the
-    # user cache is populated, unless the caller selected a specific tools directory.
-    if REPO.name == "_bundle" and not os.environ.get("EXPECTRAIL_TOOLS") and not cached.is_file():
+    # default user cache has an executable. An explicit tools directory takes precedence.
+    if REPO.name == "_bundle" and not os.environ.get("EXPECTRAIL_TOOLS") and not _is_executable_file(cached):
         legacy = REPO / "tools" / bundle
-        if legacy.is_file() and os.access(legacy, os.X_OK):
+        if _is_executable_file(legacy):
             return legacy
     return cached
 
@@ -74,7 +78,7 @@ def find_godot() -> Path:
     binary = cached_godot_path()
     if os.environ.get("EXPECTRAIL_GODOT"):
         return binary
-    if sys.platform == "darwin" and binary.is_file() and os.access(binary, os.X_OK):
+    if sys.platform == "darwin" and _is_executable_file(binary):
         return binary
     helper = "macos/get_godot_mac.sh" if sys.platform == "darwin" else "get_godot.sh"
     # An installed shell script may lack the executable bit. Pass the same tools directory

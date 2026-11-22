@@ -237,6 +237,35 @@ class MacGodotLookup(unittest.TestCase):
                     self.assertEqual(run.find_godot(), legacy)
                     self.assertEqual(doctor.godot(fetch=False)[1], legacy)
 
+    def test_non_executable_default_cache_reuses_legacy_engine_offline(self):
+        from expectrail import doctor
+        from harness import run
+
+        with self.mac_install("xdg") as (root, _, cached):
+            tools = run.tools_dir()
+            legacy_tools = run.REPO / "tools"
+            legacy_tools.unlink()  # Replace the fixture's read-only-package sentinel with an older installation.
+            legacy = legacy_tools / cached.relative_to(tools)
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text(f"#!/bin/sh\necho {run.GODOT_VERSION.replace('-', '.')}\n")
+            legacy.chmod(0o755)
+            cached.parent.mkdir(parents=True)
+            cached.write_text("incomplete")
+            cached.chmod(0o644)
+            (root / "failures").write_text("1")  # The curl stand-in records and refuses a fetch.
+
+            with self.subTest(lookup="doctor"):
+                check, found = doctor.godot(fetch=False)
+                self.assertEqual(check.status, "ok", check.found)
+                self.assertEqual(found, legacy)
+            with self.subTest(lookup="replay"):
+                self.assertEqual(run.find_godot(), legacy)
+            self.assertFalse((root / "calls").exists(), "attempted to download a usable installed engine")
+            with mock.patch.dict(os.environ, EXPECTRAIL_TOOLS=str(tools)):
+                self.assertEqual(run.cached_godot_path(), cached)
+            with mock.patch.dict(os.environ, EXPECTRAIL_GODOT=str(cached)):
+                self.assertEqual(run.find_godot(), cached)
+
     @contextmanager
     def mac_install(self, location):
         from harness import run
