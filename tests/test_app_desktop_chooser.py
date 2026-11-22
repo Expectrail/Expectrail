@@ -66,11 +66,30 @@ def browser_rehearsal():
             choose_after = page.get_by_role('button', name='Choose After folder', exact=True)
             before_field, after_field = page.locator('#before'), page.locator('#after')
 
+            recent_before = page.get_by_label('Recent Before folders', exact=True)
+            recent_after = page.get_by_label('Recent After folders', exact=True)
+            expect(recent_before).to_be_hidden()
+            expect(recent_after).to_be_hidden()
+
+            submitted = []
+            page.on('request', lambda r: submitted.append(r.url.rsplit('/', 1)[-1])
+                    if r.method == 'POST' and r.url.endswith(('/api/jobs', '/api/inspect')) else None)
+
+            def verify_with_missing(side):
+                page.get_by_role('button', name='Verify', exact=True).click()
+                expect(page.locator('#progress')).to_have_text('Verification did not start.')
+                expect(page.locator('#'+side)).to_be_focused()
+                expect(page.locator('#'+side+'-feedback')).to_contain_text('Choose the '+side.title()+' folder')
+                fixture.assertEqual(submitted, [])
+
+            verify_with_missing('before')
             native.return_value = str(before)
             choose_before.focus()
             choose_before.press('Enter')
             expect(before_field).to_have_value(str(before))
             expect(after_field).to_have_value('')
+            after_field.fill('  ')
+            verify_with_missing('after')
             native.return_value = str(after)
             choose_after.click()
             expect(after_field).to_have_value(str(after))
@@ -113,6 +132,42 @@ def browser_rehearsal():
             expect(after_field).to_have_value(str(after))
             after_field.fill(str(after / 'project.godot'))
             expect(feedback).to_be_empty()
+            expect(recent_before.locator('option')).to_have_text(
+                ['Choose a recent folder', str(before), str(another), str(after)])
+            recent_before.focus()
+            recent_before.press('ArrowDown')
+            expect(before_field).to_have_value(str(before))
+            recent_before.press('ArrowDown')
+            expect(before_field).to_have_value(str(another))
+            recent_before.press('ArrowUp')
+            expect(before_field).to_have_value(str(before))
+            expect(recent_before).to_have_value(str(before))
+            recent_before.select_option(str(before))
+            expect(before_field).to_have_value(str(before))
+            expect(page.locator('#before-feedback')).to_contain_text('Before folder selected.')
+            expect(after_field).to_have_value(str(after / 'project.godot'))
+
+            # Reopening the local app loads the saved list. An entry can have moved since it was saved.
+            (another / 'project.godot').unlink()
+            page.goto(f'http://127.0.0.1:{fixture.port}/?token={fixture.token}')
+            recent_after.select_option(str(another))
+            expect(after_field).to_have_value(str(another))
+            expect(feedback).to_contain_text('Choose the folder containing')
+            expect(before_field).to_have_value('')
+            after_field.fill(str(after))
+            expect(feedback).to_be_empty()
+            expect(recent_after).to_have_value('')
+
+            with page.expect_response(lambda response: response.url.endswith('/api/projects/check')):
+                def edit_before_reply(route):
+                    after_field.fill(str(before))
+                    route.continue_()
+
+                page.route('**/api/projects/check', edit_before_reply, times=1)
+                recent_after.select_option(str(another))
+            page.wait_for_load_state('networkidle')
+            expect(after_field).to_have_value(str(before))
+            expect(feedback).to_be_empty()
             fixture.assertEqual(requests, [('POST', {})] * 6)
             fixture.assertEqual(native.call_count, 6)
             fixture.assertEqual(fixture.server.app.history()['jobs'], [])
@@ -120,6 +175,7 @@ def browser_rehearsal():
             fixture.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'), 390)
             print(f'Chromium {browser.version}: both folder buttons, cancellation, review invalidation, '
                   'concurrent chooser prevention, manual-edit preservation and field errors passed. '
+                  'Recent folders reopened on both sides, with stale entries and late replies checked. '
                   '6 empty-body chooser requests, 0 jobs, 0 page errors, no overflow at 390 px.')
             browser.close()
     finally:

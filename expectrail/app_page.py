@@ -10,7 +10,7 @@ label{display:block;font-weight:600;margin:16px 0 6px}input,select{width:100%;fo
 input[type=checkbox]{width:auto}
 button{font:inherit;font-weight:600;background:#175c47;color:white;border:2px solid #175c47;border-radius:6px;padding:10px 18px;margin:16px 12px 0 0;cursor:pointer}
 button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;cursor:default}a{color:#175c47}a:focus,button:focus,input:focus{outline:3px solid #b35c12;outline-offset:3px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering,#error{white-space:pre-wrap;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering,#error{white-space:pre-wrap;overflow-wrap:anywhere}
 .folder-entry{display:flex;flex-wrap:wrap;gap:8px}.folder-entry button{margin:0;padding:8px 12px}.folder-entry input{flex:1 1 10rem}
 .folder-feedback{overflow-wrap:anywhere;color:#475a53}
 #result-folders dt{font-weight:600}#result-folders dd{margin:0 0 .5em;overflow-wrap:anywhere}
@@ -25,10 +25,14 @@ For your own checks, the routes and approvals come from <strong>Before</strong>.
 <div class="grid"><div><label for="before">Before: full folder path or project.godot file path</label>
 <div class="folder-entry"><button id="choose-before" type="button">Choose Before folder</button>
 <input id="before" autocomplete="off" spellcheck="false" aria-describedby="before-feedback"></div>
+<div id="recent-before-group" hidden><label for="recent-before">Recent Before folders</label>
+<select id="recent-before"></select></div>
 <div id="before-feedback" class="folder-feedback" role="status"></div></div>
 <div><label for="after">After: full folder path or project.godot file path</label>
 <div class="folder-entry"><button id="choose-after" type="button">Choose After folder</button>
 <input id="after" autocomplete="off" spellcheck="false" aria-describedby="after-feedback"></div>
+<div id="recent-after-group" hidden><label for="recent-after">Recent After folders</label>
+<select id="recent-after"></select></div>
 <div id="after-feedback" class="folder-feedback" role="status"></div></div></div>
 <p>Each folder needs <code>project.godot</code>. If <code>expectrail.project.json</code> is missing, check the folder to review and save a draft setup.
 The config names the routes and checks. A draft config cannot give an accept.
@@ -87,7 +91,7 @@ const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and too
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['manual','choose-before','before','choose-after','after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent','isolated']) el(id).disabled=active;
+  for (const id of ['manual','choose-before','before','recent-before','choose-after','after','recent-after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent','isolated']) el(id).disabled=active;
 }
 
 async function api(path, body) {
@@ -253,14 +257,49 @@ function playerPicker(panel, side, folder, preview, detail) {
     }
   };
 }
+let latestRecentRequest=0;
+async function refreshRecentFolders() {
+  const request=++latestRecentRequest;
+  try {
+    const {folders}=await api('/api/projects/recent');
+    if(request!==latestRecentRequest) return;
+    for(const side of Object.keys(sideNames)) {
+      const select=el('recent-'+side);
+      select.replaceChildren(new Option('Choose a recent folder',''),
+                             ...folders.map(folder=>new Option(folder,folder)));
+      el('recent-'+side+'-group').hidden=folders.length===0;
+    }
+  } catch {
+    // The desktop chooser and path fields remain usable if local history is unavailable.
+  }
+}
 for(const side of Object.keys(sideNames)) {
   const input=el(side), choose=el('choose-'+side), feedback=el(side+'-feedback');
+  const recent=el('recent-'+side);
+  let selection=0;
   input.addEventListener('input',()=>{
+    selection++;
+    if(recent.value!==input.value) recent.value='';
     el('inspection-'+side).replaceChildren();
     feedback.textContent='';
   });
+  recent.onchange=async()=>{
+    const folder=recent.value;
+    if(!folder || busy || job) return;
+    input.value=folder;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    const current=selection;
+    feedback.textContent='Checking the selected folder…';
+    try {
+      const checked=await api('/api/projects/check',{[side]:folder});
+      if(current===selection) feedback.textContent=checked[side].problem || sideNames[side]+' folder selected.';
+    } catch(error) {
+      if(current===selection) feedback.textContent=error.message;
+    }
+  };
   choose.onclick=async()=>{
     if(busy || job) return;
+    selection++;
     controls(true);
     el('before').disabled=el('after').disabled=false;
     feedback.textContent='Choose a project folder in the desktop dialog.';
@@ -269,6 +308,7 @@ for(const side of Object.keys(sideNames)) {
     input.addEventListener('input',markEdited);
     try {
       const {folder}=await api('/api/projects/choose',{});
+      if(folder) refreshRecentFolders();
       if(edited) return;
       if(folder===null){feedback.textContent='Folder choice cancelled.';return;}
       if(typeof folder!=='string' || !folder.trim()) throw new Error('The desktop dialog returned no usable folder.');
@@ -327,6 +367,14 @@ el('verify').onclick=async()=>{
   el('result-text').textContent='No verdict yet.';el('progress').textContent='Checking the rendering environment before starting…';controls(true);
   let submissionAttempted=false;
   try{const body=values();
+    for(const side of Object.keys(sideNames)) {
+      if(!body[side].trim()) {
+        problem(new Error('Choose both versions before starting verification.'));
+        el(side+'-feedback').textContent='Choose the '+sideNames[side]+' folder or enter its path.';
+        el(side).focus();
+        return;
+      }
+    }
     if(el('auto-fix').checked){
       body.autoFix=true;body.repairAgent=el('fix-agent').value;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
       if(!Number.isInteger(body.attempts)||body.attempts<1||body.attempts>10) throw new Error('Enter 1 to 10 fix attempts.');
@@ -348,7 +396,7 @@ el('verify').onclick=async()=>{
     rendererAcknowledged=null;el('verify').textContent='Verify';
     el('progress').textContent='Creating the job and recording its inputs…';
     submissionAttempted=true;
-    const data=await api('/api/jobs',body);job=data.id;controls(true);show(data);if(job)await poll();else await pastRuns();}
+    const data=await api('/api/jobs',body);if(body.projectConfig)refreshRecentFolders();job=data.id;controls(true);show(data);if(job)await poll();else await pastRuns();}
   catch(error){problem(error,submissionAttempted);}
 };
 el('cancel').onclick=async()=>{
@@ -374,5 +422,6 @@ async function pastRuns() {
   }catch(error){el('past-note').textContent='Past runs could not be read: '+error.message;}
 }
 el('refresh').onclick=pastRuns;
+refreshRecentFolders();
 pastRuns();
 </script></body></html>'''
