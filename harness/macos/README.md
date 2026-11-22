@@ -1,9 +1,9 @@
 # macOS Local Interactive Runner
 
-These scripts are strictly for **local manual running, playing, and visual inspection on macOS**.
+Use `play_local.sh` to play and inspect the bundled game on macOS.
 
 > [!NOTE]
-> The automated CI/CD pipeline, the verifier, and the agent repair loop do **not** use these scripts. The automated test pipeline runs headless on Linux using `harness/run.py` and `harness/get_godot.sh` under Xvfb and Mesa software OpenGL with deterministic route files.
+> The macOS verifier and the interactive launcher share the pinned engine installer, `get_godot_mac.sh`. Linux CI uses `harness/get_godot.sh`, Xvfb and Mesa software OpenGL for its deterministic replays.
 
 ---
 
@@ -16,7 +16,7 @@ To launch and play the game locally on your Mac:
 ```
 
 ### What `play_local.sh` Does:
-1. **Downloads the matching pinned Godot engine** (Godot 4.7.2 macOS universal binary) via `get_godot_mac.sh` into `tools/godot_mac/` if it is not already present.
+1. **Downloads the matching pinned Godot engine** (Godot 4.7.2 macOS universal binary) via `get_godot_mac.sh` into `tools/godot_mac/` in a checkout. Set `EXPECTRAIL_TOOLS` to keep the bundle under `godot_mac/` in another directory. An installed wheel uses the [user cache](../../docs/install.md#limits).
 2. **Removes macOS Gatekeeper quarantine attributes** (`xattr -cr`) to prevent OS launch warnings or execution blocks.
 3. **Pre-imports project assets headlessly** (`--headless --import`) so all sprite sheets, fonts, audio, and `AnimationPlayer` libraries are compiled cleanly before the window opens.
 4. **Launches the native macOS window** with direct keyboard and gamepad input.

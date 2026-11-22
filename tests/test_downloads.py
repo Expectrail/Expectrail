@@ -4,6 +4,7 @@ harness/get_godot.sh is run here from a copy in a temporary tree, against a stan
 small zip standing in for the engine, with the copy's SHA-512 set to that zip's. Nothing is
 downloaded. Not covered here: the actions on a real runner (CI covers that) and actions/cache itself.
 """
+from contextlib import contextmanager
 import hashlib
 import io
 import os
@@ -200,7 +201,44 @@ exec "{shutil.which('unzip')}" "$@"
 
 class MacGodotLookup(unittest.TestCase):
     def test_doctor_finds_the_engine_on_the_first_install(self):
+        self.check_first_install("checkout")
+
+    def test_wheel_download_and_no_fetch_lookup_use_the_user_cache(self):
+        for location in ("home", "xdg", "named"):
+            with self.subTest(location=location):
+                self.check_first_install(location)
+
+    def test_older_wheel_engine_remains_usable_until_the_cache_is_populated(self):
         from expectrail import doctor
+        from harness import run
+        from tests import tool_requirements
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            repo = root / "_bundle"
+            xdg = root / "cache"
+            bundle = Path("godot_mac/Godot.app/Contents/MacOS/Godot")
+            legacy = repo / "tools" / bundle
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text(f"#!/bin/sh\necho {run.GODOT_VERSION.replace('-', '.')}\n")
+            legacy.chmod(0o755)
+            env = {"EXPECTRAIL_GODOT": "", "EXPECTRAIL_TOOLS": "", "XDG_CACHE_HOME": str(xdg)}
+            with mock.patch.object(run, "REPO", repo), mock.patch("sys.platform", "darwin"), mock.patch.dict(os.environ, env):
+                self.assertEqual(run.find_godot(), legacy)
+                self.assertEqual(doctor.godot(fetch=False)[1], legacy)
+                cached = xdg / "expectrail" / bundle
+                cached.parent.mkdir(parents=True)
+                shutil.copy2(legacy, cached)
+                self.assertEqual(run.find_godot(), cached)
+                self.assertEqual(tool_requirements.godot_binary(), cached)
+                with mock.patch.dict(os.environ, EXPECTRAIL_TOOLS=str(root / "empty cache")):
+                    self.assertEqual(doctor.godot(fetch=False)[0].status, "missing")
+                with mock.patch.dict(os.environ, EXPECTRAIL_GODOT=str(legacy)):
+                    self.assertEqual(run.find_godot(), legacy)
+                    self.assertEqual(doctor.godot(fetch=False)[1], legacy)
+
+    @contextmanager
+    def mac_install(self, location):
         from harness import run
         from tests.tool_requirements import executable
 
@@ -209,13 +247,17 @@ class MacGodotLookup(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="mac engine ") as tmp:
             root = Path(tmp).resolve()
             executable_name = "Godot.app/Contents/MacOS/Godot"
-            expected = root / "tools" / "godot_mac" / executable_name
+            repo = root if location == "checkout" else root / "_bundle"
+            home, xdg, named = root / "home", root / "xdg cache", root / "custom tools"
+            tools = {"checkout": repo / "tools", "home": home / ".cache/expectrail",
+                     "xdg": xdg / "expectrail", "named": named}[location]
+            expected = tools / "godot_mac" / executable_name
             served = root / "served"
             version = run.GODOT_VERSION.replace("-", ".")
             with zipfile.ZipFile(served, "w") as archive:
                 archive.writestr(executable_name, f'#!/bin/sh\n[ "$1" = --version ] && echo "{version}"\n')
 
-            helper = root / "harness" / "macos" / "get_godot_mac.sh"
+            helper = repo / "harness" / "macos" / "get_godot_mac.sh"
             helper.parent.mkdir(parents=True)
             script = (REPO / "harness" / "macos" / helper.name).read_text(encoding="utf-8")
             digest = hashlib.sha512(served.read_bytes()).hexdigest()
@@ -226,19 +268,94 @@ class MacGodotLookup(unittest.TestCase):
             curl = root / "curl"
             curl.write_text(CURL, encoding="utf-8")
             curl.chmod(0o755)
-            env = {"EXPECTRAIL_GODOT": "", "STATE": str(root), "PATH": str(root) + os.pathsep + os.environ["PATH"]}
+            if location != "checkout":
+                # A file in place of the old cache directory forbids writes even when CI runs as root.
+                (repo / "tools").write_text("installed package", encoding="utf-8")
+            env = {"EXPECTRAIL_GODOT": "", "HOME": str(home), "STATE": str(root),
+                   "EXPECTRAIL_TOOLS": str(named) if location == "named" else "",
+                   "XDG_CACHE_HOME": str(xdg) if location in ("xdg", "named") else "",
+                   "PATH": str(root) + os.pathsep + os.environ["PATH"]}
             with (
-                mock.patch.object(run, "REPO", root),
+                mock.patch.object(run, "REPO", repo),
                 mock.patch("sys.platform", "darwin"),
                 mock.patch.dict(os.environ, env),
             ):
-                self.assertFalse(expected.exists())
-                check, found = doctor.godot()
-                self.assertTrue(os.access(expected, os.X_OK))
-                self.assertEqual(check.status, "ok", check.found)
-                self.assertEqual(found, expected)
-                self.assertEqual(run.find_godot(), expected)
+                yield root, helper, expected
+
+    def check_first_install(self, location):
+        from expectrail import doctor
+        from harness import run
+
+        with self.mac_install(location) as (root, _, expected):
+            self.assertEqual(doctor.godot(fetch=False)[0].status, "missing")
+            self.assertFalse((root / "calls").exists())
+            self.assertFalse(expected.exists())
+            check, found = doctor.godot()
+            self.assertTrue(os.access(expected, os.X_OK))
+            self.assertEqual(check.status, "ok", check.found)
+            self.assertEqual(found, expected)
+            self.assertEqual(run.find_godot(), expected)
+            cached, found = doctor.godot(fetch=False)
+            self.assertEqual(cached.status, "ok", cached.found)
+            self.assertEqual(found, expected)
             self.assertEqual((root / "calls").read_text().splitlines(), ["curl"])
+
+    def test_bad_mac_archive_preserves_a_partial_install_and_can_be_retried(self):
+        from harness import run
+
+        with self.mac_install("xdg") as (root, _, expected):
+            app = expected.parents[2]
+            app.mkdir(parents=True)
+            (app / "partial").write_text("previous install")
+            served = root / "served"
+            good_archive = served.read_bytes()
+            served.write_bytes(b"invalid archive")
+            with self.assertRaises(subprocess.CalledProcessError) as error:
+                run.find_godot()
+            self.assertIn("SHA-512 mismatch", error.exception.stderr)
+            self.assertEqual((app / "partial").read_text(), "previous install")
+            self.assertEqual(list(app.parent.iterdir()), [app])
+            served.write_bytes(good_archive)
+            self.assertEqual(run.find_godot(), expected)
+            self.assertTrue(os.access(expected, os.X_OK))
+
+    def test_two_cold_consumers_share_one_complete_mac_app(self):
+        with self.mac_install("named") as (root, helper, expected):
+            self.check_concurrent_install(root, helper, expected)
+            self.assertEqual((root / "calls").read_text().splitlines(), ["curl"])
+
+    def check_concurrent_install(self, root, helper, expected):
+        # Pause after the archive has created its executable but before extraction finishes.
+        unzip = root / "unzip"
+        unzip.write_text(f'''#!/bin/bash
+set -eu
+"{shutil.which("unzip")}" "$@"
+while [ "$1" != "-d" ]; do shift; done
+chmod +x "$2/Godot.app/Contents/MacOS/Godot"
+echo extracting >&2
+read -r -t 15
+''')
+        unzip.chmod(0o755)
+        cmd = ["bash", str(helper)]
+        options = dict(stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        with subprocess.Popen(cmd, **options) as first:
+            for line in first.stderr:
+                if line.strip() == "extracting":
+                    break
+            else:
+                self.fail("The stand-in never reached extraction.")
+            exposed = expected.exists()
+            # Confirm the second helper has missed the cache before releasing the first writer.
+            mkdir = root / "mkdir"
+            mkdir.write_text(f'#!/bin/sh\necho "cold lookup" >&2\nexec "{shutil.which("mkdir")}" "$@"\n')
+            mkdir.chmod(0o755)
+            with subprocess.Popen(cmd, **options) as second:
+                self.assertEqual(second.stderr.readline().strip(), "cold lookup")
+                for proc in (first, second):
+                    stdout, stderr = proc.communicate("finish\n", timeout=20)
+                    self.assertEqual(proc.returncode, 0, stderr)
+                    self.assertEqual(stdout.splitlines()[-1], str(expected))
+        self.assertFalse(exposed, "the cache exposed a bundle while it was being extracted")
 
 
 class EveryWorkflowUsesTheActions(unittest.TestCase):

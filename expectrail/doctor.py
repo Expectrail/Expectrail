@@ -93,17 +93,10 @@ def pinned() -> str:
     return GODOT_VERSION
 
 
-def _where_godot_would_be() -> Path | None:
-    """Where the engine is when it is already here, without fetching it (harness.run.find_godot and
-    harness/get_godot.sh name the same places)."""
-    from harness.run import REPO, tools_dir
+def _where_godot_would_be() -> Path:
+    from harness.run import cached_godot_path
 
-    named = os.environ.get("EXPECTRAIL_GODOT")
-    if named:
-        return Path(named)
-    if sys.platform == "darwin":
-        return REPO / "tools" / "godot_mac" / "Godot.app" / "Contents" / "MacOS" / "Godot"
-    return tools_dir() / "godot" / f"Godot_v{pinned()}_linux.x86_64"
+    return cached_godot_path()
 
 
 def godot(fetch: bool = True) -> tuple[Check, Path | None]:

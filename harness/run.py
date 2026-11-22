@@ -52,20 +52,35 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def cached_godot_path() -> Path:
+    """Locate the configured engine without starting a download."""
+    named = os.environ.get("EXPECTRAIL_GODOT")
+    if named:
+        return Path(named)
+    if sys.platform != "darwin":
+        return tools_dir() / "godot" / f"Godot_v{GODOT_VERSION}_linux.x86_64"
+    bundle = Path("godot_mac/Godot.app/Contents/MacOS/Godot")
+    cached = tools_dir() / bundle
+    # Older wheels kept a downloaded app inside the package. Reuse it offline until the
+    # user cache is populated, unless the caller selected a specific tools directory.
+    if REPO.name == "_bundle" and not os.environ.get("EXPECTRAIL_TOOLS") and not cached.is_file():
+        legacy = REPO / "tools" / bundle
+        if legacy.is_file() and os.access(legacy, os.X_OK):
+            return legacy
+    return cached
+
+
 def find_godot() -> Path:
-    env = os.environ.get("EXPECTRAIL_GODOT")
-    if env:
-        return Path(env)
-    if sys.platform == "darwin":
-        mac_binary = REPO / "tools" / "godot_mac" / "Godot.app" / "Contents" / "MacOS" / "Godot"
-        if mac_binary.is_file():
-            return mac_binary
-        out = subprocess.run([str(REPO / "harness" / "macos" / "get_godot_mac.sh")], check=True, capture_output=True, text=True)
-        return Path(out.stdout.strip().splitlines()[-1])
-    # Run with bash by name: an installed copy's script may have lost its executable bit. It is told
-    # where to keep the engine, so a clone and an installed copy use the one rule (tools_dir).
-    out = subprocess.run(["bash", str(REPO / "harness" / "get_godot.sh")], check=True, capture_output=True, text=True,
-                         env={**os.environ, "EXPECTRAIL_TOOLS": str(tools_dir())})
+    binary = cached_godot_path()
+    if os.environ.get("EXPECTRAIL_GODOT"):
+        return binary
+    if sys.platform == "darwin" and binary.is_file() and os.access(binary, os.X_OK):
+        return binary
+    helper = "macos/get_godot_mac.sh" if sys.platform == "darwin" else "get_godot.sh"
+    # An installed shell script may lack the executable bit. Pass the same tools directory
+    # that the no-fetch lookup uses, so the wheel can stay read-only.
+    out = subprocess.run(["bash", str(REPO / "harness" / helper)], check=True, capture_output=True, text=True,
+                         env={**os.environ, "EXPECTRAIL_TOOLS": str(tools_dir()), "PYTHON": sys.executable})
     return Path(out.stdout.strip().splitlines()[-1])
 
 
