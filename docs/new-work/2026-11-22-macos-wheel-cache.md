@@ -13,6 +13,9 @@ directory was explicitly selected.
 Two installations using one cache can start at the same time. The installer locks
 the cache directory, verifies and extracts the archive in a temporary directory,
 then publishes the completed app by renaming it. The official SHA-512 pin is unchanged.
+When a verification starts a background worker, it passes the absolute location of
+the caller's selected tools directory so changing the worker's working directory
+does not change which cache it uses.
 
 ## What was run
 
@@ -63,11 +66,31 @@ completed jobs. Each used the real engine and the bundled recorded vision answer
 | `631b54f4efb3925a1bca29259fc94ddf` | Apply the fall-through bug | Reject |
 | `203c8be49b0c9c35f8ce42a6c6275fb6` | Reverse the fall-through bug | Accept |
 
-Full discovery (`python3 -m unittest discover -s tests -t .`) passed with 6,066
+Full discovery at `e287ad987e6d` (`python3 -m unittest discover -s tests -t .`) passed with 6,066
 tests run and 57 skipped in 1,068.855 seconds. The nine lookup and prerequisite
 tests passed with NumPy and Pillow imports blocked. The required historic fetch
 succeeded. The export scan of `bench docs README.md apps` checked 1,371 files
 with zero errors and zero warnings.
+
+### Relative tools directory in an installed wheel
+
+On November 22, a Linux wheel installed with a read-only package directory was
+started from outside the checkout with `EXPECTRAIL_TOOLS="relative tools"`.
+Doctor's no-fetch engine check found Godot and drew a frame on both runs. No
+vision credentials were configured. The ordinary verify command submitted the
+same clean and fall-through inputs to its own worker in both cases.
+
+| Wheel | Job | Outcome |
+| --- | --- | --- |
+| `e287ad987e6d` | `74b5e9d0abe762b985245f5527ea5a95` | Needs-review before replay. The worker looked for the cache inside the package and reported `TOOL_MISSING`. |
+| With the worker path fix | `b700732cb65d74f69a202fc9913db122` | Reject, exit 1. The worker used the cached engine and caught the fall-through. |
+
+Neither run fetched an engine. A regression test exercised the macOS helper
+using a stand-in archive and two processes on Linux. Before the fix, the child
+downloaded a second copy. Afterward both used the same executable and only one
+fixture download ran. The download, doctor and platform-tool suites ran 70
+tests with one skip. The install guide also links the hosted release rehearsal
+and gives the sample outcomes observed without vision.
 
 ## Not done
 
@@ -77,7 +100,7 @@ The release tag and registry publication remain with Sean.
 ## Files
 
 - `harness/run.py`, `harness/macos/get_godot_mac.sh`, `harness/macos/play_local.sh`
-- `expectrail/doctor.py`
+- `expectrail/doctor.py`, `expectrail/orchestrator/runner.py`
 - `tests/test_downloads.py`, `tests/test_platform_tools.py`, `tests/tool_requirements.py`
 - `docs/install.md`, `harness/macos/README.md`
 - `docs/new-work/2026-11-22-macos-wheel-cache.md`

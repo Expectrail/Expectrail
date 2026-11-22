@@ -4,7 +4,7 @@ harness/get_godot.sh is run here from a copy in a temporary tree, against a stan
 small zip standing in for the engine, with the copy's SHA-512 set to that zip's. Nothing is
 downloaded. Not covered here: the actions on a real runner (CI covers that) and actions/cache itself.
 """
-from contextlib import contextmanager
+from contextlib import chdir, contextmanager
 import hashlib
 import io
 import os
@@ -299,6 +299,25 @@ class MacGodotLookup(unittest.TestCase):
             self.assertEqual(cached.status, "ok", cached.found)
             self.assertEqual(found, expected)
             self.assertEqual((root / "calls").read_text().splitlines(), ["curl"])
+
+    def test_worker_reuses_the_callers_relative_tools_directory(self):
+        from expectrail.orchestrator import runner
+        from harness import run
+
+        with self.mac_install("named") as (root, helper, expected), chdir(root):
+            package = root / "_bundle"
+            relative = str(Path(os.environ["EXPECTRAIL_TOOLS"]).relative_to(root))
+            log = root / "worker.log"
+            store = mock.Mock()
+            store.paths.return_value.log = log
+            with mock.patch.dict(os.environ, EXPECTRAIL_TOOLS=relative), mock.patch.object(runner, "EXPECTRAIL_ROOT", package):
+                self.assertEqual(run.find_godot().resolve(), expected)
+                with runner.spawn(store, "cache-lookup", ["bash", str(helper)]) as worker:
+                    self.assertEqual(worker.wait(timeout=20), 0, log.read_text())
+                self.assertEqual(os.environ["EXPECTRAIL_TOOLS"], relative)
+            self.assertEqual((root / "calls").read_text().splitlines(), ["curl"])
+            self.assertEqual((package / log.read_text().strip()).resolve(), expected)
+            self.assertFalse((package / relative).exists())
 
     def test_bad_mac_archive_preserves_a_partial_install_and_can_be_retried(self):
         from harness import run

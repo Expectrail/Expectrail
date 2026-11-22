@@ -69,15 +69,16 @@ was checked with a POSIX shell on Linux. Finder and macOS replays were not run.
 python3 -m pip install .          # in a clone; Python 3.12 or later
 expectrail --version              # says "installed package" and where its files are
 expectrail doctor                 # does this machine have what a verification needs? names the fix for what is missing
-expectrail sample                 # three real verifications of the bundled game: accept, reject, accept
+expectrail sample                 # without vision: needs-review, reject, needs-review
 ```
 
 `expectrail sample` needs what any verification of a Godot project needs from the system: a
 virtual display (`xvfb-run`), Mesa's software OpenGL, and `patch`, `curl` and `unzip`. Godot itself
 is fetched on first use (4.7.2, checked against its SHA-512) and kept in the user's cache folder,
 `~/.cache/expectrail` (or `$XDG_CACHE_HOME/expectrail`; `$EXPECTRAIL_TOOLS` names another place, and
-`$EXPECTRAIL_GODOT` names an engine binary to use as it is). `expectrail doctor` checks all of this
-and names the fix for each missing piece.
+`$EXPECTRAIL_GODOT` names an engine binary to use as it is). A relative `EXPECTRAIL_TOOLS`
+directory is relative to the folder where you start Expectrail, including for background jobs.
+`expectrail doctor` checks the required tools and names the fix for each missing piece.
 
 ## `expectrail doctor`
 
@@ -183,8 +184,10 @@ files are" in a clone and in an installed copy.
 - It reads only and holds no secret. It publishes nowhere: PyPI or a container registry needs an
   account and a token, and pushing the tag is a person's step too.
 
-It has not run yet: no tag has been pushed and it has not been dispatched.
-`tests/test_release_workflow.py` runs its version step in bash and checks its shape.
+The rehearsal on main built the wheel, ran the recorded-sample image and uploaded the artifacts.
+A tagged release remains open. [Hosted rehearsal](https://github.com/Expectrail/Expectrail/actions/runs/44983211397)
+
+`tests/test_release_workflow.py` runs the version step in bash and checks the workflow's shape.
 
 ## Limits
 
