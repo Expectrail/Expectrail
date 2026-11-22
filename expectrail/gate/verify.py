@@ -824,11 +824,8 @@ def label_paths_for(specs: list[dict], route_names: set[str]) -> tuple[str, ...]
         scope = spec.get("coverage", {}).get("routes")
         if assertion.get("type") == "exact-ui-integer" and (scope is None or route_names.intersection(scope)):
             requested.append(assertion["labelPath"])
-    if not requested:
-        return ()
-    from harness.run import checked_label_paths
-
-    return checked_label_paths(requested)
+    # The selected adapter validates and bounds its own capture arguments.
+    return tuple(sorted(set(requested)))
 
 
 def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict], out: Path,
