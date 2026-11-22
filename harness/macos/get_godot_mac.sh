@@ -31,4 +31,5 @@ rm -f "$DIR/$ZIP"
 chmod +x "$BIN"
 # Only a verified download gets its quarantine flag cleared.
 xattr -cr "$APP" 2>/dev/null || true
-echo "Godot for macOS is ready: $BIN"
+echo "Godot for macOS is ready: $BIN" >&2
+printf '%s\n' "$BIN"
