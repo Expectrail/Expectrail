@@ -1,0 +1,223 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "accept",
+  "reasons": [
+    "all 1 checks pass"
+  ],
+  "adapter": "godot",
+  "pullRequest": null,
+  "game": {
+    "path": "game/platformer",
+    "headTree": "c2513cb02908c016020205df272f5ff9e3be8cbf6272f41fffd7e0030691a9ba",
+    "baseTree": "a88412ecbc60bddad0e8780b6e78ce132dbe8c2f8151c456a2524facd78dfbc6"
+  },
+  "checksFrom": "base",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "cf617839fd7ab848f910cc855b1b69f2da72b040e6db4519a5f30b52c992582e",
+      "instruction": "The player never falls through the ground."
+    }
+  ],
+  "drafts": 0,
+  "checkProblems": 0,
+  "observers": {
+    "rule": "both",
+    "engine": {
+      "name": "expectrail.engine-record",
+      "version": "0.1.0"
+    },
+    "visual": {
+      "name": "sam-recorded",
+      "provider": "meta-model-api (recorded 2026-11-13, run 43509232715)",
+      "model": "sam-3.1",
+      "version": "0.1.0"
+    }
+  },
+  "anchor": {
+    "format": "expectrail.anchor/v0",
+    "observer": {
+      "name": "sam-recorded",
+      "provider": "meta-model-api (recorded 2026-11-13, run 43509232715)",
+      "model": "sam-3.1",
+      "version": "0.1.0"
+    },
+    "box": "body",
+    "pad": 4.0,
+    "every": 10,
+    "tolerance": 6.0,
+    "drop": 0.1,
+    "status": "asked",
+    "stopped": null,
+    "routes": [
+      {
+        "route": "smoke",
+        "in": 0,
+        "out": 0,
+        "moved": 2,
+        "noBase": 11,
+        "noAnswer": 0,
+        "notAsked": 0,
+        "frames": [
+          {
+            "frame": 0,
+            "state": "moved",
+            "why": [
+              "the engine has the player at 90, 622.75; unchanged, at 90, 622.94"
+            ]
+          },
+          {
+            "frame": 10,
+            "state": "moved",
+            "why": [
+              "the engine has the player at 99.75, 622.75; unchanged, at 99.75, 659.4"
+            ]
+          },
+          {
+            "frame": 20,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 30,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 40,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 50,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 60,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 70,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 80,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 90,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 100,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 110,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          },
+          {
+            "frame": 119,
+            "state": "no-base",
+            "why": [
+              "the unchanged game has no box for this frame"
+            ]
+          }
+        ],
+        "kept": [],
+        "result": "silent",
+        "reason": "the recording does not hold this frame and question (not-recorded); no frame could be compared (the engine moved the player, or nothing was asked)"
+      }
+    ]
+  },
+  "routes": [
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 1,
+    "passed": 1,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": "fail",
+      "after": "pass",
+      "comparison": "REPAIRED",
+      "findingId": null,
+      "observed": {
+        "before": {
+          "engine": "fail",
+          "visual": "not-asked",
+          "visualAnswerSha256": null
+        },
+        "after": {
+          "engine": "pass",
+          "visual": "pass",
+          "visualAnswerSha256": "73fbb320c6fca173a12c83e17153423d77994514784554c1aea17f9fcfa5a60a"
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "heldOut": {
+    "status": "not-used",
+    "routes": 0,
+    "checks": 0,
+    "passed": 0,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "isolation": {
+    "replays": 2,
+    "sandboxed": 2,
+    "required": true,
+    "sandbox": {
+      "tool": "bubblewrap",
+      "version": "0.9.0"
+    },
+    "reasons": []
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-22T17:09:41Z"
+}
