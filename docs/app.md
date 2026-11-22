@@ -68,6 +68,10 @@ The app serves its own page without downloading scripts, styles or fonts.
 
 ### Local project selection API
 
+You can also drag a project folder from your file manager onto **Before** or **After**.
+Select the intended folder in the desktop dialog to confirm its full path. Different
+projects can have the same folder name. Cancelling keeps the current selection.
+
 All four endpoints require the app token. The desktop dialog takes its selection from the person at
 the computer. `POST /api/projects/choose` takes an empty JSON object and returns a folder path,
 or `null` on Cancel. A graphical desktop and Python Tk are required for the dialog.

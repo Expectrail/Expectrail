@@ -121,10 +121,56 @@ def browser_rehearsal():
             print(f'Chromium {browser.version}: both folder buttons, cancellation, review invalidation, '
                   'concurrent chooser prevention, manual-edit preservation and field errors passed. '
                   '6 empty-body chooser requests, 0 jobs, 0 page errors, no overflow at 390 px.')
+            rehearse_folder_drop(browser, fixture, native)
             browser.close()
     finally:
         release.set()
         fixture.doCleanups()
+
+
+def rehearse_folder_drop(browser, fixture, native):
+    from playwright.sync_api import expect
+
+    before = test_app_projects.configured_project(fixture.root / 'original' / 'OrbitGame')
+    after = test_app_projects.configured_project(fixture.root / 'changed' / 'OrbitGame')
+    page = browser.new_page()
+    posts = []
+    page.on('request', lambda req: posts.append((req.url.rsplit('/', 1)[-1], req.post_data_json))
+            if req.method == 'POST' else None)
+    page.goto(f'http://127.0.0.1:{fixture.port}/?token={fixture.token}')
+    session = page.context.new_cdp_session(page)
+
+    def drop(target, *paths):
+        target.scroll_into_view_if_needed()
+        box = target.bounding_box()
+        data = {'files': [str(path) for path in paths], 'items': [], 'dragOperationsMask': 1}
+        for event in ('dragEnter', 'dragOver', 'drop'):
+            session.send('Input.dispatchDragEvent', {
+                'type': event, 'x': box['x'] + box['width'] / 2, 'y': box['y'] + box['height'] / 2,
+                'data': data})
+
+    for side, folder in [('before', before), ('after', after)]:
+        native.return_value = str(folder)
+        field = page.locator('#' + side)
+        # Only the desktop selection distinguishes these identically named folders.
+        drop(field, before)
+        expect(field).to_have_value(str(folder))
+    native.return_value = None
+    drop(page.locator('#before'), after)
+    expect(page.locator('#before-feedback')).to_contain_text('cancelled')
+    expect(page.locator('#before')).to_have_value(str(before))
+    expect(page.locator('#after')).to_have_value(str(after))
+    for paths in [(after / 'pawn.svg',), (before, after)]:
+        drop(page.locator('#after'), *paths)
+        expect(page.locator('#after-feedback')).to_contain_text('Drop one project folder')
+        expect(page.locator('#after')).to_have_value(str(after))
+    drop(page.locator('#run-heading'), after)
+    fixture.assertEqual(posts, [('choose', {})] * 3)
+    fixture.assertEqual(fixture.server.app.history()['jobs'], [])
+    fixture.assertEqual(len(page.context.pages), 1)
+    print('Folder drops: confirmed both paths through the desktop chooser stand-in, preserved a cancelled '
+          'choice, and ignored invalid or untargeted drops. Three empty-body chooser requests, one tab, zero jobs.')
+    page.close()
 
 
 if __name__ == '__main__':
