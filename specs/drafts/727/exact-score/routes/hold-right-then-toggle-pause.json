@@ -1,0 +1,29 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "hold-right-then-toggle-pause",
+  "description": "Hold move_right for two seconds, then stop. Then wait 30 ticks, tap toggle_pause once and wait 90 ticks while the menu is drawn.",
+  "ticks": 464,
+  "seed": 1,
+  "events": [
+    {
+      "tick": 10,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 250,
+      "action": "move_right",
+      "pressed": false
+    },
+    {
+      "tick": 310,
+      "action": "toggle_pause",
+      "pressed": true
+    },
+    {
+      "tick": 314,
+      "action": "toggle_pause",
+      "pressed": false
+    }
+  ]
+}

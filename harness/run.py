@@ -244,6 +244,22 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
 
 # The gate passes a config it already read. This default means "read the game folder's own file".
 _FROM_GAME = object()
+_LABEL_PATH = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_-]*(?:/[A-Za-z0-9_][A-Za-z0-9_-]*)*")
+_MAX_LABEL_PATHS = 16
+
+
+def checked_label_paths(paths) -> tuple[str, ...]:
+    """Validate scene-relative Label locators before constructing a Godot argument."""
+    if not isinstance(paths, (list, tuple)):
+        raise ValueError("label_paths must be a list or tuple of scene-relative Label paths")
+    distinct = set()
+    for path in paths:
+        if not isinstance(path, str) or len(path) > 512 or _LABEL_PATH.fullmatch(path) is None:
+            raise ValueError("label_paths contains an invalid scene-relative Label path")
+        distinct.add(path)
+        if len(distinct) > _MAX_LABEL_PATHS:
+            raise ValueError(f"label_paths may request at most {_MAX_LABEL_PATHS} distinct Labels")
+    return tuple(sorted(distinct))
 
 
 def needs_ui_integers(specs) -> bool:
@@ -262,7 +278,7 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         godot: Path | None = None, patches: list[Path] | None = None,
         force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
         within: Path | None = None, *, project: object = _FROM_GAME, trace_specs=(),
-        ui_integers: bool = False, input_probe: bool = False) -> dict:
+        ui_integers: bool = False, input_probe: bool = False, label_paths: tuple[str, ...] = ()) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
     False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
 
@@ -281,8 +297,10 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     requested only if one reads ui_integer_at_end, or by name with ``ui_integers`` (the measure step and
     the evidence ask on a menu probe alone, ``expectrail.jit.offer.replay_options``); default replays do
     not walk the UI or add a key.
+    ``label_paths`` requests integer readings for exact visible Labels by scene-relative path.
     The bindings go to the harness as values: inside the sandbox the game is a copy, and a path
     from this machine would not be there."""
+    label_paths = checked_label_paths(label_paths)
     game = game or REPO / "game" / "platformer"
     from expectrail.project_config import ProjectConfigError, harness_arguments, read_game
 
@@ -423,6 +441,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     # existing user arguments as a value, never a host path, route field or environment switch.
     if ui_integers or needs_ui_integers(trace_specs):
         cmd.append("--ui-integers=true")
+    if label_paths:
+        cmd.append("--ui-label-paths=" + json.dumps(label_paths, separators=(",", ":")))
 
     try:
         with timing.phase("replay"):

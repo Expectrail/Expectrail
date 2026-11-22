@@ -77,6 +77,7 @@ SHA40 = re.compile(r"[0-9a-f]{40}")
 
 # (route file, game folder, run folder, capture frames) -> {"trace", "replaySha256", "framesDir"}, and
 # "isolation": the replay's own account of what the game could reach (replay.json's block), when it has one.
+# The public replay may also receive the applicable exact-score checks' label_paths keyword.
 Replay = Callable[[Path, Path, Path, bool], dict]
 
 
@@ -143,7 +144,7 @@ def _takes(fn, name: str) -> bool:
 
 def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: str | None = None,
                    checkouts: tuple[Path, ...] = (), adapter: str = DEFAULT_ADAPTER, *,
-                   project: object = _MISSING) -> dict:
+                   project: object = _MISSING, label_paths: tuple[str, ...] = ()) -> dict:
     """One replay through the adapter's harness (``harness.adapters``, ``verify_run``; for Godot that
     is ``harness.run``, which gives Godot only the display and rendering variables from the
     environment and runs it in the replay sandbox where the machine can). ``sandbox`` is auto,
@@ -160,6 +161,8 @@ def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: st
     extra = {}
     if project is not _MISSING and engine.verify_run is not None and _takes(engine.verify_run, "project"):
         extra["project"] = project
+    if label_paths and _takes(engine.verify_run, "label_paths"):
+        extra["label_paths"] = label_paths
     replay = engine.verify_run(route, out, game=game, capture_frames=frames, sandbox=sandbox,
                                within=_checkout_of(game, checkouts), **extra)
     trace = json.loads((out / "trace.json").read_text(encoding="utf-8"))
@@ -747,7 +750,8 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     if engine == "not-applicable":
         return dict(result, observed={"engine": engine, "visual": "not-asked", "visualAnswerSha256": None})
     said, why, seen, seen_verdict, answer, part = "not-asked", None, None, None, None, None
-    if engine != "fail" and visual is not None:
+    # A bound integer is engine state. Asking the visual observer would not supply this reading.
+    if engine != "fail" and visual is not None and spec["assertion"]["type"] != "exact-ui-integer":
         try:
             seen = visual.look(spec, run, keep=keep)
             answer = digest(seen)
@@ -812,6 +816,21 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     return result
 
 
+def label_paths_for(specs: list[dict], route_names: set[str]) -> tuple[str, ...]:
+    """Exact Label paths requested by the trusted specs that apply to this replay."""
+    requested = []
+    for spec in specs:
+        assertion = spec.get("assertion", {})
+        scope = spec.get("coverage", {}).get("routes")
+        if assertion.get("type") == "exact-ui-integer" and (scope is None or route_names.intersection(scope)):
+            requested.append(assertion["labelPath"])
+    if not requested:
+        return ()
+    from harness.run import checked_label_paths
+
+    return checked_label_paths(requested)
+
+
 def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict], out: Path,
               replay: Replay, *, label: str, rule: str = rec.ENGINE_ONLY, visual=None,
               on_phase: Callable[[str], object] | None = None,
@@ -838,7 +857,9 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
         try:
             if on_phase:
                 on_phase("observing")
-            run = replay(path, game, out / name, True)
+            label_paths = label_paths_for(applicable_specs, {name})
+            options = {"label_paths": label_paths} if label_paths else {}
+            run = replay(path, game, out / name, True, **options)
             run = dict(run, engineObservations=observations(run["trace"], run["replaySha256"]))
             if runs is not None:
                 runs[name] = run
@@ -977,9 +998,11 @@ class SavedReplays:
     trees: dict[Path, str]
     runs: dict[tuple[Path, str], dict]
 
-    def __call__(self, route: Path, game: Path, out: Path, frames: bool) -> dict:
+    def __call__(self, route: Path, game: Path, out: Path, frames: bool, *,
+                 label_paths: tuple[str, ...] = ()) -> dict:
         import hashlib
 
+        # The bundle is immutable. The evaluator detects any missing Label rows in its trace.
         return self.runs[game, hashlib.sha256(route.read_bytes()).hexdigest()]
 
 
@@ -1103,8 +1126,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     one_replay = replay
     input_problems: dict[str, None] = {}
 
-    def replay(route: Path, game: Path, out: Path, frames: bool) -> dict:  # noqa: F811 - the same call, recorded
-        run = one_replay(route, game, out, frames)
+    def replay(route: Path, game: Path, out: Path, frames: bool, *,  # noqa: F811 - the same call, recorded
+               label_paths: tuple[str, ...] = ()) -> dict:
+        options = {"label_paths": label_paths} if label_paths else {}
+        run = one_replay(route, game, out, frames, **options)
         accounts.append(run.get("isolation"))
         # The harness says which tree its copy was made from. The record names one tree per side,
         # read once before any replay: a replay of anything else is not a replay of that game.

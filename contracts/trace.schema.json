@@ -237,6 +237,16 @@
           },
           "coins": {"type": "array", "items": {"$ref": "#/$defs/point"}},
           "uiIntegers": {"type": ["array", "null"], "maxItems": 32, "items": {"type": "integer", "minimum": -1000000000, "maximum": 1000000000}, "description": "Engine state only: integer-only text on visible Label nodes in the current scene. Empty means none; null means the bounded collection overflowed. Absent on older traces. Not proof of pixels, clipping or occlusion."},
+          "uiLabelIntegers": {
+            "description": "Integer-only engine state keyed by exact scene-relative Godot Label path. A null value means the Label is unavailable or unreadable at this tick. An absent path or map supplies no observation.",
+            "type": "object",
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_-]*(/[A-Za-z0-9_][A-Za-z0-9_-]*)*$(?![\\s\\S])"
+            },
+            "additionalProperties": {"type": ["integer", "null"], "minimum": -1000000000, "maximum": 1000000000}
+          },
           "enemies": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
           "projectiles": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
           "enemyBoxes": {"type": "array", "items": {"$ref": "#/$defs/trackedBox"}, "description": "Added Nov 15, 2026 by the Godot harness (#286): [id, left, top, right, bottom], the world box of the own collision of each enemy in enemies (same id) that has one to measure, measured as body is for the player. An enemy with nothing to measure is left out."},

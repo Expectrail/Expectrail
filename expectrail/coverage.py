@@ -189,8 +189,9 @@ def assess(spec: dict, observations: dict, judged: int, *, counterexample: bool,
     if hi is not None and hi < lo:
         raise ValueError("the coverage window ends before it starts")
     existential = spec['assertion']['type'] == 'reaches'
+    terminal = spec['assertion']['type'] == 'exact-ui-integer'
     one_frame = hi == lo or (hi is None and expected_frames is None and len(have) <= 1)
-    default_minimum = 1 if existential or one_frame else 2
+    default_minimum = 1 if existential or terminal or one_frame else 2
     minimum = max(obligation.get('minFrames', default_minimum),
                   math.ceil(obligation.get('minFraction', 0) * len(want)))
     applicable = 'yes'

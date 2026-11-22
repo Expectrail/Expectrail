@@ -14,13 +14,20 @@
   "additionalProperties": false,
   "if": {"properties": {"approval": {"required": ["specSha256"]}}},
   "else": {
-    "description": "An approval from before content binding can cover only the previously supported checkpoint kinds. A spec with role displacement is a draft until a person approves its exact content.",
+    "description": "An approval from before content binding can cover only the previously supported assertion and checkpoint kinds.",
     "properties": {
+      "assertion": {"properties": {"type": {"enum": ["visible", "inside-region", "never-crosses", "reaches"]}}},
       "coverage": {"properties": {"reached": {"items": {"properties": {
         "type": {"enum": ["on-floor", "position-region", "coin-count-change", "position-at-tick"]}
       }}}}}
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"assertion": {"properties": {"type": {"const": "exact-ui-integer"}}}}},
+      "then": {"required": ["coverage"], "properties": {"coverage": {"required": ["routes"]}}}
+    }
+  ],
   "properties": {
     "format": {
       "enum": [
@@ -262,6 +269,24 @@
               "minimum": 0
             }
           }
+        },
+        {
+          "type": "object",
+          "required": ["type", "object", "labelPath", "expected", "routeTicks"],
+          "additionalProperties": false,
+          "description": "Compare a named Godot Label's final engine integer with the exact expected value, on a complete route with independent pickup evidence. This assertion reads engine state.",
+          "properties": {
+            "type": {"const": "exact-ui-integer"},
+            "object": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+            "labelPath": {
+              "type": "string",
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_-]*(/[A-Za-z0-9_][A-Za-z0-9_-]*)*$(?![\\s\\S])",
+              "description": "Exact path of a Label relative to the current scene root."
+            },
+            "expected": {"type": "integer", "minimum": -1000000000, "maximum": 1000000000},
+            "routeTicks": {"type": "integer", "minimum": 1, "description": "Exact number of physics ticks required for the route."}
+          }
         }
       ]
     },
@@ -308,7 +333,7 @@
         "minFrames": {
           "type": "integer",
           "minimum": 1,
-          "description": "Minimum distinct judged frames. Default two, capped by an explicitly one-frame window; reaches defaults to one."
+          "description": "Minimum distinct judged frames. Default two, capped by an explicitly one-frame window; reaches and exact-ui-integer default to one."
         },
         "minFraction": {
           "type": "number",

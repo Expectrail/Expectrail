@@ -196,6 +196,8 @@ SAMPLES = {
     "^[a-z0-9-]+\\.yml$": ("verify.yml", True),
     "^[a-z0-9]+(-[a-z0-9]+)*$": ("smoke-route", True),
     "^[a-z0-9][a-z0-9-]*$": ("godot", True),
+    r"^[A-Za-z0-9_][A-Za-z0-9_-]*(/[A-Za-z0-9_][A-Za-z0-9_-]*)*$(?![\s\S])":
+        ("InterfaceLayer/PauseMenu/ColorRect/CoinsCounter/Label", False),
     "^[a-z0-9][a-z0-9._/-]*$": ("game/main.tscn", True),
     "^[a-z][a-z0-9-]{0,31}$": ("combat", True),
     "^[a-z][a-z0-9-]*$": ("openrouter", True),
