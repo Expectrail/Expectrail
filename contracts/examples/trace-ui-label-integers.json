@@ -1,0 +1,19 @@
+{
+  "format": "expectrail.trace/v0",
+  "ticks": 2,
+  "physicsTicksPerSecond": 120,
+  "rows": [
+    {
+      "tick": 0,
+      "uiLabelIntegers": {
+        "InterfaceLayer/PauseMenu/ColorRect/CoinsCounter/Label": null
+      }
+    },
+    {
+      "tick": 1,
+      "uiLabelIntegers": {
+        "InterfaceLayer/PauseMenu/ColorRect/CoinsCounter/Label": 5
+      }
+    }
+  ]
+}
