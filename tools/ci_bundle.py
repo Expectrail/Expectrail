@@ -56,6 +56,11 @@ def capture(policy, base, head, pr, intent, archive, replay=verify.harness_repla
         raise ValueError("closing-keyword links require fix capture")
     checks = verify.read_checks(base, policy.specs, policy.routes, "base")
     mine = verify.read_checks(head, policy.specs, policy.routes)
+    names_by_digest = {}
+    for name, _data, digest in checks.routes:
+        names_by_digest.setdefault(digest, set()).add(name)
+    label_paths_by_digest = {digest: verify.label_paths_for(checks.specs, names)
+                             for digest, names in names_by_digest.items()}
     changed = {"specs": verify.changed_count(mine.spec_entries, checks.spec_entries),
                "routes": verify.changed_count(mine.route_entries, checks.route_entries)}
     manifest = {"format": FORMAT, "writerRef": pr["baseSha"], "pullRequest": pr, "intent": intent,
@@ -73,7 +78,9 @@ def capture(policy, base, head, pr, intent, archive, replay=verify.harness_repla
                 tree = verify.game_tree(game, checkout)
                 for digest, route in routes.items():
                     folder = root / group / digest
-                    replay(route, game, folder, True, sandbox="require", checkouts=(checkout,))
+                    label_paths = label_paths_by_digest[digest]
+                    options = {"label_paths": label_paths} if label_paths else {}
+                    replay(route, game, folder, True, sandbox="require", checkouts=(checkout,), **options)
                     run = evidence.saved_run(folder, route)
                     if run["tree"] != tree:
                         raise ValueError("captured a different game tree")
@@ -121,9 +128,10 @@ def unpack(archive, root):
 
 class Attempts(verify.SavedReplays):
     """Dispatch each repetition requested by the shared repair rule to its own saved run."""
-    def __call__(self, route, game, out, frames):
+    def __call__(self, route, game, out, frames, *, label_paths=()):
         side, _, repeat = out.parent.name.partition("-run")
-        return self.runs[f"{side}-{repeat or '1'}"](route, game, out, frames)
+        options = {"label_paths": label_paths} if label_paths else {}
+        return self.runs[f"{side}-{repeat or '1'}"](route, game, out, frames, **options)
 
 
 def judge(policy, base, pr, intent, archive, out, observer, *, head_checkout):
