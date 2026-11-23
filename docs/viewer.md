@@ -21,6 +21,9 @@ its own frame files. "Run it" on expectrail.tech (#265) and the local app (#370)
   could not decide; needs review because a replay did not run to the end; not verified because
   Expectrail cannot verify the project or request; not verified because the run could not be
   carried out; not verified because no check ran; cancelled; running. Only an accept is green.
+- **Evidence grade.** Beside the verdict, the viewer shows the grade saved by the job. A viewer built
+  from findings alone says “Not recorded”, including when the findings accompany a verified receipt.
+  The observer rule and replay sandbox details come from the findings.
 - **The job's decision wins.** When the job and its evidence disagree, the page says needs review and
   why; it never picks the kinder of the two. An empty result (no check, no evidence) is never shown
   as success, and a record that says accept over a check that did not pass is not shown as accepted.

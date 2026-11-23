@@ -1097,7 +1097,6 @@ def _facts(payload: dict) -> list[tuple[str, str]]:
     facts = []
     if job:
         facts.append(("Job", f"{job['id']}: {job['phase']}"))
-        facts.append(("Evidence grade", job.get("evidenceGrade") or "none (no evidence)"))
         if job.get("finishedAt"):
             facts.append(("Finished", job["finishedAt"]))
     if record:
@@ -1110,7 +1109,6 @@ def _facts(payload: dict) -> list[tuple[str, str]]:
             ("Policy", f"{len(record['specs'])} approved spec{'s' if len(record['specs']) != 1 else ''} from the "
                        f"{'base commit (the change cannot edit the checks that judge it)' if record['checksFrom'] == 'base' else 'head commit'}"
                        + (f"; policy digest {job['inputs']['policyDigest'][:16]}" if job and (job.get('inputs') or {}).get('policyDigest') else "")),
-            ("Judged on", rec.observers_words(record)),
             ("Public checks", f"{record['counts']['checks']}: {record['counts']['passed']} pass, "
                               f"{record['counts']['failed']} fail, {record['counts']['needsReview']} need review"),
             ("Held-out routes", "not used" if record["heldOut"]["status"] == "not-used" else
@@ -1118,7 +1116,6 @@ def _facts(payload: dict) -> list[tuple[str, str]]:
              f"{record['heldOut']['routes']} routes, {record['heldOut']['checks']} checks: {record['heldOut']['passed']} pass, "
              f"{record['heldOut']['failed']} fail, {record['heldOut']['needsReview']} need review (counts only)"),
             ("Declared as", rec.repair_words(record)),
-            ("Replays in the sandbox", rec.isolation_words(record.get("isolation"))),
             ("Expectrail", record["expectrail"]["version"]
              + (f" at {record['expectrail']['commit']}" if record["expectrail"].get("commit") else "")),
         ]
@@ -1389,6 +1386,12 @@ def render(payload: dict) -> str:
         f'<div class="banner {tone}" role="status" data-state="{esc(state)}"><h1>{esc(title)}</h1>'
         f"<p>{esc(means)}</p></div>",
     ]
+    grade = (job or {}).get("evidenceGrade") or "Not recorded"
+    parts.append(f'<dl><dt>Evidence grade</dt><dd>{esc(grade)}</dd>')
+    if record:
+        parts.append(f'<dt>Judged on</dt><dd>{esc(rec.observers_words(record))}</dd>')
+        parts.append(f'<dt>Replays in the sandbox</dt><dd>{esc(rec.isolation_words(record.get("isolation")))}</dd>')
+    parts.append("</dl>")
     parts.append("<h2>Not tested</h2><ul>" + "".join(f"<li>{esc(t)}</li>" for t in not_tested(record)) + "</ul>")
     if payload.get("repair"):
         parts.append(_repair_section(payload["repair"], payload["decision"] or "No verdict"))
