@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import threading
 import unittest
 from unittest import mock
@@ -45,6 +46,35 @@ class SelectedFoldersTest(unittest.TestCase):
         self.assertFalse(reopened['sessionOwned'])
         self.assertEqual((reopened['before'], reopened['after']), expected)
 
+    def test_previous_commit_source_survives_cleanup_and_is_local_display_only(self):
+        fixture = self.fixture
+        project = self.before
+        git = ['git', '-C', str(project), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@localhost']
+        subprocess.run(git + ['init', '-q'], check=True)
+        subprocess.run(git + ['add', '.'], check=True)
+        subprocess.run(git + ['commit', '-qm', 'Original'], check=True)
+        parent = subprocess.check_output(git + ['rev-parse', 'HEAD'], text=True).strip()
+        subprocess.run(git + ['commit', '--allow-empty', '-qm', 'Next'], check=True)
+        code, copy, _ = fixture.http('POST', '/api/projects/previous', {'after': str(project)})
+        self.assertEqual(code, 200, copy)
+        self.assertEqual(copy['commit'], parent)
+        self.before = Path(copy['folder'])
+        job = self.submit()  # The After folder differs from the repository that supplied Before.
+        expected = f'{project} (copy opened from Git commit {parent})'
+        self.assertEqual((job['before'], job['after']), (expected, str(self.after)))
+        key = job['id']
+        saved = fixture.store.request(key)
+        self.assertNotIn(parent, json.dumps(saved))
+        code, evidence, _ = fixture.http('GET', f'/viewers/{key}/{viewer.EXPORT_NAME}')
+        self.assertEqual(code, 200)
+        self.assertNotIn(parent.encode(), evidence)
+        self.assertNotIn(str(project).encode(), evidence)
+        fixture.server.app.close()
+        self.assertFalse(self.before.exists())
+        reopened, = app.App(fixture.store, fixture.start).history()['jobs']
+        self.assertEqual((reopened['id'], reopened['before'], reopened['after']), (key, expected, str(self.after)))
+        self.assertEqual(fixture.store.request(key), saved)
+
     def test_missing_corrupt_oversized_and_linked_metadata_show_only_the_recorded_checkouts(self):
         job = self.submit()
         key = job['id']
@@ -53,12 +83,15 @@ class SelectedFoldersTest(unittest.TestCase):
         outside = self.fixture.root / 'sentinel.json'
         outside.write_text(json.dumps({'before': '/unrelated/sentinel', 'after': '/unrelated/file'}))
         request = self.fixture.store.request(key)
-        for kind in ('missing', 'malformed', 'bad paths', 'oversized', 'symlink'):
+        for kind in ('missing', 'malformed', 'bad paths', 'invalid commit', 'oversized', 'symlink'):
             with self.subTest(kind=kind):
                 if kind == 'malformed':
                     sidecar.write_bytes(b'{}junk')
                 elif kind == 'bad paths':
                     sidecar.write_text(json.dumps({'before': '../other', 'after': '/unrelated/file'}))
+                elif kind == 'invalid commit':
+                    sidecar.write_text(json.dumps({'before': '/unrelated/a', 'after': '/unrelated/b',
+                                                   'beforeCommit': 'HEAD'}))
                 elif kind == 'oversized':
                     sidecar.write_bytes(outside.read_bytes() + b' ' * app.LIMIT)
                 elif kind == 'symlink':

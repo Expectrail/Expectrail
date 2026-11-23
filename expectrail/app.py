@@ -351,6 +351,7 @@ class App:
         self.chooser_lock = threading.Lock()
         self.previous_lock = threading.Lock()
         self.previous_copy = None
+        self.previous_origins = {}
 
     def recent_projects(self):
         try:
@@ -445,6 +446,7 @@ class App:
             if self.previous_copy is not None:
                 self.previous_copy.cleanup()
             self.previous_copy = saved
+            self.previous_origins = {folder: (after, commit)}
             return {'folder': str(folder), 'source': 'previous-commit', 'commit': commit}
 
     def inspect(self, body):
@@ -519,6 +521,8 @@ class App:
                 before = project_folder(body, 'before').resolve()
                 doc = project_job.prepare(self.store, after, before,
                                           execution_class=execution_class(body), require_ready=True)
+                # Save the selection that produced these snapshots before another tab replaces the copy.
+                display_before, before_commit = self.previous_origins.get(before, (before, None))
         else:
             doc = build(body)
         settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'), agent=body.get('repairAgent'))
@@ -542,7 +546,7 @@ class App:
                 if created:
                     if after is not None:
                         try:
-                            self.record_folders(job_id, before, after)
+                            self.record_folders(job_id, display_before, after, before_commit)
                         except OSError:
                             pass  # The snapshots can still run and identify the recorded checkouts.
                     if settings:
@@ -562,13 +566,16 @@ class App:
                 pass  # A recent-path write cannot change the result of a started job.
         return self.status(job_id)
 
-    def record_folders(self, job_id, before, after):
+    def record_folders(self, job_id, before, after, before_commit=None):
         # Local display data, outside the worker request and all evidence exports.
         # A reader sees either both selections or the recorded checkout fallback.
+        fields = {'before': str(before), 'after': str(after)}
+        if before_commit is not None:
+            fields['beforeCommit'] = before_commit
         with tempfile.NamedTemporaryFile(mode='w', dir=self.store.root, delete=False) as stream:
             temporary = Path(stream.name)
             try:
-                json.dump({'before': str(before), 'after': str(after)}, stream)
+                json.dump(fields, stream)
                 stream.close()
                 temporary.replace(self.store.root / f'app-folders-{job_id}.json')
             finally:
@@ -586,9 +593,17 @@ class App:
         try:
             # status() has already validated the job ID. Never open a path from the sidecar.
             fields = rec.strict_loads(commits.regular(self.store.root / f'app-folders-{job_id}.json', LIMIT))
+            commit = None
+            if isinstance(fields, dict) and 'beforeCommit' in fields:
+                commit = fields.pop('beforeCommit')
+                if not isinstance(commit, str) or not commits.OID.fullmatch(commit):
+                    raise ValueError('Invalid saved Before commit.')
             if isinstance(fields, dict) and set(fields) == {'before', 'after'} and all(
                     isinstance(v, str) and '\0' not in v and Path(v).is_absolute() for v in fields.values()):
-                return fields['before'], fields['after']
+                label = fields['before']
+                if commit is not None:
+                    label += f' (copy opened from Git commit {commit})'
+                return label, fields['after']
         except (OSError, ValueError, RecursionError):
             pass
         return tuple(f'Recorded checkout: {path} (original selection unavailable)' if path else None
@@ -612,9 +627,14 @@ class App:
         repair = doc.get('repair') or {}
         summary = OUTCOMES[state]
         if state == 'reject':
-            summary += ' ' + viewer.auto_fix_words(doc)
-            if 'review' in repair:
-                summary += ' ' + repair['review']
+            if repair:
+                summary += ' ' + viewer.auto_fix_words(doc)
+                if 'review' in repair:
+                    summary += ' ' + repair['review']
+            else:
+                summary += (' No repair was recorded. To try one on a new run, select '
+                            '“Try to fix the game if verification rejects it” and set '
+                            '“Maximum fixer spend in US dollars” before choosing Verify.')
         findings = self.findings(job_id, doc)
         return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics', 'createdAt')} | {
             'state': state, 'screen': screen, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
