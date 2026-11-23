@@ -53,15 +53,31 @@ class PendingSetupTest(unittest.TestCase):
         self.assertIn(onboard.PENDING, str(caught.exception))
         self.assertNotIn('bindings.player.texture', str(caught.exception))
 
-    def test_new_game_and_invalid_active_config_keep_the_original_error(self):
-        with self.assertRaisesRegex(RequestError, 'Use expectrail init'):
+    def test_new_game_offers_the_app_review_and_keeps_the_terminal_option(self):
+        with self.assertRaises(RequestError) as caught:
             project_job.read_config(self.game)
+        self.assertIn('Check folders', str(caught.exception))
+        self.assertIn('Use expectrail init', str(caught.exception))
+
+    def test_invalid_active_config_keeps_the_original_error(self):
         self.initialize()
         (self.game / project_config.FILENAME).write_text('invalid json')
         with self.assertRaises(RequestError) as caught:
             project_job.read_config(self.game)
         self.assertNotIn(onboard.PENDING, str(caught.exception))
+        self.assertNotIn('Check folders', str(caught.exception))
         self.assertIn('Use expectrail init', str(caught.exception))
+
+    def test_app_setup_review_requires_the_folders_own_godot_descriptor(self):
+        marker = self.game / 'project.godot'
+        moved = marker.rename(self.root / 'outside.godot')
+        for kind in ('missing', 'link'):
+            with self.subTest(kind=kind):
+                if kind == 'link':
+                    marker.symlink_to(moved)
+                with self.assertRaises(RequestError) as caught:
+                    project_job.read_config(self.game)
+                self.assertNotIn('Check folders', str(caught.exception))
 
     def test_malformed_and_linked_drafts_do_not_supply_binding_guidance(self):
         self.initialize()

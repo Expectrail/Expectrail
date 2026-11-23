@@ -21,13 +21,18 @@ The app serves its own page without downloading scripts, styles or fonts.
    `<game>-before` folder or a copy in another registered Git worktree. If you recognize
    the suggested path as your earlier version, select **Use as Before**. Otherwise,
    choose your own Before folder. When typing an After path, leave the field to see
-   any suggestion.
+   any suggestion. If the app finds a local Git checkout and no other copy, you can
+   select **Use previous commit as Before**. This opens a temporary copy from the
+   first parent of the current commit. After still includes your working-tree edits.
+   Check the commit ID beside Before. If that commit is unavailable or you meant a
+   different version, select **Choose Before folder**. Changing the After path clears
+   a Before copy obtained with the previous-commit button.
    After your first choice, **Recent Before folders** and **Recent After folders** let you
    reuse a folder. Each lists the six most recently remembered folders on this computer.
    Selecting one checks that folder and shows any setup problem beside the field.
    You can also paste a full folder path or the path to `project.godot`. To verify, each
    folder also needs its own [project config](project-config.md), `expectrail.project.json`.
-   Git references are not supported in this screen.
+   To compare against another branch or commit, choose a folder containing that version.
 2. The config's `routes` and `approvedContracts` lists choose the policy. The base config
    chooses what judges both copies. A config produced by `expectrail init` is a draft and
    cannot give an accept until its bindings are reviewed. Only a person may approve checks.
