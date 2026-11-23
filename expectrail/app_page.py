@@ -35,6 +35,7 @@ For your own checks, the routes and approvals come from <strong>Before</strong>.
 <div id="recent-after-group" hidden><label for="recent-after">Recent After folders</label>
 <select id="recent-after"></select></div>
 <div id="after-feedback" class="folder-feedback" role="status"></div></div></div>
+<div id="folder-pair-feedback" class="folder-feedback" role="status"></div>
 <div id="before-suggestion" class="folder-feedback" hidden>
 <p><span id="suggestion-source"></span> <strong id="suggested-folder"></strong></p>
 <button id="use-before" type="button" class="secondary" aria-describedby="suggested-folder">Use as Before</button></div>
@@ -301,6 +302,44 @@ async function refreshRecentFolders() {
   }
 }
 let folderRevision=0;
+let pairTimer;
+const pairedProblems=new Map();
+const checkingFolder='Checking the selected folder…';
+function hasFolderPair() {
+  return Boolean(el('before').value.trim() && el('after').value.trim());
+}
+function checkFolderPair(delay) {
+  clearTimeout(pairTimer);
+  const notice=el('folder-pair-feedback');
+  notice.textContent='';
+  for(const [field,problem] of pairedProblems) {
+    if(field.textContent===problem) field.textContent='';
+  }
+  pairedProblems.clear();
+  const before=el('before').value, after=el('after').value, revision=folderRevision;
+  if(!before.trim() || !after.trim()) return;
+  // Compare the paths resolved by the server, including project.godot selections.
+  pairTimer=setTimeout(async()=>{
+    try {
+      const pair=await api('/api/projects/check',{before,after});
+      if(revision!==folderRevision) return;
+      for(const side of Object.keys(sideNames)) {
+        const field=el(side+'-feedback'), problem=pair[side].problem;
+        if(problem) {
+          pairedProblems.set(field,problem);
+          field.textContent=problem;
+        } else if(!field.textContent || field.textContent===checkingFolder) {
+          field.textContent=sideNames[side]+' folder selected.';
+        }
+      }
+      if(pair.before.folder && pair.before.folder===pair.after.folder) {
+        notice.textContent='Before and After are the same copy. Select “Choose Before folder” to compare a different version. You can still verify this copy as a baseline.';
+      }
+    } catch(error) {
+      if(revision===folderRevision) notice.textContent=error.message;
+    }
+  },delay);
+}
 let previousAfter=null;
 function selectBefore(folder, message) {
   const before=el('before');
@@ -336,7 +375,7 @@ for(const side of Object.keys(sideNames)) {
   const input=el(side), choose=el('choose-'+side), feedback=el(side+'-feedback');
   const recent=el('recent-'+side);
   let selection=0;
-  input.addEventListener('input',()=>{
+  input.addEventListener('input',event=>{
     selection++;
     folderRevision++;
     el('before-suggestion').hidden=true;
@@ -348,15 +387,18 @@ for(const side of Object.keys(sideNames)) {
     if(recent.value!==input.value) recent.value='';
     el('inspection-'+side).replaceChildren();
     feedback.textContent='';
+    // Picker selections dispatch a complete path. Debounce only manual text edits.
+    checkFolderPair(event instanceof InputEvent ? 200 : 0);
   });
   async function checkFolder(showFeedback) {
     const folder=input.value, revision=folderRevision, current=selection;
+    if(hasFolderPair()) return; // The input event scheduled the paired check.
     const offerBefore=side==='after' && !el('before').value.trim();
     if(!showFeedback && (!offerBefore || !folder.trim())) return;
-    if(showFeedback) feedback.textContent='Checking the selected folder…';
+    if(showFeedback) feedback.textContent=checkingFolder;
     try {
       const checked=await api('/api/projects/check',{[side]:folder});
-      if(current!==selection || input.value!==folder) return;
+      if(current!==selection || input.value!==folder || hasFolderPair()) return;
       if(showFeedback) feedback.textContent=checked[side].problem || sideNames[side]+' folder selected.';
       const suggestion=checked.beforeSuggestion;
       if(!offerBefore || revision!==folderRevision || el('before').value.trim()) return;
@@ -367,7 +409,7 @@ for(const side of Object.keys(sideNames)) {
         el('before-suggestion').hidden=false;
       } else if(checked.hasGitCheckout) el('previous-option').hidden=false;
     } catch(error) {
-      if(showFeedback && current===selection) feedback.textContent=error.message;
+      if(showFeedback && current===selection && !hasFolderPair()) feedback.textContent=error.message;
     }
   }
   if(side==='after') {

@@ -1,6 +1,7 @@
 """The desktop folder choices on the local app's first screen (#710)."""
 from html.parser import HTMLParser
 import importlib.util
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -182,6 +183,7 @@ def browser_rehearsal():
             rehearse_before_suggestion(browser, fixture, native)
             rehearse_previous_commit(browser, fixture)
             rehearse_folder_drop(browser, fixture, native)
+            rehearse_folder_pair(browser, fixture, native)
             browser.close()
     finally:
         release.set()
@@ -304,6 +306,116 @@ def rehearse_previous_commit(browser, fixture):
     page.close()
 
 
+def rehearse_folder_pair(browser, fixture, native):
+    from playwright.sync_api import expect
+
+    game = test_app_projects.configured_project(fixture.root / 'first' / 'Orbit')
+    copy = fixture.root / 'second' / 'Orbit'
+    shutil.copytree(game, copy)
+    other_layout = fixture.root / 'third' / 'Orbit'
+    shutil.copytree(game, other_layout)
+    (other_layout / 'entry.tscn').rename(other_layout / 'start.tscn')
+    config_file = other_layout / 'expectrail.project.json'
+    config = json.loads(config_file.read_text())
+    config['entryScene'] = 'res://start.tscn'
+    config_file.write_text(json.dumps(config))
+    fixture.server.app.remember_project(game)
+
+    page = browser.new_page()
+    errors = []
+    page.on('pageerror', lambda error: errors.append(str(error)))
+    page.goto(f'http://127.0.0.1:{fixture.port}/?token={fixture.token}')
+    before, after = page.locator('#before'), page.locator('#after')
+    note = page.locator('#folder-pair-feedback')
+
+    def select_after_during_single_check(route):
+        reply = route.fetch()
+        page.get_by_label('Recent After folders', exact=True).select_option(str(game))
+        route.fulfill(response=reply)
+
+    page.route('**/api/projects/check', select_after_during_single_check, times=1)
+    page.get_by_label('Recent Before folders', exact=True).select_option(str(game))
+    expect(note).to_contain_text('same copy')
+    expect(page.locator('#before-feedback')).to_have_text('Before folder selected.')
+    expect(note).to_contain_text('Choose Before folder')
+
+    def checked_pair(response, left, right):
+        return (response.url.endswith('/api/projects/check')
+                and response.request.post_data_json == {'before': str(left), 'after': str(right)})
+
+    descriptor = game / 'project.godot'
+    with page.expect_response(lambda r: checked_pair(r, game, descriptor)):
+        after.fill(str(descriptor))
+    expect(note).to_contain_text('same copy')
+    # Separate directories with identical names and bytes are a valid pair.
+    native.return_value = str(copy)
+    with page.expect_response(lambda r: checked_pair(r, copy, descriptor)):
+        page.get_by_role('button', name='Choose Before folder', exact=True).click()
+    expect(note).to_be_empty()
+
+    # Changing the scene bytes in a separate copy must not turn it into the same folder.
+    (copy / 'entry.tscn').write_text((copy / 'entry.tscn').read_text() + '\n')
+    with page.expect_response(lambda r: checked_pair(r, copy, game)):
+        after.fill(str(game))
+    expect(note).to_be_empty()
+
+    after.fill(str(other_layout))
+    after_feedback = page.locator('#after-feedback')
+    expect(after_feedback).to_contain_text('different layouts')
+    expect(after_feedback).to_contain_text('entry.tscn')
+    before.fill('')
+    expect(after_feedback).not_to_contain_text('different layouts')
+    expect(note).to_be_empty()
+    before.fill(str(game))
+    expect(after_feedback).to_contain_text('different layouts')
+    after.fill('')
+    expect(after_feedback).not_to_contain_text('different layouts')
+    before.fill('')
+
+    # An older same-copy reply must not restore the warning after another selection.
+    after.fill(str(game))
+    delayed = []
+
+    def clear_before_reply(route):
+        if route.request.post_data_json != {'before': str(descriptor), 'after': str(game)}:
+            route.continue_()
+            return
+        reply = route.fetch()
+        before.fill('')
+        delayed.append(True)
+        route.fulfill(response=reply)
+
+    page.route('**/api/projects/check', clear_before_reply)
+    with page.expect_response(lambda r: checked_pair(r, descriptor, game)):
+        before.fill(str(descriptor))
+    page.wait_for_load_state('networkidle')
+    page.unroute('**/api/projects/check', clear_before_reply)
+    fixture.assertEqual(delayed, [True])
+    expect(before).to_have_value('')
+    expect(note).to_be_empty()
+
+    before.fill(str(descriptor))
+    expect(note).to_be_empty()
+
+    before.fill(str(descriptor))
+    expect(note).to_contain_text('same copy')
+    expect(page.locator('#verify')).to_be_enabled()
+    with page.expect_response(lambda r: r.url.endswith('/api/jobs') and r.request.method == 'POST') as submitted:
+        with page.expect_response(lambda r: r.url.endswith('/api/inspect')) as inspected:
+            page.locator('#verify').click()
+        if inspected.value.json().get('rendering', {}).get('warning'):
+            page.get_by_role('button', name='Verify with this warning').click()
+    fixture.assertEqual(submitted.value.status, 201)
+    baseline = fixture.finished(submitted.value.json()['id'])
+    fixture.assertEqual((baseline['before'], baseline['after']), (str(game), str(game)))
+    fixture.assertEqual(len(fixture.server.app.history()['jobs']), 1)
+    fixture.assertEqual(errors, [])
+    print(f'Chromium {browser.version}: same-copy warning for recent folders and project.godot; '
+          'distinct identical copies, layout warning, clearing and late replies checked. '
+          'Deliberate baseline submitted with the test replay backend.')
+    page.close()
+
+
 def rehearse_folder_drop(browser, fixture, native):
     from playwright.sync_api import expect
 
@@ -325,12 +437,13 @@ def rehearse_folder_drop(browser, fixture, native):
                 'type': event, 'x': box['x'] + box['width'] / 2, 'y': box['y'] + box['height'] / 2,
                 'data': data})
 
-    for side, folder in [('before', before), ('after', after)]:
-        native.return_value = str(folder)
-        field = page.locator('#' + side)
-        # Only the desktop selection distinguishes these identically named folders.
-        drop(field, before)
-        expect(field).to_have_value(str(folder))
+    with page.expect_response(lambda r: r.url.endswith('/api/projects/check') and 'before' in r.request.post_data_json):
+        for side, folder in [('before', before), ('after', after)]:
+            native.return_value = str(folder)
+            field = page.locator('#' + side)
+            # Only the desktop selection distinguishes these identically named folders.
+            drop(field, before)
+            expect(field).to_have_value(str(folder))
     native.return_value = None
     drop(page.locator('#before'), after)
     expect(page.locator('#before-feedback')).to_contain_text('cancelled')
@@ -341,11 +454,12 @@ def rehearse_folder_drop(browser, fixture, native):
         expect(page.locator('#after-feedback')).to_contain_text('Drop one project folder')
         expect(page.locator('#after')).to_have_value(str(after))
     drop(page.locator('#run-heading'), after)
-    fixture.assertEqual(posts, [('choose', {})] * 3)
+    fixture.assertEqual(posts, [('choose', {}), ('choose', {}),
+                                ('check', {'before': str(before), 'after': str(after)}), ('choose', {})])
     fixture.assertEqual(fixture.server.app.history()['jobs'], [])
     fixture.assertEqual(len(page.context.pages), 1)
     print('Folder drops: confirmed both paths through the desktop chooser stand-in, preserved a cancelled '
-          'choice, and ignored invalid or untargeted drops. Three empty-body chooser requests, one tab, zero jobs.')
+          'choice, and ignored invalid or untargeted drops. Three empty-body chooser requests, one check of the confirmed pair, one tab, zero jobs.')
     page.close()
 
 
