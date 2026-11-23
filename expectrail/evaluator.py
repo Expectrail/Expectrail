@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -57,6 +58,20 @@ def _frames(spec, observations):
     for frame in sorted(observations["frames"], key=lambda f: f["frame"]):
         if frame["frame"] >= lo and (hi is None or frame["frame"] <= hi):
             yield frame
+
+
+def _verdict(spec, observations, result, reason, judged=0, failures=()):
+    return {
+        "format": "expectrail.verdict/v0",
+        "spec": {"id": spec["id"], "sha256": digest(spec)},
+        "observations": {"sha256": digest(observations)},
+        "result": result,
+        "reason": reason,
+        "firstFrame": failures[0]["frame"] if result == "fail" and failures else None,
+        "evidence": list(failures[:MAX_EVIDENCE]),
+        "framesJudged": judged,
+        "evaluator": dict(EVALUATOR),
+    }
 
 
 def _assertion_verdict(spec: dict, observations: dict) -> dict:
@@ -220,17 +235,77 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
         result, reason = "needs-review", (f"not-exercised: {assertion['object']} was outside the view in "
                                            f"{len(unexercised)} frames (first {unexercised[0]})")
 
-    return {
-        "format": "expectrail.verdict/v0",
-        "spec": {"id": spec["id"], "sha256": digest(spec)},
-        "observations": {"sha256": digest(observations)},
-        "result": result,
-        "reason": reason,
-        "firstFrame": first_fail if result == "fail" else None,
-        "evidence": failures[:MAX_EVIDENCE],
-        "framesJudged": judged,
-        "evaluator": dict(EVALUATOR),
-    }
+    return _verdict(spec, observations, result, reason, judged, failures)
+
+
+def _pickup_count(rows):
+    """Count disappearances only on a complete record of the authored coin set."""
+    previous = start = None
+    for row in rows:
+        points = row.get("coins")
+        if not isinstance(points, list) or any(
+            not isinstance(point, list) or len(point) != 2 or any(
+                type(value) is not int and (type(value) is not float or not math.isfinite(value))
+                for value in point
+            ) for point in points
+        ):
+            return None
+        remaining = len(points)
+        if start is None:
+            start = remaining
+        if previous is not None and remaining > previous:
+            return None
+        previous = remaining
+    return start - previous
+
+
+def _score_reading(spec, observations, trace, route, source_kind, capture_fps):
+    """Return an exercised terminal reading and the frame that represents its tick."""
+    if source_kind != "trace":
+        return None, "exact score requires a bound engine Label reading", True
+    if route not in spec.get("coverage", {}).get("routes", []):
+        return None, "exact score requires a named applicable route", True
+    trace = trace or {}
+    assertion = spec["assertion"]
+    rows, total = trace.get("rows"), assertion["routeTicks"]
+    if (type(total) is not int or total < 1 or trace.get("unknownActions") != []
+            or not isinstance(rows, list) or len(rows) != total
+            or any(not isinstance(row, dict) or type(row.get("tick")) is not int or row["tick"] != tick
+                   for tick, row in enumerate(rows))):
+        return None, "exact score requires the complete ordered route and known input actions", True
+    pickups = _pickup_count(rows)
+    if pickups is None:
+        return None, "exact score requires complete, consistent coin observations", True
+    if pickups == 0:
+        return None, "no pickups exercised the score counter", False
+    values = rows[-1].get("uiLabelIntegers")
+    value = values.get(assertion["labelPath"]) if isinstance(values, dict) else None
+    if type(value) is not int or abs(value) > 1_000_000_000:
+        return None, "the bound engine Label has no valid integer at the final tick", True
+
+    from expectrail.observation_timeline import TimelineError, tick_for
+    frames = list(_frames(spec, observations))
+    if not frames:
+        return None, "the score observation window has no frames", True
+    frame = frames[-1]["frame"]
+    try:
+        if tick_for(trace, frame, capture_fps) == total - 1:
+            return (frame, value), f"bound Label read {value} at tick {total - 1} after {pickups} pickups", False
+    except (TimelineError, KeyError, TypeError, IndexError):
+        pass
+    return None, "the score observation window does not cover the final route tick", True
+
+
+def _score_verdict(spec, observations, trace, route, source_kind, capture_fps):
+    reading, reason, evidence_missing = _score_reading(spec, observations, trace, route, source_kind, capture_fps)
+    if reading is None:
+        return _verdict(spec, observations, "needs-review", reason), evidence_missing
+    frame, value = reading
+    expected = spec["assertion"]["expected"]
+    reason += f", expected {expected}"
+    if value == expected:
+        return _verdict(spec, observations, "pass", reason, 1), False
+    return _verdict(spec, observations, "fail", reason, 1, [{"frame": frame, "detail": reason}]), False
 
 
 def _in_play(spec: dict, observations: dict, trace: dict | None, capture_fps: int | None):
@@ -279,11 +354,21 @@ def evaluate(spec: dict, observations: dict, *, route: str | None = None, trace:
     conditional = spec.get("coverage", {}).get("whenPlayerVisible", False)
     if conditional and not problem:
         eligible, hidden, unknown = _in_play(spec, observations, trace, capture_fps)
-    verdict = _assertion_verdict(spec, eligible)
+    exact_score = spec["assertion"]["type"] == "exact-ui-integer"
+    evidence_missing = False
+    if exact_score:
+        verdict, evidence_missing = _score_verdict(spec, eligible, trace, route, source_kind, capture_fps)
+    else:
+        verdict = _assertion_verdict(spec, eligible)
     # The verdict names the original evidence, not an undocumented filtered document.
     verdict["observations"]["sha256"] = digest(observations)
-    coverage, detail = assess(spec, observations, verdict["framesJudged"], counterexample=verdict["result"] == "fail",
+    # A terminal score mismatch is decisive only after its evidence obligations are met.
+    coverage, detail = assess(spec, observations, verdict["framesJudged"],
+                              counterexample=verdict["result"] == "fail" and not exact_score,
                               route=route, trace=trace, expected_frames=expected_frames)
+    if evidence_missing and coverage["status"] != "not-applicable":
+        coverage.update(status="insufficient-observation", semanticResult="insufficient_observation",
+                        completeWindow=False)
     if conditional:
         coverage.update(framesNotExercised=hidden, framesVisibilityUnknown=unknown)
         if unknown and verdict["result"] != "fail" and coverage["status"] != "not-applicable":
@@ -295,8 +380,14 @@ def evaluate(spec: dict, observations: dict, *, route: str | None = None, trace:
         verdict.update(result="not-applicable", reason="not-applicable: this spec does not apply to this route",
                        firstFrame=None, evidence=[], framesJudged=0)
     elif coverage["semanticResult"] not in ("pass", "fail"):
-        verdict.update(result="needs-review", reason="not-exercised: " + detail + "; " + verdict["reason"],
+        prefix = ("insufficient-observation" if exact_score and coverage["status"] == "insufficient-observation"
+                  else "not-exercised")
+        verdict.update(result="needs-review", reason=f"{prefix}: {detail}; {verdict['reason']}",
                        firstFrame=None)
+        if exact_score:
+            verdict["evidence"] = []
+    elif exact_score and verdict["result"] == "fail":
+        coverage["semanticResult"] = "fail"
     if problem and coverage["status"] != "not-applicable":
         verdict.update(result="needs-review", reason=problem, firstFrame=None, evidence=[], framesJudged=0)
     return verdict

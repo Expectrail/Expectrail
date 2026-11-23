@@ -576,7 +576,10 @@ class ForAProposer(Base):
     def test_the_fields_it_may_name_are_the_trace_rows_own(self):
         schema = json.loads((REPO / "contracts" / "trace.schema.json").read_text(encoding="utf-8"))
         rows = schema["properties"]["rows"]["items"]["properties"]
-        self.assertEqual(sorted(evidence.FIELDS), sorted(set(rows) - {"tick", "frame"}))
+        # Paths bound by an approved gate spec are outside the generic proposer vocabulary.
+        self.assertIn("uiLabelIntegers", rows)
+        self.assertNotIn("uiLabelIntegers", evidence.FIELDS)
+        self.assertEqual(sorted(evidence.FIELDS), sorted(set(rows) - {"tick", "frame", "uiLabelIntegers"}))
 
 
 class ThePage(Base):

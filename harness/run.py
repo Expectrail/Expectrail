@@ -52,20 +52,39 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _is_executable_file(path: Path) -> bool:
+    return path.is_file() and os.access(path, os.X_OK)
+
+
+def cached_godot_path() -> Path:
+    """Locate the configured engine without starting a download."""
+    named = os.environ.get("EXPECTRAIL_GODOT")
+    if named:
+        return Path(named)
+    if sys.platform != "darwin":
+        return tools_dir() / "godot" / f"Godot_v{GODOT_VERSION}_linux.x86_64"
+    bundle = Path("godot_mac/Godot.app/Contents/MacOS/Godot")
+    cached = tools_dir() / bundle
+    # Older wheels kept a downloaded app inside the package. Reuse it offline until the
+    # default user cache has an executable. An explicit tools directory takes precedence.
+    if REPO.name == "_bundle" and not os.environ.get("EXPECTRAIL_TOOLS") and not _is_executable_file(cached):
+        legacy = REPO / "tools" / bundle
+        if _is_executable_file(legacy):
+            return legacy
+    return cached
+
+
 def find_godot() -> Path:
-    env = os.environ.get("EXPECTRAIL_GODOT")
-    if env:
-        return Path(env)
-    if sys.platform == "darwin":
-        mac_binary = REPO / "tools" / "godot_mac" / "Godot.app" / "Contents" / "MacOS" / "Godot"
-        if mac_binary.is_file():
-            return mac_binary
-        out = subprocess.run([str(REPO / "harness" / "macos" / "get_godot_mac.sh")], check=True, capture_output=True, text=True)
-        return Path(out.stdout.strip().splitlines()[-1])
-    # Run with bash by name: an installed copy's script may have lost its executable bit. It is told
-    # where to keep the engine, so a clone and an installed copy use the one rule (tools_dir).
-    out = subprocess.run(["bash", str(REPO / "harness" / "get_godot.sh")], check=True, capture_output=True, text=True,
-                         env={**os.environ, "EXPECTRAIL_TOOLS": str(tools_dir())})
+    binary = cached_godot_path()
+    if os.environ.get("EXPECTRAIL_GODOT"):
+        return binary
+    if sys.platform == "darwin" and _is_executable_file(binary):
+        return binary
+    helper = "macos/get_godot_mac.sh" if sys.platform == "darwin" else "get_godot.sh"
+    # An installed shell script may lack the executable bit. Pass the same tools directory
+    # that the no-fetch lookup uses, so the wheel can stay read-only.
+    out = subprocess.run(["bash", str(REPO / "harness" / helper)], check=True, capture_output=True, text=True,
+                         env={**os.environ, "EXPECTRAIL_TOOLS": str(tools_dir()), "PYTHON": sys.executable})
     return Path(out.stdout.strip().splitlines()[-1])
 
 
@@ -244,6 +263,22 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
 
 # The gate passes a config it already read. This default means "read the game folder's own file".
 _FROM_GAME = object()
+_LABEL_PATH = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_-]*(?:/[A-Za-z0-9_][A-Za-z0-9_-]*)*")
+_MAX_LABEL_PATHS = 16
+
+
+def checked_label_paths(paths) -> tuple[str, ...]:
+    """Validate scene-relative Label locators before constructing a Godot argument."""
+    if not isinstance(paths, (list, tuple)):
+        raise ValueError("label_paths must be a list or tuple of scene-relative Label paths")
+    distinct = set()
+    for path in paths:
+        if not isinstance(path, str) or len(path) > 512 or _LABEL_PATH.fullmatch(path) is None:
+            raise ValueError("label_paths contains an invalid scene-relative Label path")
+        distinct.add(path)
+        if len(distinct) > _MAX_LABEL_PATHS:
+            raise ValueError(f"label_paths may request at most {_MAX_LABEL_PATHS} distinct Labels")
+    return tuple(sorted(distinct))
 
 
 def needs_ui_integers(specs) -> bool:
@@ -262,7 +297,7 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         godot: Path | None = None, patches: list[Path] | None = None,
         force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
         within: Path | None = None, *, project: object = _FROM_GAME, trace_specs=(),
-        ui_integers: bool = False, input_probe: bool = False) -> dict:
+        ui_integers: bool = False, input_probe: bool = False, label_paths: tuple[str, ...] = ()) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
     False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
 
@@ -281,8 +316,10 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     requested only if one reads ui_integer_at_end, or by name with ``ui_integers`` (the measure step and
     the evidence ask on a menu probe alone, ``expectrail.jit.offer.replay_options``); default replays do
     not walk the UI or add a key.
+    ``label_paths`` requests integer readings for exact visible Labels by scene-relative path.
     The bindings go to the harness as values: inside the sandbox the game is a copy, and a path
     from this machine would not be there."""
+    label_paths = checked_label_paths(label_paths)
     game = game or REPO / "game" / "platformer"
     from expectrail.project_config import ProjectConfigError, harness_arguments, read_game
 
@@ -423,6 +460,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     # existing user arguments as a value, never a host path, route field or environment switch.
     if ui_integers or needs_ui_integers(trace_specs):
         cmd.append("--ui-integers=true")
+    if label_paths:
+        cmd.append("--ui-label-paths=" + json.dumps(label_paths, separators=(",", ":")))
 
     try:
         with timing.phase("replay"):

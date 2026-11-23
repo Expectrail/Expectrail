@@ -1,0 +1,19 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "pause-menu-score-after-five-pickups",
+  "instruction": "The pause-menu score displays exactly 5 after the player collects five coins on the rightward walk.",
+  "objects": {
+    "score": {"prompt": "pause-menu coin counter"}
+  },
+  "assertion": {
+    "type": "exact-ui-integer",
+    "object": "score",
+    "labelPath": "InterfaceLayer/PauseMenu/ColorRect/CoinsCounter/Label",
+    "expected": 5,
+    "routeTicks": 464
+  },
+  "coverage": {
+    "routes": ["hold-right-then-toggle-pause"],
+    "minFrames": 1
+  }
+}

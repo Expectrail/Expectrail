@@ -228,7 +228,7 @@ class EnginePrerequisiteTest(unittest.TestCase):
                 self.assertEqual(req.godot_binary(), engine)
 
     def test_macos_bundle_cache_and_path_are_recognised(self):
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, EXPECTRAIL_GODOT=''), \
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, EXPECTRAIL_GODOT='', EXPECTRAIL_TOOLS=''), \
                 mock.patch('harness.run.REPO', Path(tmp)), mock.patch.object(req.sys, 'platform', 'darwin'), \
                 mock.patch.object(req.shutil, 'which', return_value=None):
             engine = Path(tmp)/'tools/godot_mac/Godot.app/Contents/MacOS/Godot'
