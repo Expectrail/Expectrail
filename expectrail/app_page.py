@@ -303,6 +303,7 @@ async function refreshRecentFolders() {
 }
 let folderRevision=0;
 let pairTimer;
+let pendingFolderCheck=null;
 const pairedProblems=new Map();
 const checkingFolder='Checking the selected folder…';
 function hasFolderPair() {
@@ -310,6 +311,7 @@ function hasFolderPair() {
 }
 function checkFolderPair(delay) {
   clearTimeout(pairTimer);
+  pendingFolderCheck=null;
   const notice=el('folder-pair-feedback');
   notice.textContent='';
   for(const [field,problem] of pairedProblems) {
@@ -319,7 +321,7 @@ function checkFolderPair(delay) {
   const before=el('before').value, after=el('after').value, revision=folderRevision;
   if(!before.trim() || !after.trim()) return;
   // Compare the paths resolved by the server, including project.godot selections.
-  pairTimer=setTimeout(async()=>{
+  async function check() {
     try {
       const pair=await api('/api/projects/check',{before,after});
       if(revision!==folderRevision) return;
@@ -337,11 +339,23 @@ function checkFolderPair(delay) {
         if(!pair.before.problem && !pair.after.problem) {
           notice.textContent+=' You can still verify this copy as a baseline.';
         }
+        return true;
       }
     } catch(error) {
       if(revision===folderRevision) notice.textContent=error.message;
+    } finally {
+      if(revision===folderRevision) pendingFolderCheck=null;
     }
-  },delay);
+    return false;
+  }
+  // Typing and Verify share one request for this selection.
+  let request;
+  pendingFolderCheck=()=>{
+    clearTimeout(pairTimer);
+    if(!request) request=check();
+    return request;
+  };
+  pairTimer=setTimeout(pendingFolderCheck,delay);
 }
 let previousAfter=null;
 function selectBefore(folder, message) {
@@ -513,6 +527,18 @@ el('verify').onclick=async()=>{
       if(!Number.isFinite(body.usdCap)||body.usdCap<0) throw new Error('Enter a fixer spend cap of zero or more US dollars.');
     }
     if(body.projectConfig){
+      if(pendingFolderCheck){
+        const revision=folderRevision;
+        el('progress').textContent='Checking the selected folders…';
+        const sameCopy=await pendingFolderCheck();
+        if(sameCopy || revision!==folderRevision){
+          controls(false);
+          el('progress').textContent='Nothing has started. Review the selected folders before continuing.';
+          el('choose-before').focus();
+          return;
+        }
+        el('progress').textContent='Checking the rendering environment before starting…';
+      }
       const inspection=await api('/api/inspect',{...body,side:'before',folder:body.before});
       if(inspection.readinessSteps?.length){
         rendererAcknowledged=null;el('rendering').textContent='';

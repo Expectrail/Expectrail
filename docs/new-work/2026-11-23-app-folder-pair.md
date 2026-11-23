@@ -41,6 +41,18 @@ Before and After paths subsequently sent for validation. In a fresh
 environment with the repository's test dependencies and without NumPy, Pillow
 or Playwright, the markup test passed and the browser test skipped by name.
 
+At `e17c6b37`, Chromium clicked Verify 52 ms after the second manual path
+edit. The same-copy notice appeared at 210 ms, after inspection had already
+started. That single click created a job. A regression held the folder check
+reply until after Verify and caught the unexpected inspection request.
+
+Verify now waits for the current folder check. In a repeat with the test
+replay backend, the click at 47 ms showed the same-copy notice and returned
+focus to **Choose Before folder**. It sent zero inspection or job requests.
+A second click on **Verify** created the intentional baseline. The browser
+regression also verified that the first click continues for distinct folders
+when their check is still pending. All eight focused tests passed.
+
 ## Not done
 
 The browser rehearsal used a stand-in for the desktop folder chooser.

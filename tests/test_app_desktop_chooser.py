@@ -408,25 +408,56 @@ def rehearse_folder_pair(browser, fixture, native):
     expect(before).to_have_value('')
     expect(note).to_be_empty()
 
-    before.fill(str(descriptor))
-    expect(note).to_be_empty()
+    def verify_while_checking(left):
+        # Hold the actual pair reply until after the developer clicks Verify.
+        held = []
 
-    before.fill(str(descriptor))
+        def hold(route):
+            held.append(route)
+
+        page.route('**/api/projects/check', hold)
+        with page.expect_request(lambda r: r.url.endswith('/api/projects/check')
+                                 and r.post_data_json == {'before': str(left), 'after': str(game)}):
+            before.fill(str(left))
+            expect(note).to_be_empty()
+        page.locator('#verify').click()
+        fixture.assertEqual(len(held), 1)
+        with page.expect_response(lambda r: checked_pair(r, left, game)):
+            held[0].fulfill(response=held[0].fetch())
+        page.unroute('**/api/projects/check', hold)
+
+    preflight = []
+    page.on('request', lambda r: preflight.append(r.url)
+            if r.method == 'POST' and r.url.endswith(('/api/inspect', '/api/jobs')) else None)
+    verify_while_checking(descriptor)
     expect(note).to_contain_text('same copy')
+    expect(before).to_be_enabled()
+    expect(page.locator('#choose-before')).to_be_focused()
+    fixture.assertEqual(preflight, [])
+    fixture.assertEqual(fixture.server.app.history()['jobs'], [])
     expect(page.locator('#verify')).to_be_enabled()
-    with page.expect_response(lambda r: r.url.endswith('/api/jobs') and r.request.method == 'POST') as submitted:
-        with page.expect_response(lambda r: r.url.endswith('/api/inspect')) as inspected:
-            page.locator('#verify').click()
-        if inspected.value.json().get('rendering', {}).get('warning'):
-            page.get_by_role('button', name='Verify with this warning').click()
-    fixture.assertEqual(submitted.value.status, 201)
-    baseline = fixture.finished(submitted.value.json()['id'])
+
+    def submit(action):
+        with page.expect_response(lambda r: r.url.endswith('/api/jobs') and r.request.method == 'POST') as submitted:
+            with page.expect_response(lambda r: r.url.endswith('/api/inspect')) as inspected:
+                action()
+            if inspected.value.json().get('rendering', {}).get('warning'):
+                page.get_by_role('button', name='Verify with this warning').click()
+        fixture.assertEqual(submitted.value.status, 201)
+        return fixture.finished(submitted.value.json()['id'])
+
+    baseline = submit(page.locator('#verify').click)
     fixture.assertEqual((baseline['before'], baseline['after']), (str(game), str(game)))
     fixture.assertEqual(len(fixture.server.app.history()['jobs']), 1)
+
+    distinct = submit(lambda: verify_while_checking(copy))
+    fixture.assertEqual((distinct['before'], distinct['after']), (str(copy), str(game)))
+    fixture.assertEqual(len(fixture.server.app.history()['jobs']), 2)
     fixture.assertEqual(errors, [])
     print(f'Chromium {browser.version}: same-copy warning for recent folders and project.godot; '
           'distinct identical copies, layout warning, clearing and late replies checked. '
-          'Deliberate baseline submitted with the test replay backend.')
+          'An early Verify click paused for the same copy and continued for distinct copies. '
+          'The deliberate baseline and the distinct comparison used the test replay backend.')
     page.close()
 
 
