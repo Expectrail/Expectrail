@@ -252,45 +252,47 @@ def _more(n: int, what: str) -> str:
     return f"{n} more {what}"
 
 
-def quota_problems(doc: dict, have: dict | None = None) -> list[str]:
+def quota_problems(doc: dict, have: dict | None = None, *, quotas: dict | None = None) -> list[str]:
     """Every unmet cell of #282 section 3, with how many more it needs."""
     have = have or counts(doc)
+    quotas = QUOTAS if quotas is None else quotas
     out: list[str] = []
     for key, words in (("wrongFixes", "wrong fixes"), ("correctFixes", "correct fixes"),
                        ("notAFix", "changes that are not fixes")):
-        need = QUOTAS[key]["minimum"] - have[key]
+        minimum = quotas[key]["minimum"]
+        need = minimum - have[key]
         if need > 0:
-            out.append(f"size: {have[key]} {words}, the minimum is {QUOTAS[key]['minimum']}: {_more(need, words)}")
+            out.append(f"size: {have[key]} {words}, the minimum is {minimum}: {_more(need, words)}")
     total = have["wrongFixes"] + have["correctFixes"] + have["notAFix"]
     for project in sorted(doc.get("projects") or {}):
         n = have["byProject"].get(project, 0)
         if n == 0:
             out.append(f"project {project}: listed but has no candidate")
-        elif total and n > QUOTAS["maxProjectShare"] * total:
+        elif total and n > quotas["maxProjectShare"] * total:
             # The smallest set of other candidates that brings this project to half: n <= (total + k) / 2.
             k = 2 * n - total
             out.append(f"project {project}: {n} of {total} candidates is above half the set: "
                        f"{_more(k, 'candidates on the other projects')}, or {k} fewer here")
     wrong = have["wrongFixes"]
     screen = have["wrongFixesByWhereItShows"].get("screen-only", 0)
-    need_screen = math.ceil(QUOTAS["screenOnlyWrongShare"] * wrong)
+    need_screen = math.ceil(quotas["screenOnlyWrongShare"] * wrong)
     if screen < need_screen:
         out.append(f"screen-only: {screen} of {wrong} wrong fixes show only on screen, a quarter needs "
                    f"{need_screen}: {_more(need_screen - screen, 'screen-only wrong fixes')}")
     for family in FAMILIES:
         n = have["byFamily"].get(family, 0)
-        if n < QUOTAS["perFamily"]:
-            out.append(f"family {family}: {n} candidates, at least {QUOTAS['perFamily']}: "
-                       f"{_more(QUOTAS['perFamily'] - n, 'candidates')}")
+        if n < quotas["perFamily"]:
+            out.append(f"family {family}: {n} candidates, at least {quotas['perFamily']}: "
+                       f"{_more(quotas['perFamily'] - n, 'candidates')}")
     for kind in WRONG_FIX_KINDS:
         n = have["byWrongFixKind"].get(kind, 0)
-        if n < QUOTAS["perWrongFixKind"]:
-            out.append(f"wrong-fix kind {kind}: {n}, at least {QUOTAS['perWrongFixKind']}: "
-                       f"{_more(QUOTAS['perWrongFixKind'] - n, 'wrong fixes of this kind')}")
+        if n < quotas["perWrongFixKind"]:
+            out.append(f"wrong-fix kind {kind}: {n}, at least {quotas['perWrongFixKind']}: "
+                       f"{_more(quotas['perWrongFixKind'] - n, 'wrong fixes of this kind')}")
     for kind in NOT_A_FIX_KINDS:
         n = have["byNotAFixKind"].get(kind, 0)
-        if n < QUOTAS["perNotAFixKind"]:
-            out.append(f"not-a-fix kind {kind}: none in the set: {_more(QUOTAS['perNotAFixKind'] - n, 'change of this kind')}")
+        if n < quotas["perNotAFixKind"]:
+            out.append(f"not-a-fix kind {kind}: none in the set: {_more(quotas['perNotAFixKind'] - n, 'change of this kind')}")
     for entry in included(doc):
         if is_not_a_fix(entry):
             continue
@@ -298,9 +300,9 @@ def quota_problems(doc: dict, have: dict | None = None) -> list[str]:
         if not correct:
             continue
         styles = {c.get("style") for c in correct}
-        if len(correct) < QUOTAS["correctPerDefect"]:
-            out.append(f"entry {entry.get('id')}: {len(correct)} correct fix, needs {QUOTAS['correctPerDefect']} "
-                       f"written differently: {_more(QUOTAS['correctPerDefect'] - len(correct), 'correct fix')}")
+        if len(correct) < quotas["correctPerDefect"]:
+            out.append(f"entry {entry.get('id')}: {len(correct)} correct fix, needs {quotas['correctPerDefect']} "
+                       f"written differently: {_more(quotas['correctPerDefect'] - len(correct), 'correct fix')}")
         elif not {"minimal", "restructures"} <= styles:
             missing = sorted({"minimal", "restructures"} - styles)
             out.append(f"entry {entry.get('id')}: its correct fixes are all {'/'.join(sorted(s for s in styles if s))}: "
@@ -485,12 +487,39 @@ def patch_problems(doc: dict, root: Path, project_dirs: dict[str, Path]) -> list
 
 
 # --- the validator --------------------------------------------------------------------------------
-def validate(manifest: Path, project_dirs: dict[str, Path] | None = None, *, apply: bool = True) -> dict:
+def _registration_quotas(strata: dict) -> dict:
+    minimums, fixed = strata["minimums"], strata["fixedQuotas"]
+    return {
+        "wrongFixes": {"minimum": minimums["wrongFixes"]},
+        "correctFixes": {"minimum": minimums["correctFixes"]},
+        "notAFix": {"minimum": minimums["otherChanges"]},
+        "maxProjectShare": fixed["maxSharePerProjectPct"] / 100,
+        "screenOnlyWrongShare": fixed["minScreenOnlyWrongFixesPct"] / 100,
+        "perFamily": fixed["minPerFamily"],
+        "perWrongFixKind": fixed["minPerWrongFixKind"],
+        "correctPerDefect": len(fixed["correctFixStylesPerDefect"]),
+        "perNotAFixKind": 1,  # The registration requires each listed kind to be present.
+    }
+
+
+def validate(manifest: Path, project_dirs: dict[str, Path] | None = None, *, apply: bool = True,
+             registration_path: Path | None = None) -> dict:
     """The validator's findings: ``unmet`` (each blocks the set), ``notes`` (do not), the counts, and
     whether the set would be accepted. Never raises on a bad set: what is wrong is the answer."""
     manifest = Path(manifest)
     root = manifest.parent
     report = {"unmet": [], "notes": [], "counts": None, "passed": False, "patchesChecked": apply}
+    registration_doc = None
+    if registration_path is not None:
+        from expectrail.jit import registration
+
+        try:
+            registration_doc = registration.read(Path(registration_path))
+        except (OSError, ValueError) as exc:
+            report["unmet"].append(f"public registration: {exc}")
+            report["patchesChecked"] = False
+            return report
+
     try:
         doc = load(manifest)
     except (OSError, ManifestError) as exc:
@@ -504,7 +533,18 @@ def validate(manifest: Path, project_dirs: dict[str, Path] | None = None, *, app
         report["unmet"] += consistency_problems(doc)
         have = counts(doc)
         report["counts"] = have
-        report["unmet"] += quota_problems(doc, have)
+        quotas = None
+        if registration_doc is not None:
+            strata = registration_doc["strata"]
+            projects = doc.get("projects")
+            if not isinstance(projects, dict) or set(projects) != set(strata["projects"]):
+                report["unmet"].append("manifest project names differ from the public registration")
+            digest = registration_doc["pins"]["setManifestSha256"]
+            if digest is not None and (not doc.get("sealedAt") or doc.get("sha256") != digest):
+                report["unmet"].append("sealed manifest digest differs from the public registration")
+            quotas = _registration_quotas(strata)
+            report["notes"].append("quotas taken from the public registration")
+        report["unmet"] += quota_problems(doc, have, quotas=quotas)
         report["unmet"] += verdict_problems(doc)
         report["unmet"] += declared_problems(doc, have)
         unmet, notes = ground_truth_problems(doc, root)
@@ -559,10 +599,13 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("manifest", type=Path)
     v.add_argument("--project", action="append", type=_project_arg, default=[],
                    help="NAME=FOLDER: a checkout of the project at its pinned commit (repeat per project)")
+    v.add_argument("--registration", type=Path,
+                   help="use the quotas and project names in a public v2 registration")
     v.add_argument("--skip-apply", action="store_true", help="check everything but the patches (never passes)")
     v.add_argument("--json", action="store_true", help="print the findings as JSON")
     args = parser.parse_args(argv)
-    report = validate(args.manifest, dict(args.project), apply=not args.skip_apply)
+    report = validate(args.manifest, dict(args.project), apply=not args.skip_apply,
+                      registration_path=args.registration)
     if args.json:
         sys.stdout.write(json.dumps(report, indent=1, sort_keys=True) + "\n")
     else:

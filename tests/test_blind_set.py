@@ -12,10 +12,12 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from expectrail import blind_set, contracts
 
 EXAMPLE = Path(__file__).resolve().parent.parent / "contracts" / "examples" / "blind-manifest.v1.json"
+REGISTRATION_EXAMPLE = EXAMPLE.with_name("blind-registration.v2.json")
 PROJECTS = ("alpha", "beta", "gamma")
 SECRET = "THE-PLAYER-SINKS-SECRET-WORDS"
 
@@ -123,6 +125,65 @@ class BlindSetTest(unittest.TestCase):
         report = report or self.run_validator()
         self.assertFalse(report["passed"])
         self.assertTrue(any(fragment in u for u in report["unmet"]), report["unmet"])
+
+    def write_registration(self, *, projects=PROJECTS, digest=None):
+        doc = json.loads(REGISTRATION_EXAMPLE.read_text(encoding="utf-8"))
+        doc["strata"]["projects"] = list(projects)
+        doc["pins"]["setManifestSha256"] = digest
+        path = self.s.root / "registration.json"
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        return path
+
+    def test_supplied_registration_drives_quotas(self):
+        manifest = self.s.save()
+        registration = self.write_registration()
+        stricter = {"wrongFixes": {"minimum": 31}, "perFamily": 5}
+        with patch.dict(blind_set.QUOTAS, stricter):
+            default = blind_set.validate(manifest, apply=False)
+            self.assertUnmet("the minimum is 31", default)
+            self.assertUnmet("at least 5", default)
+            actual = blind_set.validate(manifest, apply=False, registration_path=registration)
+        self.assertEqual(actual["unmet"], [])
+        self.assertFalse(actual["passed"])
+        self.assertIn("quotas taken from the public registration", blind_set.render(actual))
+
+    def test_invalid_registration_stops_before_manifest_or_patches(self):
+        path = self.write_registration()
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["strata"]["minimums"]["wrongFixes"] = 29
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        with patch.object(blind_set, "load", side_effect=AssertionError("manifest opened")):
+            report = blind_set.validate(self.s.save(), registration_path=path)
+        self.assertUnmet("public registration", report)
+        self.assertIsNone(report["counts"])
+        self.assertFalse(report["patchesChecked"])
+
+    def test_manifest_projects_must_match_the_registration(self):
+        path = self.write_registration(projects=("alpha", "beta", "delta"))
+        report = blind_set.validate(self.s.save(), apply=False, registration_path=path)
+        self.assertUnmet("project names differ from the public registration", report)
+        self.assertNotIn(SECRET, blind_set.render(report))
+
+    def test_pinned_manifest_digest_requires_a_matching_seal(self):
+        sealed = dict(self.s.doc, sealedAt="2031-01-01T00:00:00Z")
+        sealed["sha256"] = blind_set.manifest_sha256(sealed)
+        path = self.write_registration(digest=sealed["sha256"])
+        draft = blind_set.validate(self.s.save(), apply=False, registration_path=path)
+        self.assertUnmet("sealed manifest digest differs", draft)
+        matching = blind_set.validate(self.s.save(sealed), apply=False, registration_path=path)
+        self.assertEqual(matching["unmet"], [])
+        wrong_pin = self.write_registration(digest="a" * 64)
+        wrong = blind_set.validate(self.s.save(sealed), apply=False, registration_path=wrong_pin)
+        self.assertUnmet("sealed manifest digest differs", wrong)
+
+    def test_registration_command_line(self):
+        out = io.StringIO()
+        path = self.write_registration()
+        with redirect_stdout(out):
+            code = blind_set.main(["validate", str(self.s.save()), "--registration", str(path), "--skip-apply"])
+        self.assertEqual(code, 1)
+        self.assertIn("Counts now: 30 wrong fixes", out.getvalue())
+        self.assertIn("quotas taken from the public registration", out.getvalue())
 
     # --- the valid set ---------------------------------------------------------------------------
     def test_the_synthetic_set_meets_every_minimum_and_passes(self):
