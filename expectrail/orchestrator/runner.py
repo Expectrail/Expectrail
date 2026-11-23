@@ -153,13 +153,15 @@ def spawn(store: st.JobStore, job_id: str, command: list[str] | None = None) -> 
     paths = store.paths(job_id)
     command = command or [sys.executable, "-m", "expectrail.orchestrator", "--jobs-root", str(store.root),
                           "--lease-seconds", str(store.lease_seconds), "_work", job_id]
+    # The job id identifies child processes. Keep the caller's cache when the worker changes cwd.
+    env = dict(os.environ, **{st.JOB_ENV: job_id, spend.JOB_ENV: job_id})
+    if tools := env.get("EXPECTRAIL_TOOLS"):
+        env["EXPECTRAIL_TOOLS"] = str(Path(tools).absolute())
     with open(paths.log, "ab") as log:
         proc = subprocess.Popen(
             command,
             cwd=EXPECTRAIL_ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-            # The job's id in the environment is how what this worker starts is found if it is killed.
-            env=dict(os.environ, **{st.JOB_ENV: job_id, spend.JOB_ENV: job_id}),
-            start_new_session=True)
+            env=env, start_new_session=True)
     # The worker claims the job too, as soon as it starts; whichever call comes first records it.
     store.claim(job_id, proc.pid, proc.pid)
     return proc

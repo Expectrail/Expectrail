@@ -69,15 +69,16 @@ was checked with a POSIX shell on Linux. Finder and macOS replays were not run.
 python3 -m pip install .          # in a clone; Python 3.12 or later
 expectrail --version              # says "installed package" and where its files are
 expectrail doctor                 # does this machine have what a verification needs? names the fix for what is missing
-expectrail sample                 # three real verifications of the bundled game: accept, reject, accept
+expectrail sample                 # without vision: needs-review, reject, needs-review
 ```
 
 `expectrail sample` needs what any verification of a Godot project needs from the system: a
 virtual display (`xvfb-run`), Mesa's software OpenGL, and `patch`, `curl` and `unzip`. Godot itself
 is fetched on first use (4.7.2, checked against its SHA-512) and kept in the user's cache folder,
 `~/.cache/expectrail` (or `$XDG_CACHE_HOME/expectrail`; `$EXPECTRAIL_TOOLS` names another place, and
-`$EXPECTRAIL_GODOT` names an engine binary to use as it is). `expectrail doctor` checks all of this
-and names the fix for each missing piece.
+`$EXPECTRAIL_GODOT` names an engine binary to use as it is). A relative `EXPECTRAIL_TOOLS`
+directory is relative to the folder where you start Expectrail, including for background jobs.
+`expectrail doctor` checks the required tools and names the fix for each missing piece.
 
 ## `expectrail doctor`
 
@@ -183,14 +184,20 @@ files are" in a clone and in an installed copy.
 - It reads only and holds no secret. It publishes nowhere: PyPI or a container registry needs an
   account and a token, and pushing the tag is a person's step too.
 
-It has not run yet: no tag has been pushed and it has not been dispatched.
-`tests/test_release_workflow.py` runs its version step in bash and checks its shape.
+The rehearsal on main built the wheel, ran the recorded-sample image and uploaded the artifacts.
+A tagged release remains open. [Hosted rehearsal](https://github.com/Expectrail/Expectrail/actions/runs/44983211397)
+
+`tests/test_release_workflow.py` runs the version step in bash and checks the workflow's shape.
 
 ## Limits
 
 - Repository `python3 -m harness...` entry points remain unchanged. In the wheel, use the private
   qualified modules; the package no longer installs top-level `harness` or `agents` aliases.
-- Linux only as packaged. The macOS engine script is in the wheel and was not run from an installed copy.
+- The end-to-end package rehearsal ran on Linux. On macOS, the installed wheel keeps Godot under `godot_mac/Godot.app` in the same tools cache
+  described above. Expectrail can reuse an older wheel's executable offline until the default
+  user cache contains an executable. Setting `EXPECTRAIL_TOOLS` selects that directory explicitly.
+  The installed macOS lookup and helper were exercised on Linux with a stand-in archive.
+  Installation and rendering on a native Mac remain unmeasured here.
 - Not shown: Python below 3.12; an install from PyPI. The engine download itself from an installed
   copy with no cached file was run once by hand (`expectrail doctor` with an empty home, November 12,
   2026, 5.6 s); CI does not do it: it hands the installed copy the download it already holds, and
