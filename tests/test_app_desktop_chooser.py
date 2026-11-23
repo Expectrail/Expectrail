@@ -338,6 +338,20 @@ def rehearse_folder_pair(browser, fixture, native):
     expect(note).to_contain_text('same copy')
     expect(page.locator('#before-feedback')).to_have_text('Before folder selected.')
     expect(note).to_contain_text('Choose Before folder')
+    expect(note).to_contain_text('verify this copy as a baseline')
+
+    unconfigured = test_app_projects.configured_project(fixture.root / 'unconfigured')
+    (unconfigured / 'expectrail.project.json').unlink()
+    before.fill(str(unconfigured))
+    after.fill(str(unconfigured / 'project.godot'))
+    expect(page.locator('#before-feedback')).to_contain_text('Check folders')
+    expect(note).to_contain_text('same copy')
+    expect(note).to_contain_text('Choose Before folder')
+    page.get_by_role('button', name='Verify', exact=True).click()
+    expect(page.locator('#progress')).to_have_text('Verification did not start.')
+    fixture.assertEqual(fixture.server.app.history()['jobs'], [])
+    expect(note).not_to_contain_text('verify this copy as a baseline')
+    before.fill(str(game))
 
     def checked_pair(response, left, right):
         return (response.url.endswith('/api/projects/check')

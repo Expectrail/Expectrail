@@ -333,7 +333,10 @@ function checkFolderPair(delay) {
         }
       }
       if(pair.before.folder && pair.before.folder===pair.after.folder) {
-        notice.textContent='Before and After are the same copy. Select “Choose Before folder” to compare a different version. You can still verify this copy as a baseline.';
+        notice.textContent='Before and After are the same copy. Select “Choose Before folder” to compare a different version.';
+        if(!pair.before.problem && !pair.after.problem) {
+          notice.textContent+=' You can still verify this copy as a baseline.';
+        }
       }
     } catch(error) {
       if(revision===folderRevision) notice.textContent=error.message;

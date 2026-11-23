@@ -28,6 +28,14 @@ warning in both selection orders. Clearing a field while a reply was in
 flight kept the stale warning off the page. Deliberately verifying one copy
 submitted one job using the test replay backend.
 
+At `0ecc5998`, Chromium selected an unconfigured game and its own
+`project.godot`. The page offered a baseline, then Verify stopped at
+inspection and created zero jobs. The regression failed on that invitation.
+With the fix, the same-copy notice still names **Choose Before folder**,
+the field points to **Check folders**, and the baseline invitation appears
+only when the paired check reports both fields ready. The eight focused
+tests passed, including the configured game's baseline submission.
+
 The drop rehearsal checked all three empty chooser requests and the exact
 Before and After paths subsequently sent for validation. In a fresh
 environment with the repository's test dependencies and without NumPy, Pillow
