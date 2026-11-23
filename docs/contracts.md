@@ -416,3 +416,15 @@ python3 -m expectrail.jit.registration write REGISTRATION.json CANONICAL_COPY.js
 The writer preserves the caller's decisions and creates a new file with canonical JSON. The v0
 `jit-blind-preregistration` format used by the November 10 measurement is out of format for this reader.
 The existing v0 runner retains its existing reader.
+
+Use `--registration` to check a manifest against the public protocol before sealing or before a run.
+
+```sh
+python3 -m expectrail.blind_set validate MANIFEST.json --registration REGISTRATION.json \
+  --project NAME=CHECKOUT --project OTHER_NAME=OTHER_CHECKOUT --project THIRD_NAME=THIRD_CHECKOUT
+```
+
+The validator uses the registration's quotas and requires the same project names in both files.
+A draft can leave the set digest empty for a pre-seal check. A supplied digest must match a manifest
+with a valid seal. The command still supports the default quotas when the operator supplies only
+the manifest. `--skip-apply` can diagnose quota or structure issues and always leaves the set unready.
