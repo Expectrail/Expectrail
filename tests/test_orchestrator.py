@@ -1542,6 +1542,10 @@ class LostWorkerTest(Case):
 
     def test_a_process_started_after_the_first_look_is_counted(self):
         job = self.job()
+        # The /proc-free backend confirms exit through ps and a signal-zero probe.
+        # Keep both checks on the fixture so invented PIDs never touch the host.
+        process_table = self.enterContext(mock.patch.object(st, "_ps_table", return_value={}))
+        self.enterContext(mock.patch.object(st.os, "kill", side_effect=ProcessLookupError))
         looks = iter([[101], [101, 202]])   # the job starts one more between the first look and the next
 
         def look(_job):
@@ -1553,6 +1557,7 @@ class LostWorkerTest(Case):
         self.assertEqual(sorted(call.args[0] for call in sent.call_args_list), [101, 202])
         self.assertEqual(ways, {"handle"})
         # And one that is still there at the end is found and not counted as gone.
+        process_table.return_value = {303: (1, "S", "fixture")}
         looks = iter([[101]])
         with mock.patch.object(st, "processes_of", side_effect=lambda _job: next(looks, [303])), mock.patch.object(st, "_signal"):
             self.assertEqual(st.stop_job(job, grace_seconds=0.1), (2, 1))
