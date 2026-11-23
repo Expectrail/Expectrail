@@ -1,7 +1,9 @@
 """The desktop folder choices on the local app's first screen (#710)."""
 from html.parser import HTMLParser
 import importlib.util
+from pathlib import Path
 import shutil
+import subprocess
 import threading
 import unittest
 from unittest import mock
@@ -178,6 +180,7 @@ def browser_rehearsal():
                   'Recent folders reopened on both sides, with stale entries and late replies checked. '
                   '6 empty-body chooser requests, 0 jobs, 0 page errors, no overflow at 390 px.')
             rehearse_before_suggestion(browser, fixture, native)
+            rehearse_previous_commit(browser, fixture)
             rehearse_folder_drop(browser, fixture, native)
             browser.close()
     finally:
@@ -242,6 +245,61 @@ def rehearse_before_suggestion(browser, fixture, native):
     expect(page.locator('#after-feedback')).to_contain_text('After folder selected.')
     expect(use).to_be_hidden()
     expect(before_field).to_have_value('')
+    fixture.assertEqual(fixture.server.app.history()['jobs'], [])
+    page.close()
+
+
+def rehearse_previous_commit(browser, fixture):
+    from playwright.sync_api import expect
+
+    checkout = fixture.root / 'Orbit checkout'
+    after = test_app_projects.configured_project(checkout / 'game')
+    git = ['git', '-C', str(checkout), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid']
+    subprocess.run(git + ['init', '-q'], check=True)
+    subprocess.run(git + ['add', '.'], check=True)
+    subprocess.run(git + ['commit', '-qm', 'Original game'], check=True)
+    parent = subprocess.check_output(git + ['rev-parse', 'HEAD'], text=True).strip()
+    original = (after / 'entry.tscn').read_bytes()
+
+    page = browser.new_page(viewport={'width': 390, 'height': 844})
+    previous_requests = []
+    page.on('request', lambda req: previous_requests.append(req.post_data_json)
+            if req.url.endswith('/api/projects/previous') else None)
+    page.goto(f'http://127.0.0.1:{fixture.port}/?token={fixture.token}')
+    before_field, after_field = page.locator('#before'), page.locator('#after')
+    use = page.get_by_role('button', name='Use previous commit as Before', exact=True)
+    after_field.fill(str(after))
+    after_field.press('Tab')
+    expect(use).to_be_visible()
+    fixture.assertEqual(previous_requests, [])
+    use.click()
+    expect(page.locator('#before-feedback')).to_contain_text('Choose a Before folder')
+    expect(before_field).to_have_value('')
+
+    (after / 'entry.tscn').write_bytes(original + b'\n')
+    subprocess.run(git + ['commit', '-qam', 'Changed game'], check=True)
+    use.focus()
+    use.press('Enter')
+    expect(page.locator('#before-feedback')).to_contain_text(parent[:12])
+    expect(before_field).to_be_focused()
+    fixture.assertEqual((Path(before_field.input_value()) / 'entry.tscn').read_bytes(), original)
+    expect(after_field).to_have_value(str(after))
+    fixture.assertEqual((after / 'entry.tscn').read_bytes(), original + b'\n')
+    expect(use).to_be_hidden()
+    page.get_by_role('button', name='Check folders').click()
+    expect(page.locator('#inspection-before')).to_contain_text('smoke')
+    expect(page.locator('#inspection-after')).to_contain_text('smoke')
+    after_field.fill(str(fixture.after))
+    expect(before_field).to_have_value('')
+    before_field.fill('my own choice')
+    after_field.fill(str(after))
+    after_field.press('Tab')
+    expect(before_field).to_have_value('my own choice')
+    expect(use).to_be_hidden()
+    before_field.fill('')
+    before_field.press('Tab')
+    expect(use).to_be_visible()
+    fixture.assertEqual(previous_requests, [{'after': str(after)}] * 2)
     fixture.assertEqual(fixture.server.app.history()['jobs'], [])
     page.close()
 

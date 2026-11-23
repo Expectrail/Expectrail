@@ -29,14 +29,9 @@ def godot_binary(*, switch='EXPECTRAIL_ENGINE_TESTS'):
     """Use an installed engine, never download one just to discover tests."""
     from harness import run as hr
     named = os.environ.get('EXPECTRAIL_GODOT')
-    if named:
-        candidates = [Path(named)]
-    else:
-        candidates = ([hr.REPO / 'tools/godot_mac/Godot.app/Contents/MacOS/Godot'] if sys.platform == 'darwin' else
-                      [hr.tools_dir() / 'godot' / f'Godot_v{hr.GODOT_VERSION}_linux.x86_64'])
-    for path in candidates:
-        if path.is_file() and os.access(path, os.X_OK):
-            return path
+    path = hr.cached_godot_path()
+    if path.is_file() and os.access(path, os.X_OK):
+        return path
     versions = []
     if not named:
         for name in ('godot4', 'godot'):
