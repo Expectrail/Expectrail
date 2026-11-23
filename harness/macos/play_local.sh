@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
-PINNED_GODOT="$REPO/tools/godot_mac/Godot.app/Contents/MacOS/Godot"
+PINNED_GODOT="${EXPECTRAIL_TOOLS:-$REPO/tools}/godot_mac/Godot.app/Contents/MacOS/Godot"
 
 # 1. Prefer the pinned Godot 4.7.2 in tools/godot_mac, or download it
 if [ -x "$PINNED_GODOT" ]; then
