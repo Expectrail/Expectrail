@@ -1377,7 +1377,10 @@ class LostWorkerTest(Case):
 
     def marked(self, job: str) -> subprocess.Popen:
         proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
-        self.started.append(proc)
+        # This fixture is one sleep process. Reap it through its Popen rather than
+        # signalling a process group whose leader may already have been reaped.
+        self.addCleanup(proc.wait, timeout=5)
+        self.addCleanup(proc.kill)
         wait_for(lambda: st.processes_of(job) == [proc.pid], what="the marked process showing up")
         return proc
 
@@ -1413,10 +1416,19 @@ class LostWorkerTest(Case):
         job = self.job()
         proc = self.marked(job)
         marker = f"{st.JOB_ENV}={job}".encode()
+        missing = ProcessLookupError(errno.ESRCH, "No such process")
+        # The process went away between the look and the signal. Linux can learn that
+        # from pidfd_open. The process-number path can learn it from kill itself.
+        if Path("/proc/self/environ").exists():
+            with mock.patch.object(st.os, "pidfd_open", side_effect=missing, create=True), \
+                    mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+                self.assertIsNone(st._signal(proc.pid, marker, signal.SIGKILL))
+        else:
+            with mock.patch.object(st.os, "kill", side_effect=missing) as kill:
+                self.assertIsNone(st._signal(proc.pid, marker, signal.SIGKILL))
+            kill.assert_called_once_with(proc.pid, signal.SIGKILL)
+
         with mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
-            # The process went away between the look and the signal: nothing is signalled.
-            with mock.patch.object(st.os, "pidfd_open", side_effect=ProcessLookupError(errno.ESRCH, "No such process"), create=True):
-                st._signal(proc.pid, marker, signal.SIGKILL)
             # No handles, and the number no longer names the job: nothing is signalled.
             with mock.patch.object(st.os, "pidfd_open", side_effect=OSError(errno.ENOSYS, "x"), create=True), \
                     mock.patch.object(st, "_names_job", return_value=False):
