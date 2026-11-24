@@ -1,0 +1,44 @@
+{
+ "asExpected": true,
+ "decision": "reject",
+ "diagnostics": [],
+ "expectrailCommit": "de1ddd65cbad237d2ca32eed4c62b13ba645a6d3",
+ "findings": "findings.json",
+ "finishedAt": "2026-11-24T20:10:03Z",
+ "format": "expectrail.run-it-result/v1",
+ "phase": "completed",
+ "receipt": {
+  "signed": false,
+  "why": "not signed yet (#255)"
+ },
+ "requestId": "4f609d1c-fce8-4962-a31b-cee08924a832",
+ "sample": {
+  "expected": "reject",
+  "id": "fall-through-bug",
+  "title": "A change that breaks it"
+ },
+ "startedAt": "2026-11-24T20:09:10Z",
+ "viewer": "viewer/index.html",
+ "vision": {
+  "answered": 134,
+  "asked": 135,
+  "model": "sam-3.1",
+  "notRecorded": 1,
+  "recorded": true,
+  "recordedAt": "2026-11-13",
+  "rendering": {
+   "recording": null,
+   "status": "unknown",
+   "thisRun": [
+    {
+     "device": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    }
+   ]
+  },
+  "run": "43508788240",
+  "why": "the recording does not hold this frame and question (not-recorded)"
+ }
+}
