@@ -409,22 +409,29 @@ def rehearse_folder_pair(browser, fixture, native):
     expect(note).to_be_empty()
 
     def verify_while_checking(left, right=game):
-        # Hold the actual pair reply until after the developer clicks Verify.
-        held = []
+        # Hold the reply on the server so Chromium observes the next request normally.
+        release = threading.Event()
+        check = fixture.server.app.check_projects
 
-        def hold(route):
-            held.append(route)
+        def delayed_check(body):
+            result = check(body)
+            if not release.wait(15):
+                raise RuntimeError('Timed out waiting to release the folder comparison')
+            return result
 
-        page.route('**/api/projects/check', hold)
-        with page.expect_request(lambda r: r.url.endswith('/api/projects/check')
-                                 and r.post_data_json == {'before': str(left), 'after': str(right)}):
-            before.fill(str(left))
-            expect(note).to_be_empty()
-        page.locator('#verify').click()
-        fixture.assertEqual(len(held), 1)
-        with page.expect_response(lambda r: checked_pair(r, left, right)):
-            held[0].fulfill(response=held[0].fetch())
-        page.unroute('**/api/projects/check', hold)
+        with mock.patch.object(fixture.server.app, 'check_projects', side_effect=delayed_check) as checked:
+            try:
+                with page.expect_request(lambda r: r.url.endswith('/api/projects/check')
+                                         and r.post_data_json == {'before': str(left), 'after': str(right)}):
+                    before.fill(str(left))
+                    expect(note).to_be_empty()
+                page.locator('#verify').click()
+                expect(page.locator('#progress')).to_have_text('Checking the selected folders…')
+                with page.expect_response(lambda r: checked_pair(r, left, right)):
+                    release.set()
+                checked.assert_called_once_with({'before': str(left), 'after': str(right)})
+            finally:
+                release.set()
 
     preflight = []
     page.on('request', lambda r: preflight.append(r.url)
