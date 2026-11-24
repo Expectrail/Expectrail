@@ -526,19 +526,19 @@ el('verify').onclick=async()=>{
       if(!Number.isInteger(body.attempts)||body.attempts<1||body.attempts>10) throw new Error('Enter 1 to 10 fix attempts.');
       if(!Number.isFinite(body.usdCap)||body.usdCap<0) throw new Error('Enter a fixer spend cap of zero or more US dollars.');
     }
-    if(body.projectConfig){
-      if(pendingFolderCheck){
-        const revision=folderRevision;
-        el('progress').textContent='Checking the selected folders…';
-        const sameCopy=await pendingFolderCheck();
-        if(sameCopy || revision!==folderRevision){
-          controls(false);
-          el('progress').textContent='Nothing has started. Review the selected folders before continuing.';
-          el('choose-before').focus();
-          return;
-        }
-        el('progress').textContent='Checking the rendering environment before starting…';
+    if(pendingFolderCheck){
+      const revision=folderRevision;
+      el('progress').textContent='Checking the selected folders…';
+      const sameCopy=await pendingFolderCheck();
+      if(sameCopy || revision!==folderRevision){
+        controls(false);
+        el('progress').textContent='Nothing has started. Review the selected folders before continuing.';
+        el('choose-before').focus();
+        return;
       }
+    }
+    if(body.projectConfig){
+      el('progress').textContent='Checking the rendering environment before starting…';
       const inspection=await api('/api/inspect',{...body,side:'before',folder:body.before});
       if(inspection.readinessSteps?.length){
         rendererAcknowledged=null;el('rendering').textContent='';

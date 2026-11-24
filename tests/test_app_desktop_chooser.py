@@ -408,7 +408,7 @@ def rehearse_folder_pair(browser, fixture, native):
     expect(before).to_have_value('')
     expect(note).to_be_empty()
 
-    def verify_while_checking(left):
+    def verify_while_checking(left, right=game):
         # Hold the actual pair reply until after the developer clicks Verify.
         held = []
 
@@ -417,12 +417,12 @@ def rehearse_folder_pair(browser, fixture, native):
 
         page.route('**/api/projects/check', hold)
         with page.expect_request(lambda r: r.url.endswith('/api/projects/check')
-                                 and r.post_data_json == {'before': str(left), 'after': str(game)}):
+                                 and r.post_data_json == {'before': str(left), 'after': str(right)}):
             before.fill(str(left))
             expect(note).to_be_empty()
         page.locator('#verify').click()
         fixture.assertEqual(len(held), 1)
-        with page.expect_response(lambda r: checked_pair(r, left, game)):
+        with page.expect_response(lambda r: checked_pair(r, left, right)):
             held[0].fulfill(response=held[0].fetch())
         page.unroute('**/api/projects/check', hold)
 
@@ -453,6 +453,33 @@ def rehearse_folder_pair(browser, fixture, native):
     distinct = submit(lambda: verify_while_checking(copy))
     fixture.assertEqual((distinct['before'], distinct['after']), (str(copy), str(game)))
     fixture.assertEqual(len(fixture.server.app.history()['jobs']), 2)
+
+    # An older project can verify with explicit policy paths and no config file.
+    page.locator('#paths summary').click()
+    page.locator('#manual').check()
+    page.locator('#routes').fill('inputs/*.json')
+    page.locator('#specs').fill('checks/nested')
+    with page.expect_response(lambda r: checked_pair(r, copy, unconfigured)):
+        after.fill(str(unconfigured))
+    preflight.clear()
+    verify_while_checking(unconfigured, unconfigured)
+    expect(note).to_contain_text('same copy')
+    fixture.assertEqual(preflight, [])
+    fixture.assertEqual(len(fixture.server.app.history()['jobs']), 2)
+    expect(page.locator('#choose-before')).to_be_focused()
+
+    def submit_manual(action):
+        with page.expect_response(lambda r: r.url.endswith('/api/jobs') and r.request.method == 'POST') as response:
+            action()
+        fixture.assertEqual(response.value.status, 201)
+        result = fixture.finished(response.value.json()['id'])
+        expect(page.locator('#verify')).to_be_enabled()
+        return result['before'], result['after']
+
+    fixture.assertEqual(submit_manual(page.locator('#verify').click), (str(unconfigured), str(unconfigured)))
+    fixture.assertEqual(submit_manual(lambda: verify_while_checking(copy, unconfigured)), (str(copy), str(unconfigured)))
+    expect(note).to_be_empty()
+    fixture.assertEqual(len(fixture.server.app.history()['jobs']), 4)
     fixture.assertEqual(errors, [])
     print(f'Chromium {browser.version}: same-copy warning for recent folders and project.godot; '
           'distinct identical copies, layout warning, clearing and late replies checked. '
