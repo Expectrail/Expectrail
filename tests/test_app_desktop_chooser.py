@@ -436,6 +436,41 @@ def rehearse_folder_pair(browser, fixture, native):
     preflight = []
     page.on('request', lambda r: preflight.append(r.url)
             if r.method == 'POST' and r.url.endswith(('/api/inspect', '/api/jobs')) else None)
+
+    def interrupt_and_retry(left, right):
+        verify = page.locator('#verify')
+        jobs = len(fixture.server.app.history()['jobs'])
+        previous_requests = list(preflight)
+        expected = {'before': str(left), 'after': str(right)}
+
+        def lose_reply(route):
+            resolved = route.fetch().json()
+            fixture.assertEqual(resolved['before']['folder'], str(right))
+            fixture.assertEqual(resolved['after']['folder'], str(right))
+            verify.click()
+            expect(page.locator('#progress')).to_have_text('Checking the selected folders…')
+            route.abort('connectionreset')
+
+        before.clear()
+        page.route('**/api/projects/check', lose_reply, times=1)
+        with page.expect_event('requestfailed', predicate=lambda r: r.url.endswith('/api/projects/check')
+                               and r.post_data_json == expected):
+            before.fill(str(left))
+        expect(verify).to_be_enabled()
+        fixture.assertEqual(preflight, previous_requests)
+        fixture.assertEqual(len(fixture.server.app.history()['jobs']), jobs)
+        expect(page.locator('#progress')).to_have_text('Verification did not start.')
+        expect(note).to_contain_text('Choose Verify to retry')
+        expect(verify).to_be_focused()
+
+        with page.expect_response(lambda response: checked_pair(response, left, right)):
+            verify.click()
+        expect(note).to_contain_text('same copy')
+        expect(note).to_contain_text('verify this copy as a baseline')
+        expect(page.locator('#choose-before')).to_be_focused()
+        fixture.assertEqual(preflight, previous_requests)
+        fixture.assertEqual(len(fixture.server.app.history()['jobs']), jobs)
+
     verify_while_checking(descriptor)
     expect(note).to_contain_text('same copy')
     expect(before).to_be_enabled()
@@ -453,6 +488,7 @@ def rehearse_folder_pair(browser, fixture, native):
         fixture.assertEqual(submitted.value.status, 201)
         return fixture.finished(submitted.value.json()['id'])
 
+    interrupt_and_retry(descriptor, game)
     baseline = submit(page.locator('#verify').click)
     fixture.assertEqual((baseline['before'], baseline['after']), (str(game), str(game)))
     fixture.assertEqual(len(fixture.server.app.history()['jobs']), 1)
@@ -483,6 +519,7 @@ def rehearse_folder_pair(browser, fixture, native):
         expect(page.locator('#verify')).to_be_enabled()
         return result['before'], result['after']
 
+    interrupt_and_retry(unconfigured, unconfigured)
     fixture.assertEqual(submit_manual(page.locator('#verify').click), (str(unconfigured), str(unconfigured)))
     fixture.assertEqual(submit_manual(lambda: verify_while_checking(copy, unconfigured)), (str(copy), str(unconfigured)))
     expect(note).to_be_empty()

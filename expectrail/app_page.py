@@ -320,6 +320,7 @@ function checkFolderPair(delay) {
   pairedProblems.clear();
   const before=el('before').value, after=el('after').value, revision=folderRevision;
   if(!before.trim() || !after.trim()) return;
+  let request;
   // Compare the paths resolved by the server, including project.godot selections.
   async function check() {
     try {
@@ -334,22 +335,25 @@ function checkFolderPair(delay) {
           field.textContent=sideNames[side]+' folder selected.';
         }
       }
-      if(pair.before.folder && pair.before.folder===pair.after.folder) {
+      const sameCopy=pair.before.folder && pair.before.folder===pair.after.folder;
+      notice.textContent='';
+      if(sameCopy) {
         notice.textContent='Before and After are the same copy. Select “Choose Before folder” to compare a different version.';
-        if(!pair.before.problem && !pair.after.problem) {
+        if(el('manual').checked || (!pair.before.problem && !pair.after.problem)) {
           notice.textContent+=' You can still verify this copy as a baseline.';
         }
-        return true;
       }
+      pendingFolderCheck=null;
+      return sameCopy?'same-copy':'checked';
     } catch(error) {
-      if(revision===folderRevision) notice.textContent=error.message;
-    } finally {
-      if(revision===folderRevision) pendingFolderCheck=null;
+      if(revision===folderRevision) {
+        notice.textContent='Could not check the selected folders. Choose Verify to retry. '+error.message;
+        request=null;
+      }
+      return 'failed';
     }
-    return false;
   }
   // Typing and Verify share one request for this selection.
-  let request;
   pendingFolderCheck=()=>{
     clearTimeout(pairTimer);
     if(!request) request=check();
@@ -529,8 +533,13 @@ el('verify').onclick=async()=>{
     if(pendingFolderCheck){
       const revision=folderRevision;
       el('progress').textContent='Checking the selected folders…';
-      const sameCopy=await pendingFolderCheck();
-      if(sameCopy || revision!==folderRevision){
+      const result=await pendingFolderCheck();
+      if(result==='failed' && revision===folderRevision){
+        problem(new Error(el('folder-pair-feedback').textContent));
+        el('verify').focus();
+        return;
+      }
+      if(result==='same-copy' || revision!==folderRevision){
         controls(false);
         el('progress').textContent='Nothing has started. Review the selected folders before continuing.';
         el('choose-before').focus();
