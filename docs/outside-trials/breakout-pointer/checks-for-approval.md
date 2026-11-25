@@ -38,9 +38,12 @@ In each stopped-after-launch run the engine recorded the same Ball from tick 40 
 
 ## Sean's approval step
 
-Once the four-check review is complete, Sean can approve each file whose exact contents he accepts. These are the commands for the two existing drafts. Editing the file's assertion, window or coverage afterward requires a new approval. [Content-binding rules](../../ci-gate.md)
+Once the four-check review is complete, Sean can approve each file whose exact contents he accepts.
+The approver string is stored verbatim, and every approval in the repository reads `Sean Keluo-Udeke`;
+these commands use it so the audit trail keeps one identity. The [combined sitting](../../approval-sitting.md)
+gathers these two drafts with the #727 family drafts, and recommends holding `breakout-ball-starts`. These are the commands for the two existing drafts. Editing the file's assertion, window or coverage afterward requires a new approval. [Content-binding rules](../../ci-gate.md)
 
 ```sh
-python3 -m expectrail.spec_writer approve tests/outside/breakout-pointer/checks/breakout-paddle-bounds.json --by sean
-python3 -m expectrail.spec_writer approve tests/outside/breakout-pointer/checks/breakout-ball-starts.json --by sean
+python3 -m expectrail.spec_writer approve tests/outside/breakout-pointer/checks/breakout-paddle-bounds.json --by "Sean Keluo-Udeke"
+python3 -m expectrail.spec_writer approve tests/outside/breakout-pointer/checks/breakout-ball-starts.json --by "Sean Keluo-Udeke"
 ```
