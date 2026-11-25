@@ -1,0 +1,44 @@
+{
+ "asExpected": true,
+ "decision": "accept",
+ "diagnostics": [],
+ "expectrailCommit": "aaf2c7bd6ccfbb502db32d594482e8fdf940b3b8",
+ "findings": "findings.json",
+ "finishedAt": "2026-11-25T19:15:18Z",
+ "format": "expectrail.run-it-result/v1",
+ "phase": "completed",
+ "receipt": {
+  "signed": false,
+  "why": "not signed yet (#255)"
+ },
+ "requestId": "0e911050-46b0-4b7b-b102-1f32f33edfea",
+ "sample": {
+  "expected": "accept",
+  "id": "fall-through-repair",
+  "title": "The change that repairs it"
+ },
+ "startedAt": "2026-11-25T19:14:24Z",
+ "viewer": "viewer/index.html",
+ "vision": {
+  "answered": 134,
+  "asked": 135,
+  "model": "sam-3.1",
+  "notRecorded": 1,
+  "recorded": true,
+  "recordedAt": "2026-11-13",
+  "rendering": {
+   "recording": null,
+   "status": "unknown",
+   "thisRun": [
+    {
+     "device": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    }
+   ]
+  },
+  "run": "43509232715",
+  "why": "the recording does not hold this frame and question (not-recorded)"
+ }
+}
