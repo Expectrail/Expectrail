@@ -97,27 +97,9 @@ def thumbnail(path, *, crop=None, side=240):
 
 
 def webp_size(data):
-    """Read a bounded WebP canvas header; the browser decodes the original art, not Python."""
-    if (len(data) < 30 or data[:4] != b'RIFF' or data[8:12] != b'WEBP'
-            or int.from_bytes(data[4:8], 'little') + 8 != len(data)):
-        return None
-    kind = data[12:16]
-    length = int.from_bytes(data[16:20], 'little')
-    if 20 + length > len(data):
-        return None
-    if kind == b'VP8L' and length >= 5 and data[20] == 0x2f:
-        bits = int.from_bytes(data[21:25], 'little')
-        if bits >> 29:
-            return None
-        size = ((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1)
-    elif kind == b'VP8 ' and length >= 10 and not data[20] & 1 and data[23:26] == b'\x9d\x01\x2a':
-        size = (int.from_bytes(data[26:28], 'little') & 0x3fff,
-                int.from_bytes(data[28:30], 'little') & 0x3fff)
-    elif kind == b'VP8X' and length >= 10 and data[21:24] == b'\0\0\0':
-        size = (int.from_bytes(data[24:27], 'little') + 1, int.from_bytes(data[27:30], 'little') + 1)
-    else:
-        return None
-    return size if all(0 < n <= 4096 for n in size) else None
+    """Limit native art shown in the offline review to a 4096 x 4096 canvas."""
+    size = onboarding.webp_canvas_size(data, len(data))
+    return size if size and max(size) <= 4096 else None
 
 
 def svg_size(data):

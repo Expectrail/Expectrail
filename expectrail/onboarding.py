@@ -66,11 +66,38 @@ SUB = re.compile(r'SubResource\("([^"]+)"\)')
 RECT = re.compile(r"Rect2\(\s*([^,()]+),\s*([^,()]+),\s*([^,()]+),\s*([^,()]+)\)")
 
 
+def webp_canvas_size(header, file_size):
+    """Read the canvas dimensions from a WebP prefix and its total file length."""
+    if (len(header) < 30 or header[:4] != b'RIFF' or header[8:12] != b'WEBP'
+            or int.from_bytes(header[4:8], 'little') + 8 != file_size):
+        return None
+    kind = header[12:16]
+    length = int.from_bytes(header[16:20], 'little')
+    if 20 + length > file_size:
+        return None
+    if kind == b'VP8L' and length >= 5 and header[20] == 0x2f:
+        bits = int.from_bytes(header[21:25], 'little')
+        if bits >> 29:
+            return None
+        size = ((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1)
+    elif kind == b'VP8 ' and length >= 10 and not header[20] & 1 and header[23:26] == b'\x9d\x01\x2a':
+        size = (int.from_bytes(header[26:28], 'little') & 0x3fff,
+                int.from_bytes(header[28:30], 'little') & 0x3fff)
+    elif kind == b'VP8X' and length >= 10 and header[21:24] == b'\0\0\0':
+        size = (int.from_bytes(header[24:27], 'little') + 1, int.from_bytes(header[27:30], 'little') + 1)
+    else:
+        return None
+    return size if all(size) else None
+
+
 def image_size(path):
-    """``[width, height]`` from a PNG file's header, or None for any other or unreadable file."""
+    """``[width, height]`` from PNG or WebP metadata, or None when unavailable."""
     try:
         with open(path, "rb") as stream:
-            head = stream.read(24)
+            head = stream.read(30)
+            if head[:4] == b"RIFF":
+                size = webp_canvas_size(head, os.fstat(stream.fileno()).st_size)
+                return list(size) if size else None
     except OSError:
         return None
     if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":

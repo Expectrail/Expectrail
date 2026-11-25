@@ -123,6 +123,23 @@ class AtlasReviewTest(unittest.TestCase):
         (self.game / "break assets/paddle/sp_paddle_long_strip2.png").write_bytes(png(94, 18))
         (self.game / "break assets/Misc/sp_ball.png").write_bytes(png(4, 4))
 
+    def test_webp_sheet_dimensions_in_selected_player_review(self):
+        scene = self.game / "game.tscn"
+        scene.write_text(scene.read_text().replace("sp_ball.png", "sheet.webp"))
+        sheet = self.game / "break assets/Misc/sheet.webp"
+        # A lossless 512 x 64 image. No optional decoder is needed by setup.
+        data = bytes.fromhex(
+            "5249464620000000574542505650384c14000000"
+            "2fffc10f00071011fd0f0028d2ffff14d1ffd47f"
+        )
+        sheet.write_bytes(data)
+        item, = onboarding.inspect(self.game, "Ball")["imageSuggestions"]
+        self.assertEqual(item["imageSize"], [512, 64])
+        self.assertIsNone(item["regions"])
+        sheet.write_bytes(data[:-1])
+        item, = onboarding.inspect(self.game, "Ball")["imageSuggestions"]
+        self.assertIsNone(item["imageSize"])
+
     def test_without_a_selection_neither_body_is_chosen(self):
         info = onboarding.inspect(self.game)
         self.assertCountEqual(info["players"], ["Paddle", "Ball"])
