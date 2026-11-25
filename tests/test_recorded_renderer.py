@@ -188,11 +188,11 @@ class RenderingTest(unittest.TestCase):
     def test_anchor_comparison_keeps_reason_when_both_sides_have_no_answer(self):
         self.capture('replayed.png', NEW)
         result = anchor.compare('walk', self.run_doc(), self.run_doc(), recorded.RecordedClient(self.doc))
-        self.assertEqual(result['result'], 'silent')
-        self.assertEqual(result['noBase'], 1)
+        self.assertEqual(result['result'], 'no-answer')
+        self.assertEqual(result['noAnswer'], 1)
         block = anchor.block([('walk', self.run_doc(), self.run_doc())], recorded.RecordedClient(self.doc), None)
-        self.assertEqual(block['routes'][0]['result'], 'silent')
-        self.assertEqual(block['routes'][0]['noBase'], 1)
+        self.assertEqual(block['routes'][0]['result'], 'no-answer')
+        self.assertEqual(block['routes'][0]['noAnswer'], 1)
         self.assertIn('LLVM 20.1.2', result['reason'])
         self.assertIn('LLVM 19.1.7', result['reason'])
 

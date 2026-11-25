@@ -168,6 +168,11 @@ def pair_frame(base: dict | None, head: dict, tolerance: float, drop: float = DE
     compare), no-base (the unchanged game has no box for this frame), no-answer, not-asked.
     """
     out = {"frame": head["frame"]}
+    # A lookup that failed on either side is missing evidence, even if the
+    # other side has no box or the engine moved the player between versions.
+    for side, row in (("base", base), ("head", head)):
+        if row and row.get("recordingMissing"):
+            return {**out, "state": "no-answer", "why": [f"{side}: {row['error']}"]}
     if not head.get("asked"):
         return {**out, "state": "not-asked", "why": [head.get("note") or "not asked"]}
     if base is None or not base.get("asked") or not base.get("box"):

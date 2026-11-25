@@ -140,6 +140,34 @@ class Case(unittest.TestCase):
 
 
 class DecisionBTest(Case):
+    def test_lookup_error_prevents_accept_even_when_the_frame_cannot_be_compared(self):
+        from expectrail.recorded import MissingRecordedAnswer
+
+        cases = (
+            ("QUIET", "clean", "clean"),   # the base returned no box
+            ("clean", "NOBODY", "clean"),  # the head was never asked
+            ("clean", "MOVED", "MOVED"),   # the engine moved the player
+        )
+        transport = self.game.transport
+        for base, head, missing in cases:
+            with self.subTest(base=base, head=head):
+                control = self.gate(head, base)
+                self.assertEqual(control["decision"], "accept")
+
+                def with_missing_answer(body):
+                    prompt, image = body["input"][0]["content"]
+                    look, frame = self.game.index[image["image_url"].split(",", 1)[1]]
+                    if (look, frame) == (missing, 119) and prompt["text"].startswith("<0f>1<|box;"):
+                        raise MissingRecordedAnswer("no saved answer for this question (not-recorded)")
+                    return transport(body)
+
+                with unittest.mock.patch.object(self.game, "transport", with_missing_answer):
+                    doc = self.gate(head, base)
+                route = doc["anchor"]["routes"][0]
+                self.assertEqual(doc["decision"], "needs-review")
+                self.assertEqual((route["result"], route["noAnswer"]), ("no-answer", 1))
+                self.assertIn((119, "no-answer"), [(f["frame"], f["state"]) for f in route["frames"]])
+
     def test_the_same_game_on_both_sides_is_an_accept_and_the_block_says_they_agree(self):
         doc = self.gate("clean")
         self.assertEqual(doc["decision"], "accept")
