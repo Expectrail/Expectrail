@@ -1470,6 +1470,20 @@ class LostWorkerTest(Case):
                 self.skipTest(f"this system allows only {hard} open files")
             resource.setrlimit(resource.RLIMIT_NOFILE, (need, hard))
             self.addCleanup(resource.setrlimit, resource.RLIMIT_NOFILE, (soft, hard))
+        if not Path("/proc/self/environ").exists():
+            # The process-number backend still has to work with high-numbered files open.
+            with open(os.devnull, "rb") as source:
+                high = fcntl.fcntl(source.fileno(), fcntl.F_DUPFD, 1024)
+            self.addCleanup(os.close, high)
+            self.assertGreaterEqual(high, 1024)
+            job = self.job()
+            proc = self.marked(job)
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+            wait_for(lambda: proc.poll() is not None, what="the marked process stopping by number")
+            self.assertEqual(status["reasons"][-1],
+                             "stopped 1 process(es) it had started; by process number: this system has no process handles")
+            return
+
         real_open, handed = os.pidfd_open, []
 
         def a_high_handle(pid: int) -> int:
