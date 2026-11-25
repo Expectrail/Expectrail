@@ -1,4 +1,4 @@
-Review of November 24, 2026, valid through December 1, 2026
+Review of November 24, 2026, valid through December 11, 2026
 
 The public Standard pricing table lists the following USD prices per million tokens for gpt-6.1-sol.
 Input $2.00, output $10.00, cached input $0.10, 30-minute write $2.50, 12-hour write $5.00.

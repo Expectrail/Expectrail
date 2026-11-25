@@ -16,7 +16,7 @@ across runs; do not reset them or use an evictable cache. No account/key/setting
 were created by this work.
 
 **Check the model and quote first:** the [price evidence](price-provenance.txt)
-was checked on November 24, 2026. It is valid through December 1, 2026.
+was checked on November 24, 2026. It is valid through December 11, 2026.
 Refresh the review against the public sources before using the kit after that. The default dollar-cap envelope is **$10**:
 `1 × $6 fixer + (1 intake + 1 candidate) × $2 SAM`. Other role caps are zero;
 completion is capped at 4,096 tokens, including reasoning. SAM is $0.0025/image.

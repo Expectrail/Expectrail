@@ -38,7 +38,7 @@
       "status": "active",
       "outputTokenField": "max_completion_tokens",
       "contextTokenCeiling": 1050000,
-      "validUntil": "2026-12-01"
+      "validUntil": "2026-12-11"
     }
   ]
 }
