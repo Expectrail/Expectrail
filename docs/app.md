@@ -30,9 +30,14 @@ The app serves its own page without downloading scripts, styles or fonts.
    After your first choice, **Recent Before folders** and **Recent After folders** let you
    reuse a folder. Each lists the six most recently remembered folders on this computer.
    Selecting one checks that folder and shows any setup problem beside the field.
-   You can also paste a full folder path or the path to `project.godot`. To verify, each
-   folder also needs its own [project config](project-config.md), `expectrail.project.json`.
+   You can also paste a full folder path or the path to `project.godot`.
    To compare against another branch or commit, choose a folder containing that version.
+   The app uses Before’s [project config](project-config.md), `expectrail.project.json`.
+   Before needs a usable route and an approved check to start verification. If After lacks
+   the config, you can still choose **Verify** using Before’s checks. A failing check can
+   reject the change. A missing or different After config prevents acceptance. If the
+   setup was left out by accident, choose an After copy that includes the same reviewed
+   config, routes and checks. If you intended to change the setup, review that change separately.
 2. The config's `routes` and `approvedContracts` lists choose the policy. The base config
    chooses what judges both copies. A config produced by `expectrail init` is a draft and
    cannot give an accept until its bindings are reviewed. Only a person may approve checks.
