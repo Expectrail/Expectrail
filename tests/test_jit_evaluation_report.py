@@ -1,3 +1,4 @@
+from itertools import product
 import math
 import unittest
 
@@ -86,3 +87,47 @@ class EvaluationReportTest(unittest.TestCase):
             report.render_truth_table({**TABLE, "wrong": {"accept": 1, "reject": 14}})
         with self.assertRaises(ValueError):
             report.render_truth_table({**TABLE, "wrong": {**TABLE["wrong"], "accept": True}})
+
+
+class RepeatStabilityTest(unittest.TestCase):
+    def test_every_ordered_triple_counts_candidate_disagreement_and_any_accept(self):
+        verdicts = ("accept", "reject", "needs-review")
+        histogram = dict.fromkeys(product(verdicts, repeat=3), 1)
+
+        summary = report.summarize_repeats(histogram, expected_candidates=27)
+
+        self.assertEqual(summary.total, 27)
+        self.assertEqual(summary.unstable, 24)
+        self.assertEqual(summary.any_accept, 19)
+
+    def test_histogram_counts_candidates_once_even_when_multiple_repeats_accept(self):
+        histogram = {
+            ("reject", "reject", "reject"): 5,
+            ("reject", "needs-review", "needs-review"): 3,
+            ("accept", "accept", "accept"): 2,
+            ("reject", "needs-review", "accept"): 4,
+            ("accept", "reject", "accept"): 2,
+        }
+        summary = report.summarize_repeats(histogram, expected_candidates=16)
+        self.assertEqual((summary.total, summary.unstable, summary.any_accept), (16, 9, 8))
+
+    def test_empty_population_has_no_unstable_or_accepted_candidates(self):
+        summary = report.summarize_repeats({}, expected_candidates=0)
+        self.assertEqual((summary.total, summary.unstable, summary.any_accept), (0, 0, 0))
+
+    def test_incomplete_or_malformed_histograms_are_refused(self):
+        complete = ("accept", "reject", "needs-review")
+        for histogram, population in (
+            ([], 0),
+            ({("accept", "reject"): 1}, 1),
+            ({("accept", "reject", "reject", "reject"): 1}, 1),
+            ({("accept", "reject", "error"): 1}, 1),
+            ({("accept", "reject", None): 1}, 1),
+            ({complete: -1}, 0),
+            ({complete: True}, 1),
+            ({complete: 1}, 2),
+            ({complete: 2}, 1),
+            ({}, True),
+        ):
+            with self.subTest(histogram=histogram, population=population), self.assertRaises(ValueError):
+                report.summarize_repeats(histogram, expected_candidates=population)

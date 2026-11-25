@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 import math
+from typing import NamedTuple
 
 
 _TAIL_95 = 0.025
@@ -23,6 +24,40 @@ def _check_rate(events: int, trials: int) -> None:
     _check_counts(events, trials)
     if events > trials:
         raise ValueError("event count exceeds its denominator")
+
+
+class RepeatSummary(NamedTuple):
+    total: int
+    unstable: int
+    any_accept: int
+
+
+def summarize_repeats(
+    histogram: Mapping[tuple[str, str, str], int], *, expected_candidates: int
+) -> RepeatSummary:
+    """Count unstable candidates and candidates with an accept among three verdicts.
+
+    The caller supplies one population. For Q1, the population must already be
+    restricted to the wrong fixes eligible for that rate.
+    """
+    _check_counts(expected_candidates)
+    if not isinstance(histogram, Mapping):
+        raise ValueError("repeat counts must map verdict triples to candidate counts")
+    total = unstable = any_accept = 0
+    for repeats, count in histogram.items():
+        if (not isinstance(repeats, tuple) or len(repeats) != 3
+                or any(type(verdict) is not str or verdict not in _VERDICTS for verdict in repeats)):
+            raise ValueError("each repeat-count key must contain three recognized verdicts")
+        _check_counts(count)
+        outcomes = set(repeats)
+        total += count
+        if len(outcomes) > 1:
+            unstable += count
+        if "accept" in outcomes:
+            any_accept += count
+    if total != expected_candidates:
+        raise ValueError("repeat counts do not match the expected candidate count")
+    return RepeatSummary(total, unstable, any_accept)
 
 
 def _upper_bound(events: int, trials: int) -> float:
