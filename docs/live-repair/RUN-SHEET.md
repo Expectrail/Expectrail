@@ -16,8 +16,8 @@ across runs; do not reset them or use an evictable cache. No account/key/setting
 were created by this work.
 
 **Check the model and quote first:** the [price evidence](price-provenance.txt)
-was read November 16, 2026. The local review expires November 23; after that,
-a reviewed refresh is required. The default dollar-cap envelope is **$10**:
+was checked on November 24, 2026. It is valid through December 11, 2026.
+Refresh the review against the public sources before using the kit after that. The default dollar-cap envelope is **$10**:
 `1 × $6 fixer + (1 intake + 1 candidate) × $2 SAM`. Other role caps are zero;
 completion is capped at 4,096 tokens, including reasoning. SAM is $0.0025/image.
 The model's Standard prices are $2/$10 per million input/output tokens. Admission

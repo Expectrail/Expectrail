@@ -33,12 +33,12 @@
       "baseInputNanoUsdPerToken": 2000,
       "baseOutputNanoUsdPerToken": 10000,
       "source": "https://developers.openai.com/api/docs/pricing and https://developers.openai.com/api/docs/models/gpt-6.1-sol; Standard $2/$10 per million; reserve $5.50/$16.50 including long-context 2x input/1.5x output, cache-write 1.25x input and regional 1.1x. service_tier=default; no tools.",
-      "checkedOn": "2026-11-16",
+      "checkedOn": "2026-11-24",
       "inputBound": "utf8-json-bytes-plus-context-ceiling-v1",
       "status": "active",
       "outputTokenField": "max_completion_tokens",
       "contextTokenCeiling": 1050000,
-      "validUntil": "2026-11-23"
+      "validUntil": "2026-12-11"
     }
   ]
 }

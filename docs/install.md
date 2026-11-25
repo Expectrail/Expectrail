@@ -184,8 +184,13 @@ files are" in a clone and in an installed copy.
 - It reads only and holds no secret. It publishes nowhere: PyPI or a container registry needs an
   account and a token, and pushing the tag is a person's step too.
 
-The rehearsal on main built the wheel, ran the recorded-sample image and uploaded the artifacts.
-A tagged release remains open. [Hosted rehearsal](https://github.com/Expectrail/Expectrail/actions/runs/44983211397)
+On 22 November 2026, an untagged rehearsal on main installed the 0.1.0 wheel in a
+fresh Python virtual environment on Linux. With networking disabled in the sample container, `expectrail doctor`
+passed and the recorded samples gave **accept** for clean, **reject** for the fall-through
+bug and **accept** for the repair. The run saved the wheel and checksum as
+`expectrail-0.1.0-wheel`. A tagged release and registry publication remain pending.
+[Hosted run and wheel artifact](https://github.com/Expectrail/Expectrail/actions/runs/44983211397)
+· [Installed command](capabilities.md#installed-command) · [Recorded vision](capabilities.md#recorded-vision).
 
 `tests/test_release_workflow.py` runs the version step in bash and checks the workflow's shape.
 
@@ -203,7 +208,7 @@ A tagged release remains open. [Hosted rehearsal](https://github.com/Expectrail/
   2026, 5.6 s); CI does not do it: it hands the installed copy the download it already holds, and
   the copy's own script unpacks and checks it.
 - The local sample-container measurement is recorded below. No macOS or other OpenGL device
-  measurement is added here. The release workflow has not been dispatched by this change.
+  measurement is included in the hosted rehearsal.
 
 ## Recorded sample profile
 
@@ -221,8 +226,8 @@ Doctor validates the saved-answer bank and reports the live key/cap as optional 
 An explicit project, or a project in the current directory, always uses the normal project doctor.
 The sample uses the existing sample runner and verification gate with `RecordedBankObserver`:
 real clean, broken and repaired Godot replays, both engine and recorded visual checks. It names
-recording dates/runs. No model key or fallback is used. Missing exact PNG/question answers still
-produce needs-review; a recording for another image never supplies a pass.
+recording dates/runs. No model key or fallback is used. If a required check lacks its visual answer, that check cannot pass. If the engine records a failure on the bug, the sample can still reject.
+[Recorded vision](capabilities.md#recorded-vision) · [Installed command](capabilities.md#installed-command).
 
 Build and run the container from a context containing only its Dockerfile, wheel and public pinned engine archive:
 
@@ -248,12 +253,13 @@ The [release workflow](#a-release) uses this same build context and recorded pro
 
 ### Recorded local container run, November 17, 2026
 
-On main `ff2c7a7aedd1d32a2f0dfdd89ce95fabc416b9f2` plus this patch, the wheel was
+On main `ff2c7a7aedd1d32a2f0dfdd89ce95fabc416b9f2` with the changes from #599, the wheel was
 installed with pip into the pinned Ubuntu container. Doctor exited **0** (Python 3.12.3,
 Godot 4.7.2, Xvfb, llvmpipe LLVM 20.1.2). The real sample exited **0**:
 **accept / reject / accept**, all jobs completed as expected, all with `rule: both` and
 `sam-recorded` vision, no diagnostics. Both commands ran with `--network none`, as UID 10001.
 Live key/cap, Chromium and the unavailable nested sandbox were reported as optional for this
 explicit sample profile, not as installed or usable. No isolated execution is claimed.
-The handover retains the build transcript, doctor output, complete sample JSON and image/wheel
-identities. The CI proposal has not run, no image was published, and no release was tagged.
+The November 17 measurement came from a local container. The November 22 rehearsal ran in
+GitHub Actions and produced the wheel artifact described above.
+[Local test record](new-work/2026-11-17-wheel-sample.md) · [Hosted rehearsal](https://github.com/Expectrail/Expectrail/actions/runs/44983211397).
