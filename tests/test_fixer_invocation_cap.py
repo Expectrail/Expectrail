@@ -132,7 +132,7 @@ print('only capped proxy route was reachable')
 """.replace('UPSTREAM',str(port)).replace('PRIVATE_COUNTER',repr(str(self.root/'invocation.json')))
         # A host listener unreachable inside the network namespace, independent of
         # the bridge port. No remote IP, model or credential is involved.
-        proc,_=sandbox.run_sandboxed(['/usr/bin/python3','-c',client],work=workspace,
+        proc = sandbox.run_sandboxed(['/usr/bin/python3','-c',client],work=workspace,
             env={'PATH':'/usr/bin:/bin'},network=True,kind='bwrap',timeout=20,gateway=gw)
         self.assertEqual(proc.returncode,0,proc.stderr);self.assertEqual(len(upstream),3)
 

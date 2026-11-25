@@ -1,3 +1,21 @@
+Review of November 24, 2026, valid through December 11, 2026
+
+The public Standard pricing table lists the following USD prices per million tokens for gpt-6.1-sol.
+Input $2.00, output $10.00, cached input $0.10, 30-minute write $2.50, 12-hour write $5.00.
+https://developers.openai.com/api/docs/pricing
+
+The model page lists a 1,050,000-token context window and 128,000 maximum output tokens. For API prompts over 272K input tokens the input and cache rates are doubled and the output rate is multiplied by 1.5. Regional processing adds 10%. The public deprecations table did not list this model in its affected-model column on the review date.
+https://developers.openai.com/api/docs/models/gpt-6.1-sol
+https://developers.openai.com/api/docs/deprecations
+
+The Chat Completions reference gives a default request cache TTL of 30m. The caching guide prices that write at 1.25 times the uncached input rate. The fixer's literal-text request uses service_tier=default, omits cache options and supplies no tools. Its max_completion_tokens includes reasoning tokens.
+https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
+https://developers.openai.com/api/docs/guides/prompt-caching
+
+The upper rates per million are $2 × 2 × 1.25 × 1.1 = $5.50 for input and $10 × 1.5 × 1.1 = $16.50 for output. Reserving 1,050,000 input tokens and 4,096 output tokens gives $5.842584. This review used public documentation only. Account availability and billed cost require separate evidence.
+
+Review of November 16, 2026 (historical)
+
 https://developers.openai.com/api/docs/pricing
 Read 2026-11-16; public documentation, no model call.
 Pricing table columns: Input, Output, Cached input, 30m write, 12h write.
