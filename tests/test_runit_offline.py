@@ -228,6 +228,19 @@ class OfflineBrowserTest(unittest.TestCase):
                 page.set_viewport_size({'width': 375, 'height': 812})
                 self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'), 375)
 
+    def test_saved_accept_with_a_missing_answer_explains_why_run_it_needs_review(self):
+        with self.page() as page:
+            status = json.loads((CACHE / 'builder1-recorded-clean/status.json').read_text())
+            status['vision']['answered'] = status['vision']['asked'] - 1
+            status['vision']['notRecorded'] = 1
+            page.route('**/earlier/builder1-recorded-clean/status.json',
+                       lambda route: route.fulfill(json=status))
+            self.show(page, 'clean', 'Needs review')
+            words = page.locator('#facts dt', has_text='This sample').locator('xpath=following-sibling::dd[1]').inner_text()
+            self.assertIn('The gate recorded accept.', words)
+            self.assertIn('needs review because the recorded vision answers are incomplete', words)
+            self.assertNotIn('ended as this sample is expected', words)
+
     def test_timeout_covers_a_worker_that_sends_headers_but_never_finishes_its_body(self):
         with self.page('body-hangs') as page:
             # Evidence is usable while the service check is still waiting.
