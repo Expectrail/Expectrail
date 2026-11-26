@@ -1,0 +1,64 @@
+{
+  "constraint": {
+    "axis": "y",
+    "coordinateSpace": "world",
+    "kind": "fixed-axis-band",
+    "maximum": 88.0,
+    "minimum": 72.0,
+    "subject": "player",
+    "units": "pixels"
+  },
+  "evidence": {
+    "firstTick": 0,
+    "goalTick": 8,
+    "lastTick": 31,
+    "returnTick": 25,
+    "traceSha256": "161d99e16cb2c39d0af94ed1a88082ed8aa7f4bd78fa720894f3d48dd9944120",
+    "transform": "identity"
+  },
+  "format": "expectrail.project-model/v1",
+  "reference": {
+    "bindingsSha256": "8d18de15cb564a5ea94d6b7926724e1eeedba51ab771354e37cd8eadea4134fa",
+    "capture": {
+      "framesPerSecond": 60,
+      "ticksPerSecond": 60,
+      "viewport": [
+        320,
+        180
+      ]
+    },
+    "engine": {
+      "name": "godot",
+      "sha256": "8d106cbe6144c2dc7e881d61d2429c1a8a76e6b22ef48bd5e48dcf934953f71e",
+      "version": "4.7.2.stable.official.ed1daf0bf"
+    },
+    "harnessSha256": "1fd845302464e1b41de42c73ecbdad9f3275cd288f1595a043a1e3507d6adb7a",
+    "profileSha256": "fbdc9b8b6fa00db4fd1cd8e9d03ff8d169aea611e353bea390d994841442dc55",
+    "route": {
+      "name": "out-and-back",
+      "sha256": "a2a8ffa82441f90aae507c16c45de527ae2caa1a13ea12e5a3ec861592d02bea",
+      "ticks": 32
+    },
+    "treeSha256": "6c170a4ebf548a1cad929a6862b581c11bed0cb9e65c06446718ef3f055e4433"
+  },
+  "sources": [
+    {
+      "location": "node:Actor",
+      "path": "main.tscn",
+      "property": "position",
+      "sha256": "0a2bc22be8ac916cf12844ca30f6f78f2e4be3a4f4d046adcf32db2b22ad0bd8"
+    },
+    {
+      "location": "collider:Actor",
+      "path": "main.tscn",
+      "property": "shape",
+      "sha256": "0a2bc22be8ac916cf12844ca30f6f78f2e4be3a4f4d046adcf32db2b22ad0bd8"
+    },
+    {
+      "location": "resource:actor-box",
+      "path": "main.tscn",
+      "property": "size",
+      "sha256": "0a2bc22be8ac916cf12844ca30f6f78f2e4be3a4f4d046adcf32db2b22ad0bd8"
+    }
+  ]
+}
