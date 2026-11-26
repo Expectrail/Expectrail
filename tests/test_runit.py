@@ -160,6 +160,47 @@ class WithoutRecordingTest(Case):
 
 
 class RecordedTest(Case):
+    def test_budget_stop_does_not_replace_a_complete_recording(self):
+        self.record("clean")
+        target = self.root / "docs/run-it/vision/clean.json"
+        previous = target.read_bytes()
+        answered = False
+
+        def stop_after_one(body):
+            nonlocal answered
+            if answered:
+                raise SamError("stand-in budget exhausted", kind="budget")
+            answered = True
+            return self.game.transport(body)
+
+        client = MetaSamClient(transport=stop_after_one, retries=0, sleep=lambda _: None)
+        with self.assertRaisesRegex(runit.RunItError, r"[1-9]\d* unanswered"):
+            self.quiet(runit.record, "clean", target, run_id="partial", client=client,
+                       root=self.root, replay=self.game.replay)
+        self.assertTrue(answered)
+        self.assertEqual(target.read_bytes(), previous)
+
+    def test_repeated_questions_and_successful_empty_answers_form_a_complete_recording(self):
+        self.game.look_of = lambda _: "HIDDEN"
+
+        def identical_frames(route, game, out, frames):
+            result = self.game.replay(route, game, out, frames)
+            if result["framesDir"] is not None:
+                paths = sorted(result["framesDir"].glob("f*.png"))
+                picture = paths[0].read_bytes()
+                for frame in paths[1:]:
+                    frame.write_bytes(picture)
+            return result
+
+        target = self.root / "docs/run-it/vision/clean.json"
+        self.quiet(runit.record, "clean", target, run_id="complete", client=self.client(),
+                   root=self.root, replay=identical_frames)
+        answers = recorded.read_recording(target)["answers"]
+        self.assertGreater(len(self.game.asked), len(answers))
+        self.assertTrue(answers)
+        self.assertTrue(all(not any(answer["detections"]) for answer in answers))
+        self.assertEqual(runit.check_recording(target, sample_id="clean", root=self.root), [])
+
     def test_recorded_answers_give_the_samples_their_decisions_and_ask_no_model(self):
         for sample, want in (("clean", "accept"), ("fall-through-bug", "reject"), ("fall-through-repair", "accept")):
             with self.subTest(sample=sample):

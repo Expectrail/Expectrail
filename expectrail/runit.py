@@ -305,8 +305,12 @@ def record(sample_id: str, target: Path, *, run_id: str, client=None, root: Path
             doc = run(sample_id, Path(tmp) / "out", request_id="recording", root=root, replay=replay,
                       require_sandbox=require_sandbox, record_with=client)
         recorder = doc["recording"]
+    unanswered = recorder.unanswered()
+    if unanswered:
+        noun = "question" if unanswered == 1 else "questions"
+        raise RunItError(f"cannot write recording: {unanswered} unanswered vision {noun}")
     recording = recorder.recording(sample=sample_id, run=run_id,
-                                           recorded_at=recorded_at or dt.date.today().isoformat())
+                                   recorded_at=recorded_at or dt.date.today().isoformat())
     return recorded.write_recording(target, recording)
 
 
