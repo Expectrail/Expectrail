@@ -1,0 +1,9 @@
+--- a/actor.gd
++++ b/actor.gd
+@@ -4,4 +4,4 @@
+     if Input.is_action_pressed(&"right"):
+-        position.x += 2.0
++        position.x += 0.0
+     if Input.is_action_pressed(&"left"):
+-        position.x -= 2.0
++        position.x -= 0.0

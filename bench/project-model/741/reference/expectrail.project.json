@@ -1,0 +1,16 @@
+{
+  "format": "expectrail.project/v1",
+  "adapter": "godot",
+  "version": "4.7",
+  "toolchain": {"engine": "godot", "version": "4.7"},
+  "entryScene": "res://main.tscn",
+  "viewport": [320, 180],
+  "physicsTicksPerSecond": 60,
+  "captureFps": 60,
+  "inputActions": ["right", "left"],
+  "bindings": {
+    "player": {"node": "Actor", "texture": "res://actor.svg"},
+    "goal": {"node": "ContactMark", "texture": "res://mark.svg"},
+    "home": {"node": "HomeMark", "texture": "res://mark.svg"}
+  }
+}

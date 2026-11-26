@@ -1,0 +1,41 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://actor.gd" id="1"]
+[ext_resource type="Texture2D" path="res://actor.svg" id="2"]
+[ext_resource type="Texture2D" path="res://mark.svg" id="3"]
+
+[sub_resource type="RectangleShape2D" id="actor-box"]
+size = Vector2(24, 16)
+
+[sub_resource type="RectangleShape2D" id="mark-box"]
+size = Vector2(1, 1)
+
+[node name="Root" type="Node2D"]
+
+[node name="Actor" type="CharacterBody2D" parent="."]
+position = Vector2(100, 80)
+script = ExtResource("1")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Actor"]
+shape = SubResource("actor-box")
+
+[node name="Sprite2D" type="Sprite2D" parent="Actor"]
+texture = ExtResource("2")
+
+[node name="ContactMark" type="StaticBody2D" parent="."]
+position = Vector2(130, 71.5)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ContactMark"]
+shape = SubResource("mark-box")
+
+[node name="Sprite2D" type="Sprite2D" parent="ContactMark"]
+texture = ExtResource("3")
+
+[node name="HomeMark" type="StaticBody2D" parent="."]
+position = Vector2(100, 71.5)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HomeMark"]
+shape = SubResource("mark-box")
+
+[node name="Sprite2D" type="Sprite2D" parent="HomeMark"]
+texture = ExtResource("3")
