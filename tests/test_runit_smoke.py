@@ -91,6 +91,17 @@ class Compare(unittest.TestCase):
         self.assertTrue(problems(page=dict(PAGE, facts=dict(PAGE["facts"], Request="r-2"))))
         self.assertTrue(problems(dict(STATUS, asExpected=False)))
 
+    def test_archived_accept_needs_a_sample_line_explaining_the_missing_answer(self):
+        status = copy.deepcopy(STATUS)
+        status["vision"].update(answered=119, notRecorded=1)
+        facts = dict(PAGE["facts"], Vision=PAGE["facts"]["Vision"].replace("120 of 120", "119 of 120"))
+        page = dict(PAGE, facts=facts, verdict="Needs review", tone="review")
+        self.assertTrue(any("sample line" in p for p in problems(status, page)))
+        facts["This sample"] = ("A working install decides accept. The gate recorded accept. "
+                                "Run it needs review because the recorded vision answers are incomplete.")
+        self.assertEqual(problems(status, page), [])
+        self.assertTrue(any("headline" in p for p in problems(status, dict(page, evidenceHeadline="Rejected"))))
+
     def test_the_evidence_must_be_shown_and_its_headline_must_agree(self):
         self.assertTrue(problems(page=dict(PAGE, viewerShown=False)))
         self.assertTrue(problems(page=dict(PAGE, evidenceHeadline=None)))
@@ -148,6 +159,25 @@ class InChromium(unittest.TestCase):
         for folder in (doc.get("kept") or {}).values():
             self.addCleanup(shutil.rmtree, folder, True)
         return doc, lines
+
+    def test_only_the_visible_evidence_frame_can_supply_the_headline(self):
+        from harness.web.run import CHROMIUM_ARGS, game_env
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(args=CHROMIUM_ARGS, env=game_env())
+            try:
+                page = browser.new_page()
+                page.set_content('<iframe srcdoc="<p>Expectrail evidence viewer</p><h1>Accepted</h1>"></iframe>'
+                                 '<iframe id="viewer" sandbox="allow-scripts" '
+                                 'srcdoc="<p>Expectrail evidence viewer</p><h1>Rejected</h1>"></iframe>')
+                self.assertEqual(runit_smoke.evidence_headline(page), "Rejected")
+                page.locator("#viewer").evaluate("(frame) => frame.hidden = true")
+                self.assertIsNone(runit_smoke.evidence_headline(page, timeout_s=0.5))
+                page.locator("#viewer").evaluate("(frame) => {frame.hidden = false; frame.srcdoc = '<h1>Rejected</h1>'}")
+                page.frame_locator("#viewer").locator("p").wait_for(state="detached")
+                self.assertIsNone(runit_smoke.evidence_headline(page, timeout_s=0.5))
+            finally:
+                browser.close()
 
     def test_every_offered_sample_and_every_state_holds(self):
         doc, lines = self.smoke()
