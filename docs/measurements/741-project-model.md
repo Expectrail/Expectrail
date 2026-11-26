@@ -37,6 +37,8 @@ The following trace digests identify the three matching repeats in each arm.
 
 The controls were local engine-only diagnostics. Bubblewrap could not set up the user namespace in this environment, so the harness reported its automatic host fallback with an allowlisted environment. The [public cycle log](https://github.com/Expectrail/Expectrail/issues/721#issuecomment-7076354203) records the run and implementation status.
 
+The wheel built with the two model modules reproduced the same five control rows. Its installed evaluator, adapter and harness judged all 32 frames for all 45 verdicts across 15 replays. Three derivations again produced byte-identical models and drafts. The installed reader refused a changed candidate tree and a changed binding. This repeat also used local host fallback.
+
 ## Reproduce and review
 
 With `EXPECTRAIL_GODOT` set to a pinned Godot 4.7.2 executable, run from the repository root.
@@ -58,4 +60,6 @@ PYTHONPATH=. python3 -m expectrail.project_model_godot \
 
 The command writes a new output directory outside the reference. For setup review, make a copy of the reference, add the route under `routes/`, set the profile's `routes` list to that path, and copy the two drafts into `checks/`. Run `expectrail onboard --project "$review_copy" --godot "$EXPECTRAIL_GODOT"` with a local display available. Keep the project-model file with the review evidence so the developer can inspect the source and exercised window alongside the two drafts. On a fresh wheel installation, this handoff produced a review page after a completed clean replay. The review manifest recorded both drafts as unapproved and their file digests matched the qualification outputs.
 
-The trial supports one saved Godot text-scene layout and a complete out-and-back route on an untransformed viewport. Ambiguous bindings, unsupported source or capture transforms, incomplete evidence, or a changed authoring identity require review. Shipping the authoring command in the installed package requires the packaging owner to add its two modules to the wheel allowlist. Human approval remains open.
+The trial supports one saved Godot text-scene layout and a complete out-and-back route on an untransformed viewport. Ambiguous bindings, unsupported source or capture transforms, incomplete evidence, or a changed authoring identity require review. The wheel includes both authoring modules. To run the authoring command outside the checkout, use the installed interpreter and omit `PYTHONPATH=.`.
+
+The model binds the harness that produced its replay evidence. The wheel qualifies imports in its copy of `harness/run.py`, so a checkout model and a wheel model can have different harness digests even when their drafts match. The installed reader refused the checkout model under the wheel's reference identity during the [installed-wheel diagnostic](https://github.com/Expectrail/Expectrail/issues/741#issuecomment-7183193277). Use the model from the installation that produced its evidence. Human approval remains open.

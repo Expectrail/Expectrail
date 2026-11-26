@@ -40,6 +40,8 @@ BUNDLED_MODULES = {
         "onboarding",
         "project_config",
         "project_job",
+        "project_model",
+        "project_model_godot",
         "providers",
         "receipt",
         "recorded",
