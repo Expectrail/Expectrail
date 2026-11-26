@@ -357,6 +357,7 @@ class RecordingClient:
         self.base = getattr(inner, "base", "")
         self.provider = getattr(inner, "provider", "meta-model-api")
         self._answers: dict[tuple[str, str, str], list] = {}
+        self._questions: set[tuple[str, str, str]] = set()
         self._environments: set[str] = set()
         self._lock = threading.Lock()
 
@@ -364,17 +365,21 @@ class RecordingClient:
     def calls(self) -> int:
         return getattr(self._inner, "calls", 0)
 
-    def _keep(self, kind: str, png: Path, prompt: str, detections: list) -> None:
+    def unanswered(self) -> int:
+        """Count distinct questions that still have no successful answer."""
         with self._lock:
-            self._answers[(kind, sha256_bytes(Path(png)), prompt)] = _clean(detections)
-            self._environments.add(json.dumps(capture_environment(png), sort_keys=True))
+            return len(self._questions - self._answers.keys())
 
     def _ask(self, kind, png, prompt, ask):
+        key = (kind, sha256_bytes(Path(png)), prompt)
+        with self._lock:
+            self._questions.add(key)
         if not self._reuse:
             found = ask()
-            self._keep(kind, png, prompt, found)
+            with self._lock:
+                self._answers[key] = _clean(found)
+                self._environments.add(json.dumps(capture_environment(png), sort_keys=True))
             return found
-        key = (kind, sha256_bytes(Path(png)), prompt)
         # Serialize a duplicate's first request too. Never cache a provider error or substitute a
         # point answer for a box question. Copies prevent callers changing later evidence.
         with self._lock:

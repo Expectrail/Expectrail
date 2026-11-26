@@ -1509,6 +1509,30 @@ class LostWorkerTest(Case):
         # stopped as it was before handles. Only "no such process" ends it.
         import errno
 
+        if not Path("/proc/self/environ").exists():
+            # Exercise the Linux fallback with a pollable pipe standing in for pidfd.
+            # Keep discovery and cleanup of the real child on the host backend.
+            read_end, write_end = os.pipe()
+            self.addCleanup(os.close, read_end)
+            self.addCleanup(os.close, write_end)
+            self.enterContext(mock.patch.object(st.os, "pidfd_open",
+                                                side_effect=lambda _pid: os.dup(read_end), create=True))
+            self.enterContext(mock.patch.object(st.signal, "pidfd_send_signal", create=True,
+                                                side_effect=AssertionError("unexpected handle signal")))
+            signaller = st._signal
+            exists = Path.exists
+
+            def linux_exists(path):
+                return path == Path("/proc/self/environ") or exists(path)
+
+            def signal_with_handle(pid, marker, sig):
+                names_job = st._names_job(pid, marker)
+                with mock.patch.object(Path, "exists", linux_exists), \
+                        mock.patch.object(st, "_names_job", return_value=names_job):
+                    return signaller(pid, marker, sig)
+
+            self.enterContext(mock.patch.object(st, "_signal", side_effect=signal_with_handle))
+
         ways = {
             "the liveness check raises": lambda: mock.patch.object(st, "_exited", side_effect=ValueError("filedescriptor out of range")),
             "the signal to the handle is refused": lambda: mock.patch.object(
