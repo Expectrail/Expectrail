@@ -139,7 +139,13 @@ def not_tested(record: dict | None) -> list[str]:
     out = []
     held = record["heldOut"]
     if held["status"] == "not-used":
-        out.append("no held-out routes: only the public routes were replayed")
+        replays = (record.get("isolation") or {}).get("replays")
+        if replays is None:
+            out.append("No held-out routes were used. The number of completed replays was not recorded.")
+        elif replays == 0:
+            out.append("No held-out routes were used. The record lists zero completed replays.")
+        else:
+            out.append("no held-out routes: only the public routes were replayed")
     elif held["status"] == "unavailable":
         out.append("the held-out routes could not be judged")
     if not any(c["before"] is not None for c in record["checks"]):
@@ -148,6 +154,19 @@ def not_tested(record: dict | None) -> list[str]:
         out.append("the frames by a visual observer: only the engine's record judged")
     elif (record.get("observers") or {}).get("visual") is None:
         out.append("the frames by a visual observer: none was asked, so nothing is accepted")
+    comparison = record.get("anchor") or {}
+    if comparison.get("stopped"):
+        action = "was not run" if comparison.get("status") == "not-asked" else "stopped"
+        out.append(f"Visual player-position comparison {action}. {comparison['stopped']}")
+    public_routes = {route["name"] for route in record.get("routes", [])}
+    for row in comparison.get("routes", []):
+        if row["route"] not in public_routes:
+            continue
+        compared = row["in"] + row["out"]
+        total = compared + sum(row[key] for key in ("moved", "noBase", "noAnswer", "notAsked"))
+        if not total or compared < total:
+            out.append(f"On {row['route']}, the visual player-position check compared {compared} of {total} "
+                       f"sampled frame pairs. {row['reason']}")
     if record.get("drafts"):
         out.append(f"{record['drafts']} draft spec{'s' if record['drafts'] != 1 else ''} (not approved, not used)")
     if record.get("checkProblems"):
@@ -201,6 +220,8 @@ def series(spec: dict, observations: dict, *, end_frame: int | None = None) -> d
 
     assertion = spec["assertion"]
     kind = assertion["type"]
+    if kind == "exact-ui-integer":
+        return None  # The evaluator judges a terminal engine Label, without a per-frame sprite series.
     scores = {name: obj.get("minScore", ev.DEFAULT_MIN_SCORE) for name, obj in spec["objects"].items()}
 
     def pick(frame, name):
@@ -328,14 +349,31 @@ def _measured_series(spec, observations, verdict, source, end_frame=None) -> dic
     return {"series": s, "note": note}
 
 
+def _score_note(spec, observations, verdict):
+    """Use the evaluator's recorded reason only for the exact inputs it judged."""
+    from expectrail.contracts import digest
+
+    if (not verdict or observations is None
+            or verdict.get("spec") != {"id": spec["id"], "sha256": digest(spec)}
+            or (verdict.get("observations") or {}).get("sha256") != digest(observations)):
+        return "Terminal score unavailable: the engine verdict is missing or belongs to different inputs."
+    assertion = spec["assertion"]
+    return (f"Engine Label check for tick {assertion['routeTicks'] - 1} (expected {assertion['expected']}). "
+            f"Engine verdict: {verdict['result']}. {verdict['reason']}. Rendered digits were not checked.")
+
+
 def check_series(spec: dict, run: dict, verdict: dict | None) -> dict:
     """Keep the public check's context until write_gate can read its saved visual evidence.
 
     The spec, window end and capture folder are internal inputs to the viewer."""
     count = ((verdict or {}).get("coverage") or {}).get("framesExpected")
     end = (spec.get("window", {}).get("fromFrame", 0) + count - 1) if count else None
-    return {**_measured_series(spec, run.get("engineObservations"), verdict, "the engine's record", end),
-            "_spec": spec, "_end_frame": end, "_frames_dir": run.get("framesDir")}
+    observations = run.get("engineObservations")
+    if spec["assertion"]["type"] == "exact-ui-integer":
+        measured = {"series": None, "note": _score_note(spec, observations, verdict)}
+    else:
+        measured = _measured_series(spec, observations, verdict, "the engine's record", end)
+    return dict(measured, _spec=spec, _end_frame=end, _frames_dir=run.get("framesDir"))
 
 
 def visual_series(out: Path, spec: dict | None, check: dict, side: str, spec_sha: str,
@@ -816,7 +854,11 @@ if (!root) return;
 var views = (data.views || []).filter(function(v){ return v && typeof v === "object"; });
 var starts = JSON.parse(root.getAttribute("data-starts") || "[]");
 function difference(v){ return starts[views.indexOf(v)]; }
-function opening(v){ return typeof difference(v) === "number" ? difference(v) : v.firstFrame; }
+function opening(v){
+  var delta = difference(v);
+  if (typeof delta !== "number") return v.firstFrame;
+  return typeof v.firstFrame === "number" ? Math.min(delta, v.firstFrame) : delta;
+}
 function findingObserver(v){ return ((v.observed || {}).after || {}).visual === "fail" ? "vision" : "engine"; }
 function goToDifference(v){
   if (typeof difference(v) === "number") { state.frame = difference(v); state.observer = "engine"; draw(); }
@@ -929,6 +971,17 @@ function timeline(v, side, n, visual){
     wrap.appendChild(el("p", {"class": "muted"}, why || missing));
     return wrap;
   }
+  var point = pointAt(s, n);
+  var reading = "No measurement";
+  if (point && ["ok", "over", "short", "reached"].indexOf(point.state) !== -1 && Number.isFinite(point.value)) {
+    var rounded = Number(point.value.toPrecision(6));
+    reading = (rounded === point.value ? "" : "≈") + rounded + (s.unit ? " " + s.unit : "");
+  } else if (point) {
+    if (point.state === "absent") reading = "Not observed";
+    if (point.state === "missing") reading = "Object missing";
+    if (point.state === "not-applicable") reading = "Not exercised";
+  }
+  wrap.appendChild(el("p", null, "Frame " + n + ": " + reading));
   var pts = s.points, W = 1000, H = 120, pad = 8;
   var lo = pts[0].frame, hi = pts[pts.length - 1].frame;
   var vals = pts.filter(function(p){ return typeof p.value === "number"; }).map(function(p){ return p.value; });
@@ -986,9 +1039,12 @@ function timeline(v, side, n, visual){
   return wrap;
 }
 function draw(){
+  var focused = document.activeElement;
+  var focusLabel = focused && root.contains(focused) ? focused.getAttribute("aria-label") : null;
   root.textContent = "";
   if (!shown.length) { root.appendChild(el("p", null, "There is nothing to inspect: no check has evidence in this folder.")); return; }
   var v = shown[state.i];
+  var failed = v.after === "fail";
   var all = framesOf(v);
   if (all.length && all.indexOf(state.frame) < 0) {
     var best = all[0]; all.forEach(function(x){ if (Math.abs(x - state.frame) < Math.abs(best - state.frame)) best = x; });
@@ -1004,7 +1060,7 @@ function draw(){
   range.addEventListener("input", function(){ state.frame = all[Number(range.value)]; draw(); document.querySelector("#inspector input[type=range]").focus(); });
   c.appendChild(range);
   btn("Frame →", "next frame", function(){ step(1); });
-  c.appendChild(el("span", {"aria-live": "polite"}, all.length ? "Frame " + state.frame + (v.firstFrame === state.frame ? (v.after === "needs-review" ? " (finding frame)" : " (first failing frame)") : "") + (difference(v) === state.frame ? " (first measured difference)" : "") : "No frame recorded"));
+  c.appendChild(el("span", {"aria-live": "polite"}, all.length ? "Frame " + state.frame + (v.firstFrame === state.frame ? (failed ? " (first failing frame)" : " (finding frame)") : "") + (difference(v) === state.frame ? " (first measured difference)" : "") : "No frame recorded"));
   var ov = btn(state.overlays ? "Hide overlays" : "Show overlays", "toggle overlays", function(){ state.overlays = !state.overlays; draw(); });
   ov.setAttribute("aria-pressed", String(state.overlays));
   if (v.visualSeries && (v.visualSeries.before || v.visualSeries.after)) {
@@ -1013,8 +1069,17 @@ function draw(){
     });
   }
   if (typeof difference(v) === "number") btn("First difference", "go to the first measured difference", function(){ goToDifference(v); });
-  if (typeof v.firstFrame === "number") btn("First failure", "go to the first failing frame", function(){ goToFinding(v); });
+  if (typeof v.firstFrame === "number") {
+    btn(failed ? "First failure" : "Finding frame", failed ? "go to the first failing frame" : "go to the finding frame",
+      function(){ goToFinding(v); });
+  }
   root.appendChild(c);
+  if (focusLabel) {
+    var replacement = Array.from(c.children).find(function(control){
+      return control.getAttribute("aria-label") === focusLabel;
+    });
+    if (replacement) replacement.focus({preventScroll: true});
+  }
   var framed = framedOf(v);
   if (framed.length) {
     var pair = el("div", {"class": "pair"});
@@ -1042,9 +1107,10 @@ function pick(i){
   if (!shown.length) { draw(); return; }
   state.i = Math.max(0, Math.min(shown.length - 1, i));
   var v = shown[state.i];
-  state.observer = typeof difference(v) === "number" ? "engine" : findingObserver(v);
+  var start = opening(v);
+  state.observer = typeof start === "number" && difference(v) === start ? "engine" : findingObserver(v);
   var all = framesOf(v);
-  state.frame = typeof opening(v) === "number" ? opening(v) : (all[0] || 0);
+  state.frame = typeof start === "number" ? start : (all[0] || 0);
   draw();
 }
 document.querySelectorAll("[data-step-check]").forEach(function(b){
@@ -1102,9 +1168,16 @@ def _facts(payload: dict) -> list[tuple[str, str]]:
     if record:
         pr = record.get("pullRequest") or {}
         game = record["game"]
+        base_sha, base_tree = pr.get("baseSha"), game.get("baseTree")
+        if base_sha or base_tree or record["checksFrom"] == "base" or any(
+                c.get("before") is not None for c in record["checks"]):
+            commit = f"commit {base_sha}" if base_sha else "commit ID unavailable"
+            base = f"{commit}, game tree {base_tree[:16] if base_tree else 'unavailable'}"
+        else:
+            base = "No Before replay recorded."
         facts += [
             ("Head", f"commit {pr.get('headSha') or 'unknown'}, game tree {(game.get('headTree') or 'unknown')[:16]}"),
-            ("Base", f"commit {pr.get('baseSha') or 'not replayed'}, game tree {(game.get('baseTree') or 'not replayed')[:16]}"),
+            ("Base", base),
             ("Game", game["path"]),
             ("Policy", f"{len(record['specs'])} approved spec{'s' if len(record['specs']) != 1 else ''} from the "
                        f"{'base commit (the change cannot edit the checks that judge it)' if record['checksFrom'] == 'base' else 'head commit'}"
@@ -1120,6 +1193,37 @@ def _facts(payload: dict) -> list[tuple[str, str]]:
              + (f" at {record['expectrail']['commit']}" if record["expectrail"].get("commit") else "")),
         ]
     return facts
+
+
+def _observer_rows(record):
+    """Keep the observer policy separate from the verdicts returned for public checks."""
+    engine_only = rec.rule_of(record) == rec.ENGINE_ONLY
+    observers = record.get("observers") or {}
+    visual = observers.get("visual")
+    if engine_only or visual is None:
+        policy = rec.observers_words(record)
+    else:
+        policy = (f"Both the engine and {visual['name']} ({visual['model']}, {visual['provider']}) "
+                  "must pass a check for it to pass.")
+        every = observers.get("visionEvery", 1)
+        if every > 1:
+            policy += f" Vision samples every {every} frames and the last frame in the window. Shorter defects may be missed."
+    rows = [("Observer policy", policy)]
+    for side in ("before", "after"):
+        applicable = [check for check in record["checks"] if check.get(side) not in (None, "not-applicable")]
+        total = len(applicable)
+        if total:
+            engine_count = visual_count = 0
+            for check in applicable:
+                observed = (check.get("observed") or {}).get(side) or {}
+                engine = check[side] if engine_only else observed.get("engine")
+                engine_count += engine in ("pass", "fail", "needs-review")
+                visual_count += not engine_only and observed.get("visual") in rec.VISUAL_VERDICTS
+            detail = f"Engine {engine_count}/{total} · Vision {visual_count}/{total}"
+        else:
+            detail = "No applicable public checks."
+        rows.append((f"{side.capitalize()} public check verdicts", detail))
+    return rows
 
 
 def vision_words(record: dict | None, job: dict | None) -> str | None:
@@ -1229,6 +1333,8 @@ def _measurement_table(view, key, observer):
     rows = [_points_by_frame(sides.get(side)) for side in ("before", "after")]
     ticks = sorted(rows[0].keys() | rows[1].keys())
     if not ticks:
+        if key == "series" and view.get("notes"):
+            return "<p>No frame-by-frame engine measurements were supplied.</p>"
         return f"<p>{observer} measurements were not supplied.</p>"
     parts = [f'<details class="readings"><summary>{observer} measurements · {len(ticks)} window '
              'frames</summary>']
@@ -1292,13 +1398,20 @@ def _static_pair(view, tick, single_file):
     return "".join(parts) + "</div>"
 
 
+def _opening_frame(view, difference):
+    finding = view.get("firstFrame")
+    if finding is None:
+        return difference
+    return finding if difference is None else min(finding, difference)
+
+
 def _measurements(view, difference, paired, single_file, index):
     first = view.get("firstFrame")
-    tick = difference if difference is not None else first
+    tick = _opening_frame(view, difference)
     parts = [f'<article class="measured"><h3>{esc(view.get("spec"))} on {esc(view.get("route"))}</h3>']
     if difference is not None:
         sides = view["series"]
-        left, right = (_points_by_frame(sides[side])[tick] for side in ("before", "after"))
+        left, right = (_points_by_frame(sides[side])[difference] for side in ("before", "after"))
         unit = esc(sides["after"].get("unit"))
         bound = sides["after"].get("limit")
         parts.append(f"<p><strong>First measured difference at frame {difference}.</strong> "
@@ -1311,6 +1424,8 @@ def _measurements(view, difference, paired, single_file, index):
     if first is not None:
         label = "First failing frame" if view.get("after") == "fail" else "Finding frame"
         parts.append(f"<p>{label}: {esc(first)} (from the finding).</p>")
+    for note in view.get("notes", []):
+        parts.append(f'<p class="muted">{esc(note)}</p>')
     parts.extend((_measurement_table(view, "series", "Engine"), _measurement_table(view, "visualSeries", "Vision")))
     if type(tick) is int:
         parts.append(f'<button type="button" hidden data-step-check="{index}">Step through frame {tick}</button>')
@@ -1368,14 +1483,27 @@ def render_published(record: dict, decision: str) -> str:
     }))
 
 
+def _disagreeing_repeats(record):
+    """Public checks that both passed and failed on the same build and route."""
+    rows = ((record or {}).get("repair") or {}).get("rows", [])
+    return [row for row in rows if any(
+        "pass" in row[side] and "fail" in row[side] for side in ("base", "head")
+    )]
+
+
 def render(payload: dict) -> str:
     state = payload["state"]
     title, tone, means = STATES[state]
     record, job = payload["record"], payload["job"]
     published = payload.get("published", False)
+    repeats = _disagreeing_repeats(record)
     if published:
         title = payload["decision"]
         means = "This is the decision recorded by the project's CI."
+    elif (repeats and state == "needs-review" and record["decision"] == "needs-review"
+          and (job is None or job.get("decision") == "needs-review")):
+        title = "Needs review: repeated runs disagree"
+        means = "The same check on the same build and route both passed and failed across replays."
     parts = [
         "<!DOCTYPE html>", '<html lang="en"><head><meta charset="utf-8">',
         f'<meta http-equiv="Content-Security-Policy" content="{CSP}">',
@@ -1389,7 +1517,8 @@ def render(payload: dict) -> str:
     grade = (job or {}).get("evidenceGrade") or "Not recorded"
     parts.append(f'<dl><dt>Evidence grade</dt><dd>{esc(grade)}</dd>')
     if record:
-        parts.append(f'<dt>Judged on</dt><dd>{esc(rec.observers_words(record))}</dd>')
+        for label, detail in _observer_rows(record):
+            parts.append(f'<dt>{esc(label)}</dt><dd>{esc(detail)}</dd>')
         parts.append(f'<dt>Replays in the sandbox</dt><dd>{esc(rec.isolation_words(record.get("isolation")))}</dd>')
     parts.append("</dl>")
     parts.append("<h2>Not tested</h2><ul>" + "".join(f"<li>{esc(t)}</li>" for t in not_tested(record)) + "</ul>")
@@ -1409,6 +1538,14 @@ def render(payload: dict) -> str:
         parts.append(f'<p class="muted" data-export="1">{esc(note)}</p>')
     if payload["reasons"]:
         parts.append("<h2>Why</h2><ul>" + "".join(f"<li>{esc(r)}</li>" for r in payload["reasons"]) + "</ul>")
+    if repeats:
+        parts.append('<div class="scroll"><table><caption>Repeated runs that disagree</caption>'
+                     '<tr><th>Spec</th><th>Route</th><th>Before, in run order</th><th>After, in run order</th></tr>')
+        for row in repeats:
+            before, after = (", ".join(WORD.get(value, value) for value in row[side]) for side in ("base", "head"))
+            parts.append(f"<tr><td>{esc(row['spec'])}</td><td>{esc(row['route'])}</td>"
+                         f"<td>{esc(before)}</td><td>{esc(after)}</td></tr>")
+        parts.append("</table></div>")
     if job and job.get("diagnostics"):
         parts.append("<ul>" + "".join(f"<li><code>{esc(d.get('code'))}</code> ({esc(d.get('stage'))}): "
                                       f"{esc(d.get('detail'))} Fix: {esc(d.get('fix'))}</li>"
@@ -1458,13 +1595,13 @@ def render(payload: dict) -> str:
         if views:
             parts.append('<section id="measurements"><h2>Recorded measurements</h2>')
             def order(i):
-                frame = starts[i] if starts[i] is not None else views[i].get("firstFrame")
+                frame = _opening_frame(views[i], starts[i])
                 return not bool(views[i].get("findingId")), frame is None, frame or 0, str(views[i].get("findingId"))
             for i in sorted(range(len(views)), key=order):
                 parts.append(_measurements(views[i], *comparisons[i], exported is not None, i))
             parts.append('</section>')
         parts.append('<h2>Inspect</h2><p class="keys">Keys: <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step a frame '
-                     "(<kbd>Shift</kbd> for five), <kbd>Home</kbd> <kbd>End</kbd>, <kbd>d</kbd> first measured difference, <kbd>f</kbd> first failure, "
+                     "(<kbd>Shift</kbd> for five), <kbd>Home</kbd> <kbd>End</kbd>, <kbd>d</kbd> first measured difference, <kbd>f</kbd> finding frame, "
                      "<kbd>o</kbd> overlays on or off, <kbd>n</kbd> <kbd>p</kbd> next or previous finding.</p>"
                      f'<section id="inspector" data-starts="{json.dumps(starts)}" tabindex="-1" aria-label="frames and timeline"><noscript>Frame stepping and overlays need '
                      "scripts; everything else on this page reads without them.</noscript></section>")
