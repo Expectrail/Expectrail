@@ -81,18 +81,16 @@ SETTLED = """(terminal) => {
 
 def evidence_headline(page, timeout_s: float = 20.0) -> str | None:
     """The headline the evidence viewer shows inside its sandboxed frame, once it has drawn; None if never."""
+    body = page.frame_locator("iframe#viewer[srcdoc]:visible").locator("body")
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        for frame in page.frames:
-            if frame is page.main_frame or frame.url != "about:srcdoc":
-                continue
-            try:
-                text = frame.evaluate("() => document.body ? document.body.innerText : ''")
-            except Exception:   # noqa: BLE001 - the frame is being replaced; try again
-                continue
-            lines = [line.strip() for line in text.splitlines() if line.strip()]
-            if lines and lines[0] == "Expectrail evidence viewer" and len(lines) > 1:
-                return lines[1]
+        try:
+            text = body.inner_text(timeout=max(1, int(1000 * (deadline - time.monotonic()))))
+        except Exception:  # The page can replace the evidence while the result is loading.
+            text = ""
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if len(lines) >= 2 and lines[0] == "Expectrail evidence viewer":
+            return lines[1]
         time.sleep(0.25)
     return None
 
@@ -161,10 +159,15 @@ def compare(status: dict, page: dict, *, label: str, earlier: bool, evidence: bo
         problems.append(f"{label}: the receipt line is {facts.get('Receipt')!r}, status.json says {receipt!r}")
     if facts.get("Request") != status.get("requestId"):
         problems.append(f"{label}: the request line is {facts.get('Request')!r}, not {status.get('requestId')!r}")
-    expected_end = "ended as this sample is expected to end" if status.get("asExpected") else "did not end as"
-    if expected_end not in (facts.get("This sample") or ""):
-        problems.append(f"{label}: the sample line does not match asExpected={status.get('asExpected')!r}: "
-                        f"{facts.get('This sample')!r}")
+    sample_line = facts.get("This sample") or ""
+    expected = (status.get("sample") or {}).get("expected")
+    if status.get("decision") == "accept" and title == "Needs review":
+        ending = "The gate recorded accept. Run it needs review because the recorded vision answers are incomplete."
+    else:
+        outcome = "ended" if status.get("asExpected") else "did not end"
+        ending = f"This run {outcome} as this sample is expected to end today."
+    if sample_line != f"A working install decides {expected}. {ending}":
+        problems.append(f"{label}: the sample line does not explain the recorded outcome: {sample_line!r}")
     if evidence and not page.get("viewerShown"):
         problems.append(f"{label}: the evidence viewer is not shown ({page.get('evidenceNote')!r})")
     elif evidence:

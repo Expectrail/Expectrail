@@ -528,9 +528,13 @@
     fact(facts, "Vision", vision);
     var rendering = renderingLine(v.rendering);
     if (rendering) fact(facts, "Rendering", rendering);
-    var expected = status.sample.expected;
-    fact(facts, "This sample", "A working install decides " + expected + ". This run " +
-      (status.asExpected ? "ended as this sample is expected to end today." : "did not end as this sample is expected to end today."));
+    var expectation = "A working install decides " + status.sample.expected + ". ";
+    if (status.phase === "completed" && status.decision === "accept" && verdict.tone === "review") {
+      expectation += "The gate recorded accept. Run it needs review because the recorded vision answers are incomplete.";
+    } else {
+      expectation += "This run " + (status.asExpected ? "ended" : "did not end") + " as this sample is expected to end today.";
+    }
+    fact(facts, "This sample", expectation);
     fact(facts, "Receipt", status.receipt.why || "not signed");
     fact(facts, "Ran", when(status.startedAt) + " to " + when(status.finishedAt));
     if (typeof status.expectrailCommit === "string" && /^[0-9a-f]{40}$/.test(status.expectrailCommit)) {
