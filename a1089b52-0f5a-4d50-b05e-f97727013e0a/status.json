@@ -1,0 +1,44 @@
+{
+ "asExpected": true,
+ "decision": "accept",
+ "diagnostics": [],
+ "expectrailCommit": "a28d6f56f02782106c280c660a2d226b157f990a",
+ "findings": "findings.json",
+ "finishedAt": "2026-11-26T18:59:45Z",
+ "format": "expectrail.run-it-result/v1",
+ "phase": "completed",
+ "receipt": {
+  "signed": false,
+  "why": "not signed yet (#255)"
+ },
+ "requestId": "a1089b52-0f5a-4d50-b05e-f97727013e0a",
+ "sample": {
+  "expected": "accept",
+  "id": "clean",
+  "title": "The game as it is"
+ },
+ "startedAt": "2026-11-26T18:59:17Z",
+ "viewer": "viewer/index.html",
+ "vision": {
+  "answered": 120,
+  "asked": 120,
+  "model": "sam-3.1",
+  "notRecorded": 0,
+  "recorded": true,
+  "recordedAt": "2026-11-13",
+  "rendering": {
+   "recording": null,
+   "status": "unknown",
+   "thisRun": [
+    {
+     "device": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+     "name": "godot",
+     "renderer": "opengl3",
+     "version": "4.7.2.stable.official.ed1daf0bf"
+    }
+   ]
+  },
+  "run": "43508479160",
+  "why": null
+ }
+}

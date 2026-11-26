@@ -2,8 +2,8 @@
  "format": "expectrail.run-it-latest/v1",
  "samples": {
   "clean": {
-   "finishedAt": "2026-11-23T21:19:35Z",
-   "requestId": "cc4d1b39-1529-4232-ae73-267bbd8c1574"
+   "finishedAt": "2026-11-26T18:59:45Z",
+   "requestId": "a1089b52-0f5a-4d50-b05e-f97727013e0a"
   },
   "fall-through-bug": {
    "finishedAt": "2026-11-24T20:10:03Z",
