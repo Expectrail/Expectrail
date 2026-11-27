@@ -20,7 +20,7 @@ Tests name behavior; a stand-in test is not presented as a live model measuremen
 | New trace signals needed by misses, tested and documented | `coins_collected` and two player screen ranges; `tests/test_trace_camera_coins.py`; public `visibility.json` and evidence records; `docs/jit.md` | Implemented for the two camera misses and coin-stays. No live after-step rate. This change adds a further UI reading and comparison; see below. |
 | Proposer sees a bounded buggy-versus-clean summary on routes | `expectrail/repro/evidence.py`, `expectrail/jit/offer.py::attach_evidence`; `tests/test_repro_evidence.py::test_signals_come_from_the_same_replays_as_the_fields`, `test_an_unstable_field_is_left_out_and_the_same_replay_twice_gives_nothing`; `tests/test_jit_offer_evidence.py`; committed `evidence-*.json` and `menu-evidence-*.json` in the public bench | Implemented for measured library/reach probes, at most six shown. Model-invented routes are not premeasured. At this audit menu evidence could not be attached as usable generator probes. Since November 18 the `signals-reach-evidence-menu` offer attaches it for the three menu probes, and their measure and evidence replays record the pause menu's counter, so the summary shows `uiIntegers` differing on `coin-counts-twice` from tick 310 (#622, #624; `tests/test_jit_offer_menu.py`, `tests/test_jit_menu_reading.py`). No live quality/rate measurement. |
 | Reproduce from report and base alone; candidate-shaped checks do not qualify for #271 | `--withhold-candidate`; `tests/test_jit_withheld.py::test_two_different_fixes_of_one_report_give_the_model_the_same_prompt`, `test_only_checks_proposed_blind_are_from_the_base_alone`; `tests/test_repro_score_withheld.py::test_a_record_of_the_other_setting_never_raises_the_rate`; `run.from_base_alone` returns no qualifying checks for shown records | Implemented and tested with stand-ins. Baseline candidate was shown: it proves no candidate-withheld rate and qualifies no checks for that #271 condition. Hosted withheld measurement missing. (The test's name describes withholding the candidate; no private content is used.) |
-| Reproduction rate after each step, with a run | `docs/jit.md` and public bench README cite only run 43465090517 for a live reproduction rate. Public API lists zero JIT runs at the audited main SHA: `docs/repro-current-main-runs.json` | Missing for signals/reach, evidence, and candidate withheld. No current-code live rate is recorded. Sender-cap workflow prerequisite below also blocks a dispatch. |
+| Reproduction rate after each step, with a run | `docs/jit.md` and public bench README cite only run 43465090517 for a live reproduction rate. Public API lists zero JIT runs at the audited main SHA: `docs/repro-current-main-runs.json` | Missing for signals/reach, evidence, and candidate withheld. No current-code live rate is recorded. The sender cap is wired on main. The hosted run awaits Sean’s dispatch from main and approval in `spend`. |
 | At least 70% of trace-visible public defects reproduced; no kept clean failure | Baseline score: 16/19 trace-visible reproduced (84.21%); 91 kept checks each pass clean 3/3. `tests/test_repro_score.py::test_two_of_three_on_the_bug_build_is_not_a_reproduction`, `test_a_record_whose_valid_flag_its_own_runs_contradict` | Baseline meets the trace-visible target under the keep rule it was made with. **Under today's rule, which also drops a check that passes the do-nothing control (#675), the same records reproduce 11/19 trace-visible (57.89%), below the target** ([section below](#reproduction-rate-under-the-do-nothing-rule)). This does not establish the target for current offers or for candidate-withheld checks. Zero clean failures among the 91 kept checks is the keep rule, not an independent false-reject sample. |
 | Spend per defect under existing $2 cap, reported | Same run: total $2.0492 across 24 defects; maximum $0.1722 (`slow-left`), 0/24 over $2. `expectrail/jit/run.py::Spend`; `tests/test_repro_score.py::test_out_of_budget_is_a_miss_with_that_reason` | Baseline measured using recorded price assumptions, not a vendor invoice. Later-step spend missing. Premeasurement/job overhead is outside the assessed per-defect ledger. |
 
@@ -257,31 +257,26 @@ these two routes could participate in an automatic report-only run. Since Novemb
 Its dispatch is listed in the next section. No live improvement is claimed for any
 of the seven misses. The orientation/layering observer gap remains separate.
 
-## Sean's next measurement, after this change is on main
+## Sean's next hosted measurements
 
 The public API query is committed in `docs/repro-current-main-runs.json`: zero runs of `jit.yml`
 on main at the audited SHA. The connected run-list tool filters to pull-request events; this audit
 used GitHub's public read-only API to check main instead. No dispatch occurred.
 
-**Update, November 18:** #618 added the line below to both steps of `jit.yml`; the prerequisite in the next two paragraphs is met on main and needs no hand edit. The paragraphs are kept as the audit's record.
+The November 16 audit found that the live sender required `EXPECTRAIL_SPEC_USD_CAP`.
+Its offline preflight returned “no spend cap for spec” before the first HTTP call. On November 18,
+#618 wired the per-defect value from the plan into the proposal and revision steps.
+[Sender-cap change](https://github.com/Expectrail/Expectrail/pull/618)
 
-**A workflow prerequisite was missing at this audit.** `spark_intent` uses
-`spec_writer.http_transport`, whose live sender now requires `EXPECTRAIL_SPEC_USD_CAP`.
-`jit.yml` does not export that cap to either model job. A local preflight with the HTTP opener
-mocked and environment patched/restored refuses with “no spend cap for spec”; zero HTTP calls.
-Dispatching today would spend measure-job runner time and then refuse before a model request.
+On November 27, main `a28d6f56` still supplied this cap to both steps. Those jobs target the protected
+`spend` environment. The replay steps consume saved proposals. The latest public Generated checks dispatch
+from main was still the November 13 baseline.
+[Workflow on audited main](https://github.com/Expectrail/Expectrail/blob/a28d6f56f02782106c280c660a2d226b157f990a/.github/workflows/jit.yml)
+· [Spend approval](spend-environment.md) · [Public dispatch](https://github.com/Expectrail/Expectrail/actions/runs/43465090517)
 
-Sean must first add the following line to the existing job-level `env:` mappings of **both**
-`propose` and `revise` in `.github/workflows/jit.yml`, preserving their other entries:
-
-```yaml
-EXPECTRAIL_SPEC_USD_CAP: ${{ needs.plan.outputs.budget }}
-```
-
-That is two added env entries, using the selected per-defect budget. Repository/environment
-variables alone are not automatically exported to the Python process. This audit makes no
-workflow edit; this is Sean's step. The replay jobs read saved proposals and need no live sender.
-After that prerequisite and this change are on main, run from an authenticated terminal:
+Sean can dispatch the comparisons below from main and approve the protected spend jobs.
+The revised-rule comparison uses the `signals-reach-evidence-menu-control` offer described later
+in this section. The first command runs the report-only trace-check comparison.
 
 ```sh
 gh workflow run jit.yml --repo Expectrail/Expectrail --ref main \
@@ -291,7 +286,7 @@ gh workflow run jit.yml --repo Expectrail/Expectrail --ref main \
 It exercises current report-only trace checks, not menu routes or pixel checks. It can measure the
 current automatic path even if counter misses remain. Preserve its `repro-score` artifact, the
 per-case `jit-run.json` records and run URL; publish every miss and per-defect spend, even if the
-rate is lower. The existing `main-only` environment must be available to Sean.
+rate is lower.
 
 Code-derived plan: **24 defects × $2 = $48 assessed budget**, at most **48 Muse calls** (one proposal
 and at most one revision per defect), at most **30,000 completion tokens reserved per call**,
