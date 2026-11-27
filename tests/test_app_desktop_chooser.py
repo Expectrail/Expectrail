@@ -373,10 +373,32 @@ def rehearse_folder_pair(browser, fixture, native):
         after.fill(str(game))
     expect(note).to_be_empty()
 
-    after.fill(str(other_layout))
     after_feedback = page.locator('#after-feedback')
+    choose_after = page.get_by_role('button', name='Choose After folder', exact=True)
+    native.return_value = str(fixture.root)  # This folder has no project.godot.
+
+    def choose_invalid_before_pair_reply(route):
+        reply = route.fetch()
+        choose_after.click()
+        expect(after_feedback).to_contain_text('Choose the folder containing it.')
+        route.fulfill(response=reply)
+
+    page.route('**/api/projects/check', choose_invalid_before_pair_reply, times=1)
+    with page.expect_response(lambda r: checked_pair(r, copy, other_layout)):
+        after.fill(str(other_layout))
     expect(after_feedback).to_contain_text('different layouts')
     expect(after_feedback).to_contain_text('entry.tscn')
+    expect(after_feedback).to_contain_text('Choose the folder containing it.')
+
+    # A second invalid replacement arrives after the pair has been checked.
+    with page.expect_response(lambda r: r.url.endswith('/api/projects/choose')):
+        choose_after.click()
+    expect(choose_after).to_be_enabled()
+    expect(after_feedback).to_contain_text('Choose the folder containing it.')
+    expect(after_feedback).to_contain_text('entry.tscn')
+    expect(after).to_have_value(str(other_layout))
+    expect(before).to_have_value(str(copy))
+
     native.return_value = None
     page.get_by_role('button', name='Choose After folder', exact=True).click()
     expect(after_feedback).to_contain_text('cancelled')

@@ -28,13 +28,15 @@ For your own checks, the routes and approvals come from <strong>Before</strong>.
 <input id="before" autocomplete="off" spellcheck="false" aria-describedby="before-feedback"></div>
 <div id="recent-before-group" hidden><label for="recent-before">Recent Before folders</label>
 <select id="recent-before"></select></div>
-<div id="before-feedback" class="folder-feedback" role="status"></div></div>
+<div id="before-feedback" class="folder-feedback" role="status">
+<div id="before-action"></div><div id="before-problem"></div></div></div>
 <div data-folder-side="after"><label for="after">After: full folder path or project.godot file path</label>
 <div class="folder-entry"><button id="choose-after" type="button">Choose After folder</button>
 <input id="after" autocomplete="off" spellcheck="false" aria-describedby="after-feedback"></div>
 <div id="recent-after-group" hidden><label for="recent-after">Recent After folders</label>
 <select id="recent-after"></select></div>
-<div id="after-feedback" class="folder-feedback" role="status"></div></div></div>
+<div id="after-feedback" class="folder-feedback" role="status">
+<div id="after-action"></div><div id="after-problem"></div></div></div></div>
 <div id="folder-pair-feedback" class="folder-feedback" role="status"></div>
 <div id="before-suggestion" class="folder-feedback" hidden>
 <p><span id="suggestion-source"></span> <strong id="suggested-folder"></strong></p>
@@ -202,7 +204,7 @@ document.addEventListener('drop',event=>{
   if(files.length===1 && files[0].webkitGetAsEntry?.()?.isDirectory) {
     el('choose-'+side).click();
   } else {
-    el(side+'-feedback').textContent='Drop one project folder here, or use Choose '+sideNames[side]+' folder.';
+    el(side+'-action').textContent='Drop one project folder here, or use Choose '+sideNames[side]+' folder.';
   }
 });
 function textElement(tag, text) {
@@ -305,11 +307,7 @@ let folderRevision=0;
 let pairTimer;
 let pendingFolderCheck=null;
 let sameCopyPair=null;
-const pairedProblems=new Map();
 const checkingFolder='Checking the selected folder…';
-function cancelledFolderChoice(problem) {
-  return problem ? 'Folder choice cancelled. '+problem : 'Folder choice cancelled.';
-}
 function hasFolderPair() {
   return Boolean(el('before').value.trim() && el('after').value.trim());
 }
@@ -328,10 +326,7 @@ function checkFolderPair(delay) {
   sameCopyPair=null;
   const notice=el('folder-pair-feedback');
   notice.textContent='';
-  for(const [field,problem] of pairedProblems) {
-    if(field.textContent===problem || field.textContent===cancelledFolderChoice(problem)) field.textContent='';
-  }
-  pairedProblems.clear();
+  for(const side of Object.keys(sideNames)) el(side+'-problem').textContent='';
   const before=el('before').value, after=el('after').value, revision=folderRevision;
   if(!before.trim() || !after.trim()) return;
   let request;
@@ -341,12 +336,11 @@ function checkFolderPair(delay) {
       const pair=await api('/api/projects/check',{before,after});
       if(revision!==folderRevision) return;
       for(const side of Object.keys(sideNames)) {
-        const field=el(side+'-feedback'), problem=pair[side].problem;
-        if(problem) {
-          pairedProblems.set(field,problem);
-          field.textContent=problem;
-        } else if(!field.textContent || field.textContent===checkingFolder) {
-          field.textContent=sideNames[side]+' folder selected.';
+        const action=el(side+'-action'), selected=sideNames[side]+' folder selected.';
+        const problem=pair[side].problem;
+        el(side+'-problem').textContent=problem || '';
+        if(!action.textContent || action.textContent===checkingFolder || action.textContent===selected) {
+          action.textContent=problem ? '' : selected;
         }
       }
       const sameCopy=pair.before.folder && pair.before.folder===pair.after.folder;
@@ -378,7 +372,7 @@ function selectBefore(folder, message) {
   const before=el('before');
   before.value=folder;
   before.dispatchEvent(new Event('input',{bubbles:true}));
-  el('before-feedback').textContent=message;
+  el('before-action').textContent=message;
 }
 el('use-before').onclick=()=>{
   const before=el('before');
@@ -390,14 +384,14 @@ el('use-previous').onclick=async()=>{
   if(busy || job || el('before').value.trim() || el('previous-option').hidden) return;
   const after=el('after').value, revision=folderRevision;
   controls(true);
-  el('before-feedback').textContent='Opening the previous commit…';
+  el('before-action').textContent='Opening the previous commit…';
   try {
     const copy=await api('/api/projects/previous',{after});
     if(revision!==folderRevision) return;
     selectBefore(copy.folder,'Before is a temporary copy of Git commit '+copy.commit+'.');
     previousAfter=after;
   } catch(error) {
-    if(revision===folderRevision) el('before-feedback').textContent=error.message+' You can select a folder with Choose Before folder.';
+    if(revision===folderRevision) el('before-action').textContent=error.message+' You can select a folder with Choose Before folder.';
   } finally {
     controls(false);
     if(previousAfter===after) el('before').focus();
@@ -405,7 +399,7 @@ el('use-previous').onclick=async()=>{
   }
 };
 for(const side of Object.keys(sideNames)) {
-  const input=el(side), choose=el('choose-'+side), feedback=el(side+'-feedback');
+  const input=el(side), choose=el('choose-'+side), feedback=el(side+'-action');
   const recent=el('recent-'+side);
   let selection=0;
   input.addEventListener('input',event=>{
@@ -432,7 +426,10 @@ for(const side of Object.keys(sideNames)) {
     try {
       const checked=await api('/api/projects/check',{[side]:folder});
       if(current!==selection || input.value!==folder || hasFolderPair()) return;
-      if(showFeedback) feedback.textContent=checked[side].problem || sideNames[side]+' folder selected.';
+      if(showFeedback) {
+        el(side+'-problem').textContent=checked[side].problem || '';
+        feedback.textContent=checked[side].problem ? '' : sideNames[side]+' folder selected.';
+      }
       const suggestion=checked.beforeSuggestion;
       if(!offerBefore || revision!==folderRevision || el('before').value.trim()) return;
       if(suggestion) {
@@ -472,7 +469,7 @@ for(const side of Object.keys(sideNames)) {
       if(folder) refreshRecentFolders();
       if(edited) return;
       if(folder===null){
-        feedback.textContent=cancelledFolderChoice(pairedProblems.get(feedback));
+        feedback.textContent='Folder choice cancelled.';
         return;
       }
       if(typeof folder!=='string' || !folder.trim()) throw new Error('The desktop dialog returned no usable folder.');
@@ -536,7 +533,7 @@ el('verify').onclick=async()=>{
     for(const side of Object.keys(sideNames)) {
       if(!body[side].trim()) {
         problem(new Error('Choose both versions before starting verification.'));
-        el(side+'-feedback').textContent='Choose the '+sideNames[side]+' folder or enter its path.';
+        el(side+'-action').textContent='Choose the '+sideNames[side]+' folder or enter its path.';
         el(side).focus();
         return;
       }
