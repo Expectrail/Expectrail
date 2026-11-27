@@ -335,6 +335,10 @@
     $("phases").hidden = false;
   }
 
+  function runMessage(serial, message) {
+    if (serial === viewSerial) $("run-message").textContent = message;
+  }
+
   function finish() { busy = false; renderButtons(); }
 
   function startRun(sampleId) {
@@ -343,6 +347,9 @@
     busy = true;
     renderButtons();
     openPanel("Your run", s.title, "Asking Run it to start…");
+    // Polling continues if the visitor opens an earlier result. Only the panel that
+    // started this request may show its progress or verdict.
+    var serial = viewSerial;
     fetch(API + "/run", {
       method: "POST", cache: "no-store", credentials: "omit",
       headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sample: sampleId })
@@ -352,21 +359,23 @@
       var doc = res.doc;
       if (isObj(doc) && doc.format === API_FORMAT && doc.kind === "accepted" && typeof doc.requestId === "string"
           && ID.test(doc.requestId) && doc.sample === sampleId) {
-        $("run-message").textContent = "Request reserved. Waiting for GitHub; this page follows its progress.";
-        setPhase("queued");
-        follow(doc.requestId, sampleId, Date.now(), 0);
+        if (serial === viewSerial) {
+          $("run-message").textContent = "Request reserved. Waiting for GitHub; this page follows its progress.";
+          setPhase("queued");
+        }
+        follow(doc.requestId, sampleId, Date.now(), 0, serial);
         return;
       }
       finish();
-      if (isObj(doc) && doc.format === API_FORMAT && doc.kind === "refused") return refused(doc, sampleId);
-      $("run-message").textContent = "Run it answered in a way this page does not understand. A run may already have started; wait before trying again.";
+      if (isObj(doc) && doc.format === API_FORMAT && doc.kind === "refused") return refused(doc, sampleId, serial);
+      runMessage(serial, "Run it answered in a way this page does not understand. A run may already have started; wait before trying again.");
     }).catch(function () {
       finish();
-      $("run-message").textContent = "Could not confirm the request with Run it. A run may already have started; wait before trying again.";
+      runMessage(serial, "Could not confirm the request with Run it. A run may already have started; wait before trying again.");
     });
   }
 
-  function refused(doc, sampleId) {
+  function refused(doc, sampleId, serial) {
     var reset = doc.resetsAt ? " It resets at " + when(doc.resetsAt) + "." : "";
     var lead = {
       "busy": "Busy: another visitor's run is going. Try again in a minute.",
@@ -381,6 +390,7 @@
     var message = lead + reset;
     if (typeof doc.detail === "string" && doc.detail) message += " (" + doc.detail + ")";
     if (doc.reason === "circuit-open" || doc.reason === "disabled") { open = false; checkService(); }
+    if (serial !== viewSerial) return;
     if (latestRun(sampleId)) {
       showLatest(sampleId, message + (latestRun(sampleId).cached ? " Here is a saved earlier result instead." : " Here is the most recent finished run of this sample instead."));
     } else {
@@ -388,10 +398,10 @@
     }
   }
 
-  function follow(requestId, sampleId, startedMs, misses) {
+  function follow(requestId, sampleId, startedMs, misses, serial) {
     if (Date.now() - startedMs > GIVE_UP_MS) {
       finish();
-      $("run-message").textContent = "No answer from this run after 25 minutes; it may have stalled. No verdict.";
+      runMessage(serial, "No answer from this run after 25 minutes; it may have stalled. No verdict.");
       return;
     }
     setTimeout(function () {
@@ -402,27 +412,28 @@
         }
         if (doc.standIn === true) $("standin").hidden = false;
         if (PHASES.indexOf(doc.state) !== -1) {
-          setPhase(doc.state);
-          return follow(requestId, sampleId, startedMs, 0);
+          if (serial === viewSerial) setPhase(doc.state);
+          return follow(requestId, sampleId, startedMs, 0, serial);
         }
         finish();
         if (doc.state === "published") {
-          $("phases").hidden = true;
-          $("run-message").textContent = "Finished at " + when(doc.updatedAt) + ".";
-          loadResult(requestId, sampleId, true);
+          if (serial === viewSerial) {
+            $("phases").hidden = true;
+            $("run-message").textContent = "Finished at " + when(doc.updatedAt) + ".";
+          }
+          loadResult(requestId, sampleId, true, false, serial);
           loadLatest();
-        } else if (doc.state === "cancelled") {
-          $("run-message").textContent = "Cancelled: no verdict. Nothing was published.";
         } else {
-          $("run-message").textContent = "The run failed: no verdict. Nothing was published.";
+          runMessage(serial, doc.state === "cancelled" ? "Cancelled: no verdict. Nothing was published."
+                                                       : "The run failed: no verdict. Nothing was published.");
         }
       }).catch(function () {
         if (misses >= 5) {
           finish();
-          $("run-message").textContent = "Lost contact with Run it. The run may still finish; it will be listed here as this sample's latest run. No verdict is shown.";
+          runMessage(serial, "Lost contact with Run it. The run may still finish; it will be listed here as this sample's latest run. No verdict is shown.");
           return;
         }
-        follow(requestId, sampleId, startedMs, misses + 1);
+        follow(requestId, sampleId, startedMs, misses + 1, serial);
       });
     }, POLL_MS);
   }
@@ -432,7 +443,7 @@
     var row = latestRun(sampleId);
     if (!s || !row) return;
     openPanel((row.cached ? "Earlier saved run, from " : "Earlier run, from ") + when(row.finishedAt), s.title, message);
-    loadResult(row.requestId, sampleId, false, row.cached);
+    loadResult(row.requestId, sampleId, false, row.cached, viewSerial);
   }
 
   function fact(list, term, text, href) {
@@ -477,9 +488,9 @@
     container.appendChild(table);
   }
 
-  function loadResult(requestId, sampleId, justPublished, cached) {
+  function loadResult(requestId, sampleId, justPublished, cached, serial) {
     if (!ID.test(requestId) || !ID.test(sampleId)) return;
-    var base = baseFor({requestId: requestId, cached: cached}), serial = viewSerial;
+    var base = baseFor({requestId: requestId, cached: cached});
     getJson(base + "status.json").then(function (res) {
       if (res.status !== 200 || !usable(res.doc, requestId, sampleId)) throw new Error("unusable");
       var status = res.doc;
@@ -488,8 +499,11 @@
         if (serial !== viewSerial) return;
         showResult(status, base, findings.doc);
       });
+      if (justPublished && typeof status.finishedAt === "string") {
+        publishedHere[sampleId] = {requestId: requestId, finishedAt: status.finishedAt};
+        renderLatest();
+      }
       if (serial !== viewSerial) return;
-      if (justPublished && typeof status.finishedAt === "string") publishedHere[sampleId] = {requestId: requestId, finishedAt: status.finishedAt};
       showResult(status, base);
     }).catch(function () {
       if (serial !== viewSerial) return;
