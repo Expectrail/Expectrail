@@ -859,7 +859,12 @@ function opening(v){
   if (typeof delta !== "number") return v.firstFrame;
   return typeof v.firstFrame === "number" ? Math.min(delta, v.firstFrame) : delta;
 }
-function findingObserver(v){ return ((v.observed || {}).after || {}).visual === "fail" ? "vision" : "engine"; }
+function hasVisualTimeline(v){
+  return Object.values(v.visualSeries || {}).some(function(s){ return s && s.points && s.points.length; });
+}
+function findingObserver(v){
+  return hasVisualTimeline(v) && ((v.observed || {}).after || {}).visual === "fail" ? "vision" : "engine";
+}
 function goToDifference(v){
   if (typeof difference(v) === "number") { state.frame = difference(v); state.observer = "engine"; draw(); }
 }
@@ -910,15 +915,32 @@ function pointAt(s, n){
   return null;
 }
 var COLORS = ["#ffd400", "#00e0ff", "#ff5cf0", "#7dff6a"];
+function measurementText(value, unit){
+  var rounded = Number(value.toPrecision(6));
+  return (rounded === value ? "" : "≈") + rounded + (unit ? " " + unit : "");
+}
+function hasReading(point){
+  return ["ok", "over", "short", "reached"].indexOf(point.state) !== -1 && Number.isFinite(point.value);
+}
+function frameReading(series, n, observer){
+  var p = pointAt(series, n);
+  if (!p) return "";
+  if (hasReading(p)) return ". " + observer + " measured " + measurementText(p.value, series.unit) + " (" + p.state + ")";
+  return p.state ? ". " + observer + ": " + p.state : "";
+}
 function stage(v, side, n){
   var fig = el("figure");
   var box = el("div", {"class": "stage"});
   var f = ((v.frames || {})[side] || []).filter(function(x){ return x.frame === n; })[0];
   var label = side === "after" ? "After the change" : "Before the change";
+  var cap = label + ", frame " + n;
+  if (f) cap += ", sha256 " + String(f.sha256 || "").slice(0, 16);
+  cap += frameReading((v.series || {})[side], n, "Engine");
+  cap += frameReading((v.visualSeries || {})[side], n, "Vision");
   if (!f) {
     box.appendChild(el("div", {"class": "hole"}, "No " + (side === "after" ? "after" : "before") + " frame " + n + " in this evidence"));
     fig.appendChild(box);
-    fig.appendChild(el("figcaption", null, label + ", frame " + n));
+    fig.appendChild(el("figcaption", null, cap));
     return fig;
   }
   var img = el("img", {src: f.path, alt: label + ", frame " + n});
@@ -952,9 +974,6 @@ function stage(v, side, n){
     box.appendChild(o);
   }
   fig.appendChild(box);
-  var cap = label + ", frame " + n + ", sha256 " + String(f.sha256 || "").slice(0, 16);
-  if (p && p.value !== null && p.value !== undefined) cap += ". Measured " + p.value + (selected.unit || "") + " (" + p.state + ")";
-  else if (p) cap += ". " + p.state;
   fig.appendChild(el("figcaption", null, cap));
   return fig;
 }
@@ -973,9 +992,8 @@ function timeline(v, side, n, visual){
   }
   var point = pointAt(s, n);
   var reading = "No measurement";
-  if (point && ["ok", "over", "short", "reached"].indexOf(point.state) !== -1 && Number.isFinite(point.value)) {
-    var rounded = Number(point.value.toPrecision(6));
-    reading = (rounded === point.value ? "" : "≈") + rounded + (s.unit ? " " + s.unit : "");
+  if (point && hasReading(point)) {
+    reading = measurementText(point.value, s.unit);
   } else if (point) {
     if (point.state === "absent") reading = "Not observed";
     if (point.state === "missing") reading = "Object missing";
@@ -1053,6 +1071,9 @@ function draw(){
   var title = el("h3", null, v.spec + " on " + v.route + ": " + v.comparison);
   root.appendChild(title);
   if (v.reason) root.appendChild(el("p", null, v.reason));
+  if (((v.observed || {}).after || {}).visual === "fail" && !hasVisualTimeline(v)) {
+    root.appendChild(el("p", {"class": "muted"}, "This export contains no visual timeline for this check."));
+  }
   var c = el("div", {"class": "controls"});
   function btn(text, label, fn){ var b = el("button", {type: "button", "aria-label": label}, text); b.addEventListener("click", fn); c.appendChild(b); return b; }
   btn("← Frame", "previous frame", function(){ step(-1); });
@@ -1063,7 +1084,7 @@ function draw(){
   c.appendChild(el("span", {"aria-live": "polite"}, all.length ? "Frame " + state.frame + (v.firstFrame === state.frame ? (failed ? " (first failing frame)" : " (finding frame)") : "") + (difference(v) === state.frame ? " (first measured difference)" : "") : "No frame recorded"));
   var ov = btn(state.overlays ? "Hide overlays" : "Show overlays", "toggle overlays", function(){ state.overlays = !state.overlays; draw(); });
   ov.setAttribute("aria-pressed", String(state.overlays));
-  if (v.visualSeries && (v.visualSeries.before || v.visualSeries.after)) {
+  if (hasVisualTimeline(v)) {
     btn("Overlays: " + state.observer, "toggle measurement source", function(){
       state.observer = state.observer === "engine" ? "vision" : "engine"; draw();
     });

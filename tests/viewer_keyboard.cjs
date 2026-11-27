@@ -104,6 +104,8 @@ ui.click('toggle measurement source'); assert.match(ui.root.textContent, /Overla
 ui.key('ArrowLeft'); assert.match(ui.frame(), /^Frame 3/);
 assert.match(ui.root.textContent, /absent/);
 assert.match(ui.root.textContent, /not observed/);
+assert.match(ui.captions()[0], /Engine measured 3 px.*Vision: absent/);
+assert.match(ui.captions()[1], /Engine measured 3 px.*Vision: absent/);
 const charts = descend(ui.root).filter(e => e.attributes.class === 'timeline');
 assert.equal(charts.length, 4);
 assert.ok(descend(charts[2]).some(e => e.tagName === 'PATH' && (e.attributes.d.match(/M/g) || []).length === 2),
@@ -112,6 +114,23 @@ for (const views of [[], [{...view(null, null, false), frames: {}, series: {}, v
   const empty = boot(views);
   for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End', 'f', 'n', 'p', 'o']) empty.key(key);
 }
+// A visual verdict can exist without a visual series. First failure still has exact engine readings.
+const unseen = view('visual verdict without timeline', 4, true);
+unseen.visualSeries = {before: null, after: null};
+unseen.reason = 'The visual observer did not find the player.';
+unseen.series.before.points = unseen.series.before.points.filter(p => p.frame !== 4);
+unseen.series.after.points[4].value = 0;
+const noTimeline = boot([unseen], [2]);
+noTimeline.click('go to the first failing frame');
+assert.equal(noTimeline.frame(), 'Frame 4 (first failing frame)');
+assert.match(noTimeline.captions()[1], /After the change, frame 4.*Engine measured 0 px/);
+assert.ok(!noTimeline.captions()[0].includes('Engine measured'), 'never borrow a nearby reading');
+assert.ok(noTimeline.captions().every(c => !c.includes('Vision measured')));
+assert.match(noTimeline.root.textContent, /visual observer did not find the player/);
+assert.match(noTimeline.root.textContent, /no visual timeline for this check/);
+assert.equal(noTimeline.overlays(), 1);
+noTimeline.key('d'); noTimeline.key('f');
+assert.match(noTimeline.captions()[1], /Engine measured 0 px/);
 // Inspect a frame without an image. Each observer and each side has its own series.
 const measured = view('readings', 3, false);
 measured.frames = {};
