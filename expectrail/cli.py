@@ -88,6 +88,7 @@ def _recorded_sample(argv):
     """Use the existing sample runner and gate with exact saved vision, never a live client."""
     import argparse
     import json
+    from contextlib import redirect_stdout
     from expectrail.orchestrator import cli, engines, sample, store
     p = cli.Parser(prog='expectrail sample')
     p.full_usage = usage()
@@ -107,9 +108,11 @@ def _recorded_sample(argv):
         print('Expectrail sample: real Godot replays; exact saved vision answers; no live model fallback.')
         for doc in visual.recordings:
             print('Vision recorded ' + doc['recordedAt'] + ', run ' + doc['run'] + ': ' + doc['sample'])
-    results = sample.run(cli._store(args), timeout_seconds=args.timeout,
-                         engines={'godot': engines.GodotGate(visual=visual)},
-                         on_case=None if args.json else lambda r: print(sample.line(r), flush=True))
+    # The in-process gate can print a replay warning before the results are ready.
+    with redirect_stdout(sys.stderr if args.json else sys.stdout):
+        results = sample.run(cli._store(args), timeout_seconds=args.timeout,
+                             engines={'godot': engines.GodotGate(visual=visual)},
+                             on_case=None if args.json else lambda r: print(sample.line(r), flush=True))
     if args.json:
         print(json.dumps(results, indent=2))
     return 0 if all(r['asExpected'] for r in results) else 3

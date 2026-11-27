@@ -32,6 +32,24 @@ class RecordedSampleProfileTest(unittest.TestCase):
         self.assertEqual([d['sample'] for d in visual.recordings], ['clean', 'fall-through-bug', 'fall-through-repair'])
         self.assertEqual(visual.client.calls, 0)
 
+    def test_json_keeps_replay_diagnostics_on_stderr(self):
+        from expectrail.orchestrator import sample
+
+        warning = '::warning title=Expectrail gate::route smoke: the head replay did not finish'
+        rows = [{'asExpected': False, 'status': {'phase': 'completed', 'decision': 'needs-review'}}]
+
+        def interrupted_replay(*args, **kwargs):
+            print(warning)
+            return rows
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict('os.environ', {cli.SAMPLE_RECORDINGS_ENV: '1'}), \
+                mock.patch.object(sample, 'run', side_effect=interrupted_replay):
+            status, text, err = self.invoke('sample', '--jobs-root', tmp, '--json')
+
+        self.assertEqual(status, 3)
+        self.assertEqual(json.loads(text), rows)
+        self.assertIn(warning, err.splitlines())
+
     def test_a_missing_answer_remains_no_answer_without_live_fallback(self):
         visual = cli._sample_observer()
         with tempfile.TemporaryDirectory() as tmp, mock.patch('urllib.request.urlopen', side_effect=AssertionError('live fallback')):
