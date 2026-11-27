@@ -73,8 +73,10 @@ def _ask(run: dict, chosen: list[int], frames: dict[int, Path], client, pad: flo
         except SamError as exc:
             if exc.kind in STOP_KINDS or exc.status is not None:
                 raise Stop(exc.kind or f"HTTP {exc.status}") from exc
+            reason = missing_reason(exc)
             rows.append({"frame": n, "world": anchor["world"], "point": anchor["point"], "asked": True,
-                         "box": None, "score": None, "error": missing_reason(exc) or "the answer could not be read"})
+                         "box": None, "score": None, "error": reason or "the answer could not be read",
+                         "recordingMissing": reason is not None or exc.kind == "not-recorded"})
             continue
         rows.append({"frame": n, **measure(anchor, answer, png_size(frames[n]))})
     return rows
