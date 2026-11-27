@@ -1,0 +1,302 @@
+{
+ "format": "expectrail.jit-run/v1",
+ "runId": "local-762-air-jump",
+ "advisory": true,
+ "provenance": {
+  "generatorVersion": "0.1.0",
+  "modelVersion": "hand-written",
+  "assessmentDiffClaims": []
+ },
+ "status": "complete",
+ "reason": null,
+ "inputs": {
+  "patchSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
+  "reportSha256": "29a13ffaf433209099c3cdde979019a18901fffdc41b2b243230085c391294ab",
+  "basePatchSha256": [
+   "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679"
+  ],
+  "profileSha256": "e5fbddb4b9b1ad1028294bcb4e1c67fb7553179e9a7b508f99e279349c603bcb",
+  "model": "hand-written",
+  "promptSha256": "b2deb317e813fa6eb0bfc036a75b9b467d0fab98a86dff266535f8427e5432f3"
+ },
+ "settings": {
+  "reps": 3,
+  "variantLimit": 8,
+  "budgetUsd": 2.0,
+  "offer": "signals-reach-evidence-menu-control",
+  "candidate": "withheld"
+ },
+ "diffMap": {
+  "files": [],
+  "claims": [],
+  "probeIds": [
+   "wait-long",
+   "hold-right",
+   "hold-left",
+   "reverse",
+   "jump-w0-x1",
+   "jump-w0-x2",
+   "jump-w0-x8",
+   "jump-w40-x1",
+   "jump-w40-x2",
+   "jump-w40-x8",
+   "jump-w80-x1",
+   "jump-w80-x2",
+   "jump-w80-x8",
+   "jump-w120-x1",
+   "jump-w120-x2",
+   "jump-w120-x8",
+   "shoot-right-every48",
+   "shoot-right-every12",
+   "shoot-left-every48",
+   "shoot-left-every12",
+   "move-fire-right",
+   "move-fire-left",
+   "jump-l40-x1",
+   "jump-l40-x2",
+   "jump-l40-x8",
+   "reach-move-left-with-jump",
+   "reach-jump-with-move-left",
+   "reach-move-right-with-jump",
+   "reach-jump-with-move-right",
+   "reach-jump-with-shoot",
+   "reach-shoot-with-jump",
+   "reach-move-left-with-move-right",
+   "reach-move-right-with-move-left",
+   "hold-right-then-toggle-pause",
+   "hold-left-then-toggle-pause",
+   "reverse-then-toggle-pause"
+  ],
+  "allProbes": true
+ },
+ "proposed": [
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c1",
+    "origin": "AUTO_DIFF",
+    "statement": "A second jump press in the air lifts the player more than 27 px higher than a single press.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "max_rise_px",
+     "comparator": "gt",
+     "toleranceAbs": 27,
+     "left": "jump-l40-x1",
+     "right": "jump-l40-x2"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-l40-x1",
+    "right": "jump-l40-x2"
+   },
+   "probeIds": [
+    "jump-l40-x1",
+    "jump-l40-x2"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c2",
+    "origin": "AUTO_DIFF",
+    "statement": "Eight jump presses lift the player no more than 27 px higher than two presses.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "max_rise_px",
+     "comparator": "lte",
+     "toleranceAbs": 27,
+     "left": "jump-l40-x2",
+     "right": "jump-l40-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-l40-x2",
+    "right": "jump-l40-x8"
+   },
+   "probeIds": [
+    "jump-l40-x2",
+    "jump-l40-x8"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "id": "jump-l40-x1",
+   "source": "library",
+   "routeSha256": "23cc4bf727bccecb97c7210e1b507fcd6d7ab2af571170485b5af7321c63852f"
+  },
+  {
+   "id": "jump-l40-x2",
+   "source": "library",
+   "routeSha256": "ad66e9df192dfa2ae341196ce8c8634a6bc386e4ab1aec4e2cebf7bfd8d5743f"
+  },
+  {
+   "id": "jump-l40-x8",
+   "source": "library",
+   "routeSha256": "8808601f37e61321def50dfb3a0fdc566b8aa1996b73baad47457e12404ed857"
+  }
+ ],
+ "variants": [
+  {
+   "id": "base",
+   "kind": "base",
+   "file": "",
+   "line": 0,
+   "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679"
+  }
+ ],
+ "validity": [
+  {
+   "specId": "jit-c1",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "doNothing": {
+    "control": "do-nothing:player",
+    "runs": [
+     "fail",
+     "fail",
+     "fail"
+    ],
+    "outcome": "fails",
+    "reason": null
+   },
+   "outcome": "not-evaluated",
+   "base": [
+    "pass"
+   ],
+   "variantResults": {
+    "base": [
+     "pass"
+    ]
+   },
+   "exercised": {
+    "reference": [
+     true,
+     true,
+     true
+    ],
+    "base": [
+     true
+    ],
+    "candidate": []
+   }
+  },
+  {
+   "specId": "jit-c2",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "passed the do-nothing control: the actor it is about did nothing and it still passed"
+   ],
+   "candidate": [],
+   "doNothing": {
+    "control": "do-nothing:player",
+    "runs": [
+     "pass",
+     "pass",
+     "pass"
+    ],
+    "outcome": "passes",
+    "reason": "passed the do-nothing control: the actor it is about did nothing and it still passed"
+   },
+   "outcome": "not-evaluated",
+   "base": [],
+   "variantResults": {},
+   "exercised": {
+    "reference": [
+     true,
+     true,
+     true
+    ],
+    "base": [],
+    "candidate": []
+   }
+  }
+ ],
+ "doNothing": [
+  {
+   "class": "player",
+   "id": "do-nothing:player",
+   "mode": "frozen",
+   "files": [
+    "player/player.gd"
+   ],
+   "patchSha256": "a34505b86c50a35bf7928f60964827c5951d9fbcd42b414dd726a82f729dca51",
+   "reason": null
+  }
+ ],
+ "catches": [],
+ "counts": {
+  "proposed": 2,
+  "valid": 0,
+  "strong": 0,
+  "weak": 0
+ },
+ "spend": {
+  "usd": 0.1368,
+  "capUsd": 2.0,
+  "sparkUsd": 0.1243,
+  "replayUsd": 0.0125,
+  "samUsd": 0.0,
+  "samImages": 0,
+  "replays": 20,
+  "promptTokens": 4291,
+  "completionTokens": 30000,
+  "prices": {
+   "sparkUsdPerMTokIn": 1.0,
+   "sparkUsdPerMTokOut": 4.0,
+   "runnerUsdPerMinute": 0.008,
+   "samUsdPerImage": 0.0025,
+   "source": "assumed"
+  }
+ },
+ "diagnostics": []
+}

@@ -1,0 +1,100 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "model": "hand-written",
+ "offer": "signals-reach-evidence-menu-control",
+ "error": null,
+ "probes": [
+  {
+   "id": "jit-walk-let-go",
+   "family": "jit",
+   "description": "Hold move_right for half a second, then let go and stand for one second.",
+   "program": {
+    "op": "sequence",
+    "steps": [
+     {
+      "op": "hold",
+      "action": "move_right",
+      "durationTicks": 60
+     },
+     {
+      "op": "wait",
+      "durationTicks": 120
+     }
+    ]
+   },
+   "tags": []
+  },
+  {
+   "id": "jit-walk-on",
+   "family": "jit",
+   "description": "Hold move_right for one second, then one tick standing.",
+   "program": {
+    "op": "sequence",
+    "steps": [
+     {
+      "op": "hold",
+      "action": "move_right",
+      "durationTicks": 120
+     },
+     {
+      "op": "wait",
+      "durationTicks": 1
+     }
+    ]
+   },
+   "tags": []
+  }
+ ],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c1",
+    "origin": "AUTO_DIFF",
+    "statement": "Letting go after half a second of walking leaves the robot more than 75 px short of where a whole second of walking takes it.",
+    "expectationRef": {
+     "claimId": "model.unbound",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "player_dx_px",
+     "comparator": "lt",
+     "toleranceAbs": 75,
+     "left": "jit-walk-on",
+     "right": "jit-walk-let-go"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jit-walk-on",
+    "right": "jit-walk-let-go"
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [],
+ "usage": {
+  "model": "hand-written",
+  "promptTokens": null,
+  "completionTokens": null
+ },
+ "promptSha256": "a6f318cbd82b78511867b4b65445ef699c9e741b072a7497d3e719bfdfb25160",
+ "candidate": "withheld",
+ "reportSha256": "fda86f2c200c12b5a4e205ba24953341acf233f81b3bf7ae507dcc8844b59b7b"
+}
