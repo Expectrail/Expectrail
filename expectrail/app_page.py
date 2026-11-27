@@ -308,6 +308,7 @@ let pairTimer;
 let pendingFolderCheck=null;
 let sameCopyPair=null;
 const checkingFolder='Checking the selected folder…';
+const singleFolderProblems={before:'',after:''};
 function hasFolderPair() {
   return Boolean(el('before').value.trim() && el('after').value.trim());
 }
@@ -326,7 +327,8 @@ function checkFolderPair(delay) {
   sameCopyPair=null;
   const notice=el('folder-pair-feedback');
   notice.textContent='';
-  for(const side of Object.keys(sideNames)) el(side+'-problem').textContent='';
+  // A different comparison can retire a layout warning while the selected folder is still invalid.
+  for(const side of Object.keys(sideNames)) el(side+'-problem').textContent=singleFolderProblems[side];
   const before=el('before').value, after=el('after').value, revision=folderRevision;
   if(!before.trim() || !after.trim()) return;
   let request;
@@ -337,8 +339,9 @@ function checkFolderPair(delay) {
       if(revision!==folderRevision) return;
       for(const side of Object.keys(sideNames)) {
         const action=el(side+'-action'), selected=sideNames[side]+' folder selected.';
-        const problem=pair[side].problem;
-        el(side+'-problem').textContent=problem || '';
+        const problem=pair[side].problem || '';
+        if(problem!==singleFolderProblems[side]) singleFolderProblems[side]='';
+        el(side+'-problem').textContent=problem;
         if(!action.textContent || action.textContent===checkingFolder || action.textContent===selected) {
           action.textContent=problem ? '' : selected;
         }
@@ -405,6 +408,7 @@ for(const side of Object.keys(sideNames)) {
   input.addEventListener('input',event=>{
     selection++;
     folderRevision++;
+    singleFolderProblems[side]='';
     el('before-suggestion').hidden=true;
     el('previous-option').hidden=true;
     if(side==='before') previousAfter=null;
@@ -427,7 +431,8 @@ for(const side of Object.keys(sideNames)) {
       const checked=await api('/api/projects/check',{[side]:folder});
       if(current!==selection || input.value!==folder || hasFolderPair()) return;
       if(showFeedback) {
-        el(side+'-problem').textContent=checked[side].problem || '';
+        singleFolderProblems[side]=checked[side].problem || '';
+        el(side+'-problem').textContent=singleFolderProblems[side];
         feedback.textContent=checked[side].problem ? '' : sideNames[side]+' folder selected.';
       }
       const suggestion=checked.beforeSuggestion;
