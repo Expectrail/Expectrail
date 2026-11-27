@@ -115,6 +115,12 @@ def godot(fetch: bool = True) -> tuple[Check, Path | None]:
         else:
             path = _where_godot_would_be()
         if path is None or not path.is_file():
+            if os.environ.get("EXPECTRAIL_GODOT"):
+                refetch = (f"set EXPECTRAIL_GODOT to an existing Godot {pinned()} executable, "
+                           "or unset EXPECTRAIL_GODOT and run `expectrail doctor` to use the pinned engine")
+                if not fetch:
+                    return _missing("godot", what, "EXPECTRAIL_GODOT does not point to a Godot executable file",
+                                    refetch, run=True), None
             raise FileNotFoundError(str(path))
     except Exception as exc:  # noqa: BLE001 - whatever stops Godot being found is the same finding
         if not fetch:
@@ -216,7 +222,7 @@ PROBE_SCENE = '[gd_scene format=3]\n\n[node name="Probe" type="Node"]\n'
 def opengl(engine: Path | None, shown: Check) -> Check:
     """The real thing: the engine draws one frame of an empty project, started as a replay starts it
     (harness.run.godot_cmd and game_env), and names the device it drew with."""
-    what = "OpenGL the engine can draw with (Mesa's software renderer)"
+    what = "OpenGL the engine can draw with"
     mesa = ("use a graphical macOS session and a Godot binary this Mac can run; or use a Linux host with Mesa and xvfb-run"
             if sys.platform == "darwin" else f"{APT} libgl1-mesa-dri libglx-mesa0")
     if engine is None or shown.status == "missing":
@@ -239,7 +245,8 @@ def opengl(engine: Path | None, shown: Check) -> Check:
     name = _clip(device.group(1), 500)
     found = f"the engine drew a frame with {name}"
     if "llvmpipe" not in name.lower():
-        found += "; this is not Mesa's software renderer, which every recorded run used, so frames may differ from those"
+        found += (". The bundled sample has been verified with Mesa llvmpipe. "
+                  "On this device, frames may differ from the images used for recorded vision.")
     check = _ok("opengl", what, found, run=True)
     check.environment = {"renderer": "opengl3", "device": name}
     return check

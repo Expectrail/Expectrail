@@ -153,10 +153,11 @@ def spawn(store: st.JobStore, job_id: str, command: list[str] | None = None) -> 
     paths = store.paths(job_id)
     command = command or [sys.executable, "-m", "expectrail.orchestrator", "--jobs-root", str(store.root),
                           "--lease-seconds", str(store.lease_seconds), "_work", job_id]
-    # The job id identifies child processes. Keep the caller's cache when the worker changes cwd.
+    # The job id identifies child processes. Resolve the caller's paths before changing cwd.
     env = dict(os.environ, **{st.JOB_ENV: job_id, spend.JOB_ENV: job_id})
-    if tools := env.get("EXPECTRAIL_TOOLS"):
-        env["EXPECTRAIL_TOOLS"] = str(Path(tools).absolute())
+    for name in ("EXPECTRAIL_TOOLS", "EXPECTRAIL_GODOT"):
+        if path := env.get(name):
+            env[name] = str(Path(path).absolute())
     with open(paths.log, "ab") as log:
         proc = subprocess.Popen(
             command,

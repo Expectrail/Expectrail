@@ -60,7 +60,7 @@ def cached_godot_path() -> Path:
     """Locate the configured engine without starting a download."""
     named = os.environ.get("EXPECTRAIL_GODOT")
     if named:
-        return Path(named)
+        return Path(named).absolute()
     if sys.platform != "darwin":
         return tools_dir() / "godot" / f"Godot_v{GODOT_VERSION}_linux.x86_64"
     bundle = Path("godot_mac/Godot.app/Contents/MacOS/Godot")

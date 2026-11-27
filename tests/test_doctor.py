@@ -179,17 +179,62 @@ class DoctorTest(Machine):
         self.set_engine(version="4.7.2.stable")
         self.assertEqual(self.by_id()["godot"].status, "ok")
 
+    def test_relative_engine_file_in_the_current_directory(self):
+        selected = self.engine.rename(self.engine.with_name("selected engine"))
+        with contextlib.chdir(selected.parent), mock.patch.dict(os.environ, EXPECTRAIL_GODOT="./selected engine"):
+            for fetch in (False, True):
+                with self.subTest(fetch=fetch):
+                    check, path = doctor.godot(fetch=fetch)
+                    self.assertEqual(check.status, "ok", check.found)
+                    self.assertTrue(path.is_absolute())
+                    self.assertTrue(path.samefile(selected))
+
+    def test_worker_uses_the_engine_selected_from_the_callers_directory(self):
+        from expectrail.orchestrator import runner
+
+        log = self.tmp / "worker.log"
+        store = mock.Mock()
+        store.paths.return_value.log = log
+        probe = ("from expectrail import doctor\n"
+                 "check, path = doctor.godot(fetch=False)\n"
+                 "print(path if path else check.found)\n"
+                 "raise SystemExit(0 if path else 1)")
+        relative = str(self.engine.relative_to(self.tmp))
+        with contextlib.chdir(self.tmp), mock.patch.dict(os.environ, EXPECTRAIL_GODOT=relative):
+            with runner.spawn(store, "engine-lookup", [sys.executable, "-c", probe]) as worker:
+                self.assertEqual(worker.wait(timeout=20), 0, log.read_text())
+            self.assertTrue(Path(log.read_text().strip()).samefile(self.engine))
+            self.assertEqual(os.environ["EXPECTRAIL_GODOT"], relative)
+
+    def test_missing_engine_override_names_the_setting_in_both_fetch_modes(self):
+        modes = ((False, "EXPECTRAIL_GODOT does not point to a Godot executable file"),
+                 (True, "Godot could not be found or downloaded (FileNotFoundError)"))
+        for selected in (self.tmp / "missing engine", self.tmp):
+            for fetch, expected in modes:
+                with self.subTest(selected=selected, fetch=fetch), mock.patch.dict(
+                        os.environ, EXPECTRAIL_GODOT=str(selected)), mock.patch(
+                        "harness.run.subprocess.run") as start:
+                    check, path = doctor.godot(fetch=fetch)
+                    start.assert_not_called()
+                    self.assertIsNone(path)
+                    self.assertEqual(check.status, "missing")
+                    self.assertEqual(check.found, expected)
+                    self.assertIn(f"set EXPECTRAIL_GODOT to an existing Godot {doctor.pinned()} executable", check.fix)
+                    self.assertIn("unset EXPECTRAIL_GODOT", check.fix)
+                    self.assertIn(doctor.pinned(), check.fix)
+                    self.assertNotIn("allow a download", check.fix)
+
     def test_an_engine_that_is_not_there(self):
-        os.environ["EXPECTRAIL_GODOT"] = str(self.tmp / "nowhere" / "godot")
-        found = self.by_id()
-        self.assertEqual(found["godot"].status, "missing")
-        self.assertIn("Godot could not be found or downloaded (FileNotFoundError)", found["godot"].found)
-        self.assertIn("allow a download from github.com", found["godot"].fix)
-        self.programs -= {"curl", "unzip"}
-        self.assertIn("sudo apt-get install curl unzip, then run `expectrail doctor` again", self.by_id()["godot"].fix)
+        del os.environ["EXPECTRAIL_GODOT"]
+        with mock.patch("harness.run.find_godot", return_value=self.tmp / "nowhere" / "godot"):
+            found = self.by_id()
+            self.assertEqual(found["godot"].status, "missing")
+            self.assertIn("Godot could not be found or downloaded (FileNotFoundError)", found["godot"].found)
+            self.assertIn("allow a download from github.com", found["godot"].fix)
+            self.programs -= {"curl", "unzip"}
+            self.assertIn("sudo apt-get install curl unzip, then run `expectrail doctor` again", self.by_id()["godot"].fix)
         self.programs = set(EVERYTHING)
         # Not named, not fetched, and told not to fetch: missing, with the way to get it.
-        del os.environ["EXPECTRAIL_GODOT"]
         found = self.by_id(fetch=False)
         self.assertEqual(found["godot"].status, "missing")
         self.assertIn("--no-fetch was given", found["godot"].found)
@@ -217,11 +262,18 @@ class DoctorTest(Machine):
         self.assertEqual(self.run_doctor()[0], 3)
         self.set_engine(draws="no device line at all")
         self.assertEqual(self.by_id()["opengl"].status, "missing")
-        # Another device draws, and the answer says it is not what the recorded runs used.
-        self.set_engine(draws="OpenGL API 4.6 - Compatibility - Using Device: NVIDIA Corporation - GeForce RTX 3080")
-        seen = self.by_id()["opengl"]
-        self.assertEqual(seen.status, "ok")
-        self.assertIn("this is not Mesa's software renderer", seen.found)
+
+    def test_other_devices_name_the_recorded_sample_renderer(self):
+        for device in ("NVIDIA Corporation - GeForce RTX 3080", "Mesa - softpipe"):
+            with self.subTest(device=device):
+                self.set_engine(draws=f"OpenGL API 4.6 - Compatibility - Using Device: {device}")
+                seen = self.by_id()["opengl"]
+                self.assertEqual(seen.status, "ok")
+                self.assertIn(f"the engine drew a frame with {device}", seen.found)
+                self.assertIn("bundled sample has been verified with Mesa llvmpipe", seen.found)
+                self.assertIn("frames may differ", seen.found)
+                self.assertNotIn("not Mesa's software renderer", seen.found)
+                self.assertEqual(seen.environment["device"], device)
 
     def test_too_little_free_disk_is_missing(self):
         self.free = 200 * 1024 ** 2
