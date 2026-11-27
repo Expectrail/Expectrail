@@ -44,6 +44,45 @@ class CommandTest(unittest.TestCase):
         self.assertIn('could not start', ''.join(call.args[0] for call in error.write.call_args_list))
 
 
+class ObserverWordsTest(unittest.TestCase):
+    def test_empty_public_check_results_do_not_credit_configured_observers(self):
+        from expectrail.app import judged_by
+
+        for observers in (
+            {'rule': 'both', 'visual': {'provider': 'recorded: clean, fall-through-bug'}},
+            {'rule': 'both', 'visual': {'provider': 'test-model'}},
+            {'rule': 'engine-only'},
+        ):
+            with self.subTest(observers=observers):
+                status = {'phase': 'completed', 'decision': 'needs-review', 'observers': observers}
+                self.assertEqual(judged_by(status, {'checks': []}),
+                                 'This run has no results from approved public checks.')
+
+    def test_nonapplicable_public_checks_do_not_credit_observers(self):
+        from expectrail.app import judged_by
+
+        for before in (None, 'not-applicable'):
+            skipped = {'before': before, 'after': 'not-applicable'}
+            for observers in (
+                {'rule': 'both', 'visual': {'provider': 'recorded: sample'}},
+                {'rule': 'both', 'visual': {'provider': 'test-model'}},
+                {'rule': 'engine-only'},
+            ):
+                with self.subTest(before=before, observers=observers):
+                    status = {'phase': 'completed', 'decision': 'needs-review', 'observers': observers}
+                    self.assertEqual(judged_by(status, {'checks': [skipped]}),
+                                     'None of the approved public checks applied to the selected routes.')
+
+    def test_a_route_outside_the_scope_does_not_hide_a_checked_route(self):
+        from expectrail.app import judged_by
+
+        status = {'phase': 'completed', 'decision': 'accept',
+                  'observers': {'rule': 'both', 'visual': {'provider': 'recorded: sample'}}}
+        checks = [{'before': 'not-applicable', 'after': 'not-applicable'},
+                  {'before': 'pass', 'after': 'pass'}]
+        self.assertIn('looked up vision answers in the recording', judged_by(status, {'checks': checks}))
+
+
 class HTTPTest(unittest.TestCase):
     def setUp(self):
         from expectrail import app
@@ -584,6 +623,53 @@ class HTTPTest(unittest.TestCase):
             self.assertIn(name, result['judgedBy'])
             self.assertIn('before starting the app', result['judgedBy'])
             self.assertIn('secret key' if name == 'MODEL_API_KEY' else 'US dollars', result['judgedBy'])
+
+    def test_replay_errors_are_reported_for_the_affected_versions_in_past_runs(self):
+        from tests.test_two_observers import Game
+
+        game = Game()
+        def replay(route, project, out, frames):
+            if (project / 'CRASH').exists():
+                raise RuntimeError('stand-in replay stopped')
+            return game.replay(route, project, out, frames)
+
+        self.engine = engines.GodotGate(replay=replay, rule='both', visual=game.observer())
+        (self.before / 'game/platformer/CRASH').touch()
+        partial = self.finished(self.create())
+        (self.after / 'game/platformer/CRASH').touch()
+        stopped = self.finished(self.create())
+
+        for result, message in (
+                (partial, 'Some replays did not finish'),
+                (stopped, 'None of the replays for these checks finished')):
+            with self.subTest(job=result['id']):
+                self.assertIn(message, result['judgedBy'])
+                self.assertNotIn('judged every check', result['judgedBy'])
+        self.assertEqual(stopped['decision'], 'needs-review')
+        self.server.app.owned.clear()
+        history = self.http('GET', '/api/history')[1]['jobs']
+        self.assertEqual({row['id']: row['judgedBy'] for row in history},
+                         {row['id']: row['judgedBy'] for row in (partial, stopped)})
+
+    def test_reopened_sample_identifies_recorded_vision_only_when_replays_finished(self):
+        from expectrail.cli import _sample_observer
+        from tests.test_two_observers import Game
+
+        bank = _sample_observer()
+        self.engine = engines.GodotGate(replay=Game().replay, rule='both', visual=bank)
+        completed = self.finished(self.create())
+        stopped_replay = mock.Mock(side_effect=RuntimeError('stand-in replay stopped'))
+        self.engine = engines.GodotGate(replay=stopped_replay, rule='both', visual=bank)
+        stopped = self.finished(self.create())
+
+        self.server.app.owned.clear()
+        history = {row['id']: row for row in self.http('GET', '/api/history')[1]['jobs']}
+        for result in (completed, history[completed['id']]):
+            self.assertIn('looked up vision answers in the recording', result['judgedBy'])
+            self.assertIn('No live model was called', result['judgedBy'])
+        for result in (stopped, history[stopped['id']]):
+            self.assertIn('None of the replays for these checks finished', result['judgedBy'])
+            self.assertNotIn('looked up vision answers', result['judgedBy'])
 
 
 class Empty:
