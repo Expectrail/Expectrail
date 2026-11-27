@@ -511,6 +511,14 @@ def rehearse_folder_pair(browser, fixture, native):
     fixture.assertEqual(len(fixture.server.app.history()['jobs']), 2)
     expect(page.locator('#choose-before')).to_be_focused()
 
+    manual = page.get_by_role('checkbox', name='Enter paths manually')
+    expect(note).to_contain_text('verify this copy as a baseline')
+    manual.uncheck()
+    expect(note).to_contain_text('same copy')
+    expect(note).not_to_contain_text('verify this copy as a baseline')
+    manual.check()
+    expect(note).to_contain_text('verify this copy as a baseline')
+
     def submit_manual(action):
         with page.expect_response(lambda r: r.url.endswith('/api/jobs') and r.request.method == 'POST') as response:
             action()

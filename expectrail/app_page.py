@@ -304,14 +304,25 @@ async function refreshRecentFolders() {
 let folderRevision=0;
 let pairTimer;
 let pendingFolderCheck=null;
+let sameCopyPair=null;
 const pairedProblems=new Map();
 const checkingFolder='Checking the selected folder…';
 function hasFolderPair() {
   return Boolean(el('before').value.trim() && el('after').value.trim());
 }
+function showSameCopyNotice() {
+  if(!sameCopyPair) return;
+  const {before,after}=sameCopyPair;
+  const notice=el('folder-pair-feedback');
+  notice.textContent='Before and After are the same copy. Select “Choose Before folder” to compare a different version.';
+  if(el('manual').checked || (!before.problem && !after.problem)) {
+    notice.textContent+=' You can still verify this copy as a baseline.';
+  }
+}
 function checkFolderPair(delay) {
   clearTimeout(pairTimer);
   pendingFolderCheck=null;
+  sameCopyPair=null;
   const notice=el('folder-pair-feedback');
   notice.textContent='';
   for(const [field,problem] of pairedProblems) {
@@ -338,10 +349,8 @@ function checkFolderPair(delay) {
       const sameCopy=pair.before.folder && pair.before.folder===pair.after.folder;
       notice.textContent='';
       if(sameCopy) {
-        notice.textContent='Before and After are the same copy. Select “Choose Before folder” to compare a different version.';
-        if(el('manual').checked || (!pair.before.problem && !pair.after.problem)) {
-          notice.textContent+=' You can still verify this copy as a baseline.';
-        }
+        sameCopyPair=pair;
+        showSameCopyNotice();
       }
       pendingFolderCheck=null;
       return sameCopy?'same-copy':'checked';
@@ -474,6 +483,7 @@ for(const side of Object.keys(sideNames)) {
     }
   };
 }
+el('manual').addEventListener('input',showSameCopyNotice);
 for(const id of ['manual','game','routes','specs','isolated']) {
   el(id).addEventListener('input',()=>{
     for(const side of Object.keys(sideNames)) el('inspection-'+side).replaceChildren();
