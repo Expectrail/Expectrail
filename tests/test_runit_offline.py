@@ -217,6 +217,67 @@ class OfflineBrowserTest(unittest.TestCase):
         self.assertIn('not yet available', page.locator('#receipt-availability').inner_text())
         self.assertTrue(page.locator('#receipt-check').is_disabled())
 
+    def test_background_clean_run_keeps_the_selected_bug_result(self):
+        clean = json.loads((CACHE / 'builder1-recorded-clean/status.json').read_text())
+        request = 'new-clean-run'
+        clean.update(requestId=request, startedAt='2026-11-24T08:00:00Z',
+                     finishedAt='2026-11-24T08:00:12Z')
+        api = {'format': 'expectrail.run-it-api/v1', 'standIn': True}
+        accepted = dict(api, kind='accepted', requestId=request, sample='clean')
+        published = dict(api, kind='status', requestId=request, sample='clean',
+                         state='published', updatedAt=clean['finishedAt'])
+        for switch_at in ('reservation', 'publication', 'result'):
+            with self.subTest(switch_at=switch_at), self.page() as page:
+                page.route('**/api/health', lambda route: route.fulfill(json=dict(api, kind='health', open=True)))
+                page.route(f'**/results/{request}/status.json', lambda route: route.fulfill(json=clean))
+                # Pause each response once so a panel switch has a deterministic order.
+                page.add_init_script("""(() => {
+                    const localFetch = window.fetch.bind(window);
+                    const pending = window.pendingRunResponses = {};
+                    const slots = {
+                        '/api/run': 'reservation',
+                        '/api/status/new-clean-run': 'publication',
+                        '/results/new-clean-run/status.json': 'result',
+                    };
+                    window.fetch = (url, options) => {
+                        const slot = slots[url];
+                        if (!slot || pending[slot]) return localFetch(url, options);
+                        return new Promise(resolve => {
+                            pending[slot] = doc => resolve(new Response(JSON.stringify(doc)));
+                        });
+                    };
+                })()""")
+                page.reload()
+                page.locator('button[data-run="clean"]:enabled').click()
+                page.wait_for_function("() => !!window.pendingRunResponses.reservation")
+                if switch_at == 'reservation':
+                    self.show(page, 'fall-through-bug', 'Rejected')
+                page.evaluate('(doc) => window.pendingRunResponses.reservation(doc)', accepted)
+                page.wait_for_function("() => !!window.pendingRunResponses.publication")
+                if switch_at == 'publication':
+                    self.show(page, 'fall-through-bug', 'Rejected')
+                page.evaluate('(doc) => window.pendingRunResponses.publication(doc)', published)
+                page.wait_for_function("() => !!window.pendingRunResponses.result")
+                if switch_at == 'result':
+                    self.show(page, 'fall-through-bug', 'Rejected')
+                page.evaluate('(doc) => window.pendingRunResponses.result(doc)', clean)
+
+                page.wait_for_function("""() => {
+                    const line = document.querySelector('[data-latest="clean"]').textContent;
+                    return line.includes('2026-11-24 08:00 UTC') && line.includes('Accepted');
+                }""")
+                self.assertTrue(page.locator('button[data-run="clean"]').is_enabled())
+                self.assertEqual(page.locator('#run-title').text_content(), 'A change that breaks it')
+                self.assertIn('Earlier saved run', page.locator('#run-when').text_content())
+                self.assertEqual(page.locator('#verdict-title').text_content(), 'Rejected')
+                self.assertIn('builder1-recorded-bug', page.locator('#facts').text_content())
+                self.assertIn('earlier recorded result', page.locator('#run-message').text_content())
+                self.assertFalse(page.locator('#phases').is_visible())
+
+                page.locator('button[data-show="clean"]').click()
+                page.locator('#facts').get_by_text(request, exact=True).wait_for()
+                self.assertEqual(page.locator('#verdict-title').text_content(), 'Accepted')
+
     def test_disabled_and_unreachable_worker_show_all_three_saved_results_on_desktop_and_phone(self):
         for mode in ('disabled', 'unreachable'):
             with self.subTest(mode=mode), self.page(mode) as page:
