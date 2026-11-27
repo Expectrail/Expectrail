@@ -377,6 +377,13 @@ def rehearse_folder_pair(browser, fixture, native):
     after_feedback = page.locator('#after-feedback')
     expect(after_feedback).to_contain_text('different layouts')
     expect(after_feedback).to_contain_text('entry.tscn')
+    native.return_value = None
+    page.get_by_role('button', name='Choose After folder', exact=True).click()
+    expect(after_feedback).to_contain_text('cancelled')
+    expect(after).to_have_value(str(other_layout))
+    expect(before).to_have_value(str(copy))
+    expect(after_feedback).to_contain_text('different layouts')
+    expect(after_feedback).to_contain_text('entry.tscn')
     before.fill('')
     expect(after_feedback).not_to_contain_text('different layouts')
     expect(note).to_be_empty()

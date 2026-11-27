@@ -307,6 +307,9 @@ let pendingFolderCheck=null;
 let sameCopyPair=null;
 const pairedProblems=new Map();
 const checkingFolder='Checking the selected folder…';
+function cancelledFolderChoice(problem) {
+  return problem ? 'Folder choice cancelled. '+problem : 'Folder choice cancelled.';
+}
 function hasFolderPair() {
   return Boolean(el('before').value.trim() && el('after').value.trim());
 }
@@ -326,7 +329,7 @@ function checkFolderPair(delay) {
   const notice=el('folder-pair-feedback');
   notice.textContent='';
   for(const [field,problem] of pairedProblems) {
-    if(field.textContent===problem) field.textContent='';
+    if(field.textContent===problem || field.textContent===cancelledFolderChoice(problem)) field.textContent='';
   }
   pairedProblems.clear();
   const before=el('before').value, after=el('after').value, revision=folderRevision;
@@ -468,7 +471,10 @@ for(const side of Object.keys(sideNames)) {
       const {folder}=await api('/api/projects/choose',{});
       if(folder) refreshRecentFolders();
       if(edited) return;
-      if(folder===null){feedback.textContent='Folder choice cancelled.';return;}
+      if(folder===null){
+        feedback.textContent=cancelledFolderChoice(pairedProblems.get(feedback));
+        return;
+      }
       if(typeof folder!=='string' || !folder.trim()) throw new Error('The desktop dialog returned no usable folder.');
       input.value=folder;
       input.dispatchEvent(new Event('input',{bubbles:true}));
