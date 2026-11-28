@@ -111,11 +111,11 @@ def _clip(text: str, limit: int = 200) -> str:
 def command(tool: Tool, argv: list[str], *, game: Path, out: Path, inputs: dict[str, Path] | None = None,
             engine: Path | None = None, env: dict | None = None) -> list[str]:
     """The bubblewrap command that runs ``argv`` with ``game`` at /game and ``out`` at /out (both
-    writable), each of ``inputs`` read-only at /in/<name>, and ``engine`` read-only at /engine/godot."""
+    writable), each named input file or runtime folder in ``inputs`` read-only at /in/<name>, and ``engine`` read-only at /engine/godot."""
     # --new-session: without it the game shares the harness's session and can open its terminal.
     # Never --as-pid-1: xvfb-run hangs as the first process of its namespace.
     cmd = [tool.path, "--die-with-parent", "--new-session",
-           "--unshare-user", "--unshare-ipc", "--unshare-pid", "--unshare-net", "--unshare-uts",
+           "--unshare-user", "--uid", str(os.getuid()), "--gid", str(os.getgid()), "--unshare-ipc", "--unshare-pid", "--unshare-net", "--unshare-uts",
            "--unshare-cgroup-try", "--disable-userns", "--hostname", "expectrail", "--clearenv"]
     for path in SYSTEM:
         if os.path.islink(path):
@@ -335,10 +335,10 @@ def describe(tool: Tool | None, wanted: str, why: str | None) -> dict:
     """The ``isolation`` block of replay.json: what the game could reach during this replay."""
     if tool is None:
         return {"sandbox": None, "mode": wanted, "reason": why, "network": "host", "filesystem": "host",
-                "processes": "host", "environment": "allowlist", "limits": None}
+                "processes": "host", "environment": "allowlist", "uid": os.getuid(), "gid": os.getgid(), "limits": None}
     return {"sandbox": {"tool": "bubblewrap", "version": tool.version}, "mode": wanted, "reason": None,
             "network": "none", "filesystem": "confined", "processes": "own",
-            "environment": "allowlist",
+            "environment": "allowlist", "uid": os.getuid(), "gid": os.getgid(),
             "limits": {"scratchBytes": SCRATCH_BYTES, "fileBytes": FILE_BYTES, "processes": PROCESSES,
                        "diskBytes": disk_bytes(), "diskEntries": DISK_ENTRIES}}
 

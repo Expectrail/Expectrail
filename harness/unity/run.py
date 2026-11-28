@@ -15,8 +15,8 @@ package: ``build_key`` names that set, the build writes it into ``build.json`` b
 and ``run`` refuses a player whose key differs.
 
 ``run`` copies the game to <out>/work and applies the patches there in order (seed, then
-candidate), which also proves they apply; starts the player under a virtual display on Mesa's
-llvmpipe with only the allowlisted environment (harness/run.py's game_env) and an empty HOME; and
+candidate), which also proves they apply; starts the player through harness/sandbox.py (auto/require/off), with its runtime, route and map
+read-only, a private virtual display on Mesa's llvmpipe, the allowlisted environment and an empty HOME; and
 checks what it wrote: exactly one PNG per tick, 1600 x 960, contiguous from f00000000.png; a trace
 row per tick with rows[i].tick == i; exactly one physics step in every captured frame. Any failure
 raises SystemExit, which the verifier turns into needs-review. Output, as from harness/run.py:
@@ -37,6 +37,7 @@ from pathlib import Path
 
 from harness.adapters import UNITY_IGNORE, sha256_file, tree_digest as _tree_digest
 from harness.run import REPO, apply_patches, game_env
+from harness import sandbox as box
 
 GAME = REPO / "game" / "unity-platformer"
 HERE = Path(__file__).resolve().parent
@@ -166,6 +167,20 @@ def build(out: Path, unity: Path, patches: list[Path] | None = None, *, game: Pa
     return key
 
 
+def read_build(folder: Path) -> dict:
+    """Build metadata is data, never a link to something outside the artifact."""
+    from expectrail.gate.record import read_json
+    import re
+    try:
+        doc = read_json(Path(folder) / 'build.json', cap=1024*1024, label='Unity build account')
+        if (not isinstance(doc, dict) or doc.get('format') != BUILD_FORMAT
+                or not isinstance(doc.get('key'), str) or not re.fullmatch('[0-9a-f]{64}', doc['key'])):
+            raise ValueError('invalid build identity')
+        return doc
+    except (ValueError, OSError) as exc:
+        raise SystemExit('the Unity build account was refused: ' + str(exc)) from exc
+
+
 def resolve_player(player: Path | None, key: dict) -> tuple[Path, dict]:
     """The player built from ``key``: ``player`` (or $EXPECTRAIL_UNITY_PLAYER) is a build folder with
     build.json, or a folder of such folders."""
@@ -173,20 +188,27 @@ def resolve_player(player: Path | None, key: dict) -> tuple[Path, dict]:
     if not where:
         raise SystemExit("no Unity player given: build one (python3 -m harness.unity.run --prepare-build, then the "
                          "Unity workflow or --build) and pass --player or set EXPECTRAIL_UNITY_PLAYER")
-    where = Path(where)
+    where = Path(where).resolve()
     candidates = [where] if (where / "build.json").is_file() else sorted(p.parent for p in where.glob("*/build.json"))
     if not candidates:
         raise SystemExit(f"no build.json in {where} or in any folder inside it")
     for folder in candidates:
-        built = json.loads((folder / "build.json").read_text(encoding="utf-8"))
+        built = read_build(folder)
         if built.get("key") == key["key"]:
-            exe = folder / built.get("player", PLAYER)
+            if not isinstance(built.get("player", PLAYER), str):
+                raise SystemExit("the Unity player path must be text")
+            name = Path(built.get("player", PLAYER))
+            if name.as_posix() != PLAYER:
+                raise SystemExit('the Unity player path must name the build runtime: ' + PLAYER)
+            exe = folder / name
+            if exe.resolve() != exe.absolute():
+                raise SystemExit('the Unity player path must not contain links')
             if not exe.is_file():
                 raise SystemExit(f"{folder}/build.json names a player that is not there: {exe}")
             return exe, built
     raise SystemExit(f"no player in {where} was built from this game, these patches and this harness "
                      f"(key {key['key'][:12]}); the players there have "
-                     + ", ".join(json.loads((f / 'build.json').read_text())['key'][:12] for f in candidates))
+                     + ", ".join(read_build(f)['key'][:12] for f in candidates))
 
 
 def png_size(path: Path) -> tuple[int, int]:
@@ -221,14 +243,15 @@ def player_env(home: Path) -> dict:
     return env
 
 
-def player_cmd(exe: Path, route: Path, game_map: Path, out: Path, seed: int, m: dict, frames: bool) -> list[str]:
-    cmd = [str(exe.resolve()), "-force-glcore", "-screen-width", str(m["frameWidth"]),
+def player_cmd(exe: Path, route: Path, game_map: Path, out: Path, seed: int, m: dict, frames: bool, *, isolated: bool = False) -> list[str]:
+    locate = (lambda p: str(p)) if isolated else (lambda p: str(p.resolve()))
+    cmd = [locate(exe), "-force-glcore", "-screen-width", str(m["frameWidth"]),
            "-screen-height", str(m["frameHeight"]), "-screen-fullscreen", "0", "-logFile", "-",
-           "-expectrail-route", str(route.resolve()), "-expectrail-map", str(game_map.resolve()),
-           "-expectrail-out", str(out.resolve()), "-expectrail-seed", str(seed)]
+           "-expectrail-route", locate(route), "-expectrail-map", locate(game_map),
+           "-expectrail-out", locate(out), "-expectrail-seed", str(seed)]
     if not frames:
         cmd.append("-expectrail-no-frames")
-    if not os.environ.get("DISPLAY") and sys.platform != "darwin":
+    if isolated or (not os.environ.get("DISPLAY") and sys.platform != "darwin"):
         cmd = ["xvfb-run", "-a", "-s", "-screen 0 1920x1080x24"] + cmd
     return cmd
 
@@ -297,7 +320,8 @@ def check_outputs(route_doc: dict, m: dict, trace: dict, run_doc: dict, frames: 
 
 
 def run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path | None = None,
-        fps: int | None = None, capture_frames: bool = True, player: Path | None = None) -> dict:
+        fps: int | None = None, capture_frames: bool = True, player: Path | None = None,
+        sandbox: str | None = None) -> dict:
     """Replay one route and write replay.json (expectrail.replay/v0); return it. Raises SystemExit on any failure."""
     game = Path(game or GAME)
     route, out = Path(route), Path(out)
@@ -308,6 +332,10 @@ def run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path
                          f"it cannot capture at {fps}")
     route_doc = json.loads(route.read_text(encoding="utf-8"))
     check_route(route_doc, m)
+    try:
+        tool, isolation = box.choose(sandbox, True)
+    except box.SandboxError as exc:
+        raise SystemExit(str(exc)) from exc
     key = build_key(game, ordered)
     exe, built = resolve_player(player, key)
 
@@ -321,17 +349,54 @@ def run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path
         elif stale.exists():
             stale.unlink()
     frames.mkdir()
+    staging = out / "player-output"
+    if staging.is_symlink() or staging.is_file():
+        staging.unlink()
+    elif staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir()
     env = player_env(out / "home")
     seed = int(route_doc.get("seed", 1))
-    cmd = player_cmd(exe, route, map_path(game), out, seed, m, capture_frames)
+    if tool is None:
+        cmd = player_cmd(exe, route, map_path(game), staging, seed, m, capture_frames)
+    else:
+        # Only this player's runtime directory is exposed, never its build project,
+        # the repository or the verifier. Inputs are mounted read-only by box.run.
+        cmd = player_cmd(Path('/in/player') / exe.name, Path('/in/route.json'), Path('/in/map.json'),
+                         Path(box.OUT), seed, m, capture_frames, isolated=True)
+        env = {k:v for k,v in env.items() if k not in ('DISPLAY','XAUTHORITY','WAYLAND_DISPLAY')}
     log = out / "unity.log"
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=TIMEOUT, cwd=out)
+        if tool is None:
+            proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=TIMEOUT, cwd=out)
+        else:
+            proc = box.run(tool, cmd, game=work, out=staging,
+                           inputs={'player': exe.parent, 'route.json': route, 'map.json': map_path(game)},
+                           env=env, timeout=TIMEOUT)
     except subprocess.TimeoutExpired as exc:
+        shutil.rmtree(staging, ignore_errors=True)
         log.write_text(_text(exc.stdout) + _text(exc.stderr) + f"\nthe player did not finish in {TIMEOUT} s\n",
                        encoding="utf-8")
         raise SystemExit(f"the Unity player timed out; see {log}") from exc
+    except box.SandboxError as exc:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise SystemExit(str(exc)) from exc
     log.write_text(proc.stdout + proc.stderr, encoding="utf-8")
+    try:
+        # A player cannot smuggle a link back to a host file it could not read.
+        for name in ('run.json', 'trace.json', 'frames'):
+            path = staging / name
+            if path.is_symlink() or (path.exists() and not (path.is_dir() if name == 'frames' else path.is_file())):
+                raise box.SandboxError('the Unity player left a link or non-plain output: ' + name)
+        run_output = staging / 'run.json'
+        if run_output.exists():
+            from expectrail.gate.record import read_bytes_capped
+            data = read_bytes_capped(run_output, 1024*1024, 'Unity run account')
+            (out / 'run.json').write_bytes(data)
+        box.collect(staging, out, frames=capture_frames)
+    except (box.SandboxError, ValueError, OSError) as exc:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise SystemExit('the Unity player output was refused: ' + str(exc)) from exc
     run_path, trace_path = out / "run.json", out / "trace.json"
     run_doc = json.loads(run_path.read_text(encoding="utf-8")) if run_path.is_file() else None
     if run_doc and run_doc.get("status") != "ok":
@@ -355,6 +420,7 @@ def run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path
     graphics = run_doc.get("graphics") or {}
     replay = {
         "format": "expectrail.replay/v0",
+        "isolation": isolation,
         "route": {"name": route_doc.get("name", route.stem), "sha256": sha256_file(route)},
         "game": {"tree": key["game"]["tree"],
                  "patch": ",".join(str(p) for p in ordered) if ordered else None,
@@ -426,6 +492,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--player", type=Path, help="a build folder with build.json, or a folder of them "
                                                "(default: $EXPECTRAIL_UNITY_PLAYER)")
     p.add_argument("--no-frames", action="store_true", help="record the trace only")
+    p.add_argument("--sandbox", choices=box.MODES, help="replay sandbox mode; default EXPECTRAIL_SANDBOX or auto")
     p.add_argument("--prepare-build", action="store_true", help="lay out a project for the Editor and exit")
     p.add_argument("--build", action="store_true", help="prepare and build with --unity (an activated Editor)")
     p.add_argument("--unity", type=Path, help="the Unity Editor executable, for --build")
@@ -441,6 +508,8 @@ def main(argv: list[str] | None = None) -> int:
             code |= 0 if result["identical"] else 1
         return code
     if args.prepare_build or args.build:
+        if args.sandbox is not None:
+            p.error("--sandbox applies to the player replay, not the Unity Editor build")
         if args.build and not args.unity:
             p.error("--build needs --unity")
         key = (build(args.out, args.unity, args.patch, game=args.game) if args.build
@@ -451,7 +520,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.route:
         p.error("--route is required unless --prepare-build or --build is given")
     replay = run(args.route, args.out, args.patch, game=args.game, capture_frames=not args.no_frames,
-                 player=args.player)
+                 player=args.player, sandbox=args.sandbox)
     print(f"{replay['capture']['frames']} frames, {replay['engine']['renderer']} on {replay['engine']['device']}: "
           f"{args.out / 'replay.json'}")
     return 0

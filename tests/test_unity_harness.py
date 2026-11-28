@@ -84,8 +84,10 @@ class FakePlayerCase(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        # Protocol-only outside control: this shell stand-in reads an external script.
+        # OS containment is covered by unity_sandbox_cases, not this fake.
         # A display is there, so the runner does not wrap the fake in xvfb-run.
-        patcher = mock.patch.dict(os.environ, {"DISPLAY": ":99"})
+        patcher = mock.patch.dict(os.environ, {"DISPLAY": ":99", "EXPECTRAIL_SANDBOX": "off"})
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -125,7 +127,7 @@ class RunnerTest(FakePlayerCase):
         argv = json.loads(re.search(r"^ARGS=(.*)$", log, re.M).group(1))
         for flag, value in (("-expectrail-route", str((self.tmp / "route.json").resolve())),
                             ("-expectrail-map", str(unity.map_path(GAME).resolve())),
-                            ("-expectrail-out", str((self.tmp / "out").resolve())), ("-expectrail-seed", "7"),
+                            ("-expectrail-out", str((self.tmp / "out" / "player-output").resolve())), ("-expectrail-seed", "7"),
                             ("-screen-width", "1600"), ("-screen-height", "960"), ("-screen-fullscreen", "0"),
                             ("-logFile", "-")):
             self.assertEqual(argv[argv.index(flag) + 1], value)
