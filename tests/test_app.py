@@ -73,6 +73,31 @@ class ObserverWordsTest(unittest.TestCase):
                     self.assertEqual(judged_by(status, {'checks': [skipped]}),
                                      'None of the approved public checks applied to the selected routes.')
 
+    def test_vision_attribution_uses_only_applicable_check_results(self):
+        from expectrail.app import judged_by
+
+        def row(engine, visual):
+            return {'before': None, 'after': engine,
+                    'observed': {'before': None, 'after': {'engine': engine, 'visual': visual}}}
+
+        skipped_route = row('not-applicable', 'not-asked')
+        unanswered = row('needs-review', 'no-answer')
+        passed = row('pass', 'pass')
+        for checks, expected in (
+                ([row('fail', 'not-asked'), skipped_route], 'Vision was not asked'),
+                ([unanswered, skipped_route], 'Vision returned no usable answer'),
+                ([unanswered, passed], 'Vision judged some of the public check results'),
+                ([passed, skipped_route], 'the vision model judged every check')):
+            with self.subTest(expected=expected):
+                status = {'phase': 'completed', 'decision': 'needs-review',
+                          'observers': {'rule': 'both', 'visual': {'provider': 'test-model'}}}
+                self.assertIn(expected, judged_by(status, {'checks': checks}))
+
+        recorded = {'phase': 'completed', 'decision': 'needs-review',
+                    'observers': {'rule': 'both', 'visual': {'provider': 'recorded: sample'}}}
+        self.assertIn('looked up vision answers in the recording',
+                      judged_by(recorded, {'checks': [unanswered, skipped_route]}))
+
     def test_a_route_outside_the_scope_does_not_hide_a_checked_route(self):
         from expectrail.app import judged_by
 
@@ -599,6 +624,10 @@ class HTTPTest(unittest.TestCase):
         self.engine = engines.GodotGate(replay=game.replay, rule='both', visual=game.observer())
         result = self.finished(self.create())
         self.assertEqual(result['state'], 'accept', result)
+        self.assertIn('Vision judged some of the public check results', result['judgedBy'])
+        (self.before / 'game/platformer/BUG').unlink()
+        result = self.finished(self.create())
+        self.assertEqual(result['state'], 'accept', result)
         self.assertIn("engine's record and the vision model judged every check", result['judgedBy'])
         self.engine = engines.GodotGate(replay=FakeReplay(), rule='both')
         result = self.finished(self.create())
@@ -650,6 +679,24 @@ class HTTPTest(unittest.TestCase):
         history = self.http('GET', '/api/history')[1]['jobs']
         self.assertEqual({row['id']: row['judgedBy'] for row in history},
                          {row['id']: row['judgedBy'] for row in (partial, stopped)})
+
+    def test_engine_rejection_does_not_credit_unused_recordings_in_past_runs(self):
+        from expectrail.cli import _sample_observer
+        from tests.test_two_observers import Game
+
+        (self.after / 'game/platformer/BUG').touch()
+        bank = _sample_observer()
+        self.engine = engines.GodotGate(replay=Game().replay, rule='both', visual=bank)
+        with mock.patch.object(bank, 'look', wraps=bank.look) as lookup:
+            result = self.finished(self.create())
+            lookup.assert_not_called()
+        self.assertEqual(result['decision'], 'reject')
+        self.server.app.owned.clear()
+        rows = self.http('GET', '/api/history')[1]['jobs']
+        reopened = next(row for row in rows if row['id'] == result['id'])
+        self.assertEqual(reopened['decision'], 'reject')
+        for row in (result, reopened):
+            self.assertEqual(row['judgedBy'], 'The engine judged the public checks. Vision was not asked about them.')
 
     def test_reopened_sample_identifies_recorded_vision_only_when_replays_finished(self):
         from expectrail.cli import _sample_observer

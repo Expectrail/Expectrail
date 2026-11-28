@@ -41,7 +41,10 @@ OUTCOMES = {
 def judged_by(doc, record):
     block = doc.get('observers') or (record or {}).get('observers') or {}
     provider = (block.get('visual') or {}).get('provider', '')
-    outcomes = {check.get(side) for check in (record or {}).get('checks', []) for side in ('before', 'after')}
+    checks = (record or {}).get('checks', [])
+    outcomes = {check.get(side) for check in checks for side in ('before', 'after')}
+    visual_results = {seen['visual'] for check in checks for seen in check.get('observed', {}).values()
+                      if seen and seen['engine'] != 'not-applicable'}
     if doc['phase'] != 'completed':
         words = 'No completed judgement is recorded.'
     elif record is not None and not outcomes:
@@ -53,8 +56,14 @@ def judged_by(doc, record):
             words = 'None of the replays for these checks finished. They have no engine measurements or vision answers.'
         else:
             words = 'Some replays did not finish. The affected checks have no observations for that version.'
+    elif block.get('visual') and visual_results == {'not-asked'}:
+        words = 'The engine judged the public checks. Vision was not asked about them.'
     elif provider.startswith('recorded: ') or '(recorded ' in provider:
         words = 'The verifier used the engine and looked up vision answers in the recording. No live model was called.'
+    elif block.get('visual') and visual_results & {'not-asked', 'no-answer'}:
+        words = ('The engine judged the public checks. Vision judged some of the public check results.'
+                 if visual_results.intersection(rec.VISUAL_VERDICTS) else
+                 'The engine judged the public checks. Vision returned no usable answer.')
     elif block.get('rule') == 'both':
         words = ("The engine's record and the vision model judged every check."
                  if 'visual' not in block or block['visual'] is not None else
