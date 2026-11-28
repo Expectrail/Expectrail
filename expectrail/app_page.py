@@ -340,7 +340,7 @@ function checkFolderPair(delay) {
       for(const side of Object.keys(sideNames)) {
         const action=el(side+'-action'), selected=sideNames[side]+' folder selected.';
         const problem=pair[side].problem || '';
-        if(problem!==singleFolderProblems[side]) singleFolderProblems[side]='';
+        singleFolderProblems[side]=pair[side].layoutMismatch ? '' : problem;
         el(side+'-problem').textContent=problem;
         if(!action.textContent || action.textContent===checkingFolder || action.textContent===selected) {
           action.textContent=problem ? '' : selected;

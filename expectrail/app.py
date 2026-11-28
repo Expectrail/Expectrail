@@ -412,6 +412,7 @@ class App:
                     scene = config['entryScene'].removeprefix('res://')
                     scene_path = after / scene
                     if not scene_path.resolve().is_relative_to(after) or not scene_path.is_file():
+                        result['after']['layoutMismatch'] = True
                         result['after']['problem'] = (f'The versions have different layouts. After is missing {scene} '
                                                       'at the location used by Before.')
         return result

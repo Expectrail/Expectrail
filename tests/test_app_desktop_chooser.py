@@ -168,6 +168,21 @@ def browser_rehearsal():
             expect(feedback).to_be_empty()
             expect(recent_after).to_have_value('')
 
+            # The moved folder can also be the second selection, first checked as part of a pair.
+            for side, field, recent, partner in (
+                ('before', before_field, recent_before, after_field),
+                ('after', after_field, recent_after, before_field),
+            ):
+                partner.fill(str(before))
+                recent.select_option(str(another))
+                warning = page.locator('#' + side + '-feedback')
+                expect(warning).to_contain_text('Choose the folder containing')
+                partner.fill('')
+                expect(field).to_have_value(str(another))
+                expect(warning).to_contain_text('Choose the folder containing')
+                field.fill('')
+                expect(warning).to_be_empty()
+
             with page.expect_response(lambda response: response.url.endswith('/api/projects/check')):
                 def edit_before_reply(route):
                     after_field.fill(str(before))
