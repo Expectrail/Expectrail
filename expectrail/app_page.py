@@ -422,8 +422,14 @@ for(const side of Object.keys(sideNames)) {
     checkFolderPair(event instanceof InputEvent ? 200 : 0);
   });
   async function checkFolder(showFeedback) {
-    const folder=input.value, revision=folderRevision, current=selection;
-    if(hasFolderPair()) return; // The input event scheduled the paired check.
+    const folder=input.value, current=selection;
+    if(hasFolderPair()) {
+      if(!showFeedback || !pendingFolderCheck) return;
+      // Recheck a recent folder on its own if its partner was cleared before the reply.
+      await pendingFolderCheck();
+      if(current!==selection || input.value!==folder || hasFolderPair()) return;
+    }
+    const revision=folderRevision;
     const offerBefore=side==='after' && !el('before').value.trim();
     if(!showFeedback && (!offerBefore || !folder.trim())) return;
     if(showFeedback) feedback.textContent=checkingFolder;

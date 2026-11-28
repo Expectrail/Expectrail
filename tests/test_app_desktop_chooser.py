@@ -183,6 +183,32 @@ def browser_rehearsal():
                 field.fill('')
                 expect(warning).to_be_empty()
 
+                # Clear the partner while the server still has the paired reply.
+                other_side = 'after' if side == 'before' else 'before'
+                pair = {side: str(another), other_side: str(before)}
+                release_pair = threading.Event()
+                check_projects = fixture.server.app.check_projects
+
+                def wait_for_edit(body):
+                    result = check_projects(body)
+                    if body == pair and not release_pair.wait(15):
+                        raise RuntimeError('Timed out waiting for the other folder to be cleared')
+                    return result
+
+                partner.fill(str(before))
+                with mock.patch.object(fixture.server.app, 'check_projects', side_effect=wait_for_edit):
+                    try:
+                        with page.expect_request(lambda r: r.url.endswith('/api/projects/check') and r.post_data_json == pair):
+                            recent.select_option(str(another))
+                        partner.fill('')
+                    finally:
+                        release_pair.set()
+                    expect(warning).to_contain_text('Choose the folder containing')
+                expect(field).to_have_value(str(another))
+                expect(page.locator('#folder-pair-feedback')).to_be_empty()
+                field.fill('')
+                expect(warning).to_be_empty()
+
             with page.expect_response(lambda response: response.url.endswith('/api/projects/check')):
                 def edit_before_reply(route):
                     after_field.fill(str(before))
