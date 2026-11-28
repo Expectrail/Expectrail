@@ -94,7 +94,9 @@ newest first. These paths stay in the local app's job store.
 `POST /api/projects/check` takes an absolute `before` or `after` path, or both. Each supplied field
 gets its own folder and problem. With After alone the app can suggest a sibling named
 `<game>-before` or the same project inside another registered Git worktree. With both folders
-it checks whether After contains Before's starting scene at the expected location.
+it checks whether After contains Before's starting scene at the expected location. If that scene is
+missing, `after.layoutMismatch` is `true` and `after.problem` names the scene. This warning
+belongs to the selected pair. A problem with one folder stays visible when the other path changes.
 
 For a local Git checkout, `POST /api/projects/previous` takes only `after` and returns the
 corresponding folder in a temporary copy of the first parent of HEAD, plus the full commit ID.

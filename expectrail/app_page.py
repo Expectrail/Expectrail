@@ -28,13 +28,16 @@ For your own checks, the routes and approvals come from <strong>Before</strong>.
 <input id="before" autocomplete="off" spellcheck="false" aria-describedby="before-feedback"></div>
 <div id="recent-before-group" hidden><label for="recent-before">Recent Before folders</label>
 <select id="recent-before"></select></div>
-<div id="before-feedback" class="folder-feedback" role="status"></div></div>
+<div id="before-feedback" class="folder-feedback" role="status">
+<div id="before-action"></div><div id="before-problem"></div></div></div>
 <div data-folder-side="after"><label for="after">After: full folder path or project.godot file path</label>
 <div class="folder-entry"><button id="choose-after" type="button">Choose After folder</button>
 <input id="after" autocomplete="off" spellcheck="false" aria-describedby="after-feedback"></div>
 <div id="recent-after-group" hidden><label for="recent-after">Recent After folders</label>
 <select id="recent-after"></select></div>
-<div id="after-feedback" class="folder-feedback" role="status"></div></div></div>
+<div id="after-feedback" class="folder-feedback" role="status">
+<div id="after-action"></div><div id="after-problem"></div></div></div></div>
+<div id="folder-pair-feedback" class="folder-feedback" role="status"></div>
 <div id="before-suggestion" class="folder-feedback" hidden>
 <p><span id="suggestion-source"></span> <strong id="suggested-folder"></strong></p>
 <button id="use-before" type="button" class="secondary" aria-describedby="suggested-folder">Use as Before</button></div>
@@ -201,7 +204,7 @@ document.addEventListener('drop',event=>{
   if(files.length===1 && files[0].webkitGetAsEntry?.()?.isDirectory) {
     el('choose-'+side).click();
   } else {
-    el(side+'-feedback').textContent='Drop one project folder here, or use Choose '+sideNames[side]+' folder.';
+    el(side+'-action').textContent='Drop one project folder here, or use Choose '+sideNames[side]+' folder.';
   }
 });
 function textElement(tag, text) {
@@ -301,12 +304,78 @@ async function refreshRecentFolders() {
   }
 }
 let folderRevision=0;
+let pairTimer;
+let pendingFolderCheck=null;
+let sameCopyPair=null;
+const checkingFolder='Checking the selected folder…';
+const singleFolderProblems={before:'',after:''};
+function hasFolderPair() {
+  return Boolean(el('before').value.trim() && el('after').value.trim());
+}
+function showSameCopyNotice() {
+  if(!sameCopyPair) return;
+  const {before,after}=sameCopyPair;
+  const notice=el('folder-pair-feedback');
+  notice.textContent='Before and After are the same copy. Select “Choose Before folder” to compare a different version.';
+  if(el('manual').checked || (!before.problem && !after.problem)) {
+    notice.textContent+=' You can still verify this copy as a baseline.';
+  }
+}
+function checkFolderPair(delay) {
+  clearTimeout(pairTimer);
+  pendingFolderCheck=null;
+  sameCopyPair=null;
+  const notice=el('folder-pair-feedback');
+  notice.textContent='';
+  // A different comparison can retire a layout warning while the selected folder is still invalid.
+  for(const side of Object.keys(sideNames)) el(side+'-problem').textContent=singleFolderProblems[side];
+  const before=el('before').value, after=el('after').value, revision=folderRevision;
+  if(!before.trim() || !after.trim()) return;
+  let request;
+  // Compare the paths resolved by the server, including project.godot selections.
+  async function check() {
+    try {
+      const pair=await api('/api/projects/check',{before,after});
+      if(revision!==folderRevision) return;
+      for(const side of Object.keys(sideNames)) {
+        const action=el(side+'-action'), selected=sideNames[side]+' folder selected.';
+        const problem=pair[side].problem || '';
+        singleFolderProblems[side]=pair[side].layoutMismatch ? '' : problem;
+        el(side+'-problem').textContent=problem;
+        if(!action.textContent || action.textContent===checkingFolder || action.textContent===selected) {
+          action.textContent=problem ? '' : selected;
+        }
+      }
+      const sameCopy=pair.before.folder && pair.before.folder===pair.after.folder;
+      notice.textContent='';
+      if(sameCopy) {
+        sameCopyPair=pair;
+        showSameCopyNotice();
+      }
+      pendingFolderCheck=null;
+      return sameCopy?'same-copy':'checked';
+    } catch(error) {
+      if(revision===folderRevision) {
+        notice.textContent='Could not check the selected folders. Choose Verify to retry. '+error.message;
+        request=null;
+      }
+      return 'failed';
+    }
+  }
+  // Typing and Verify share one request for this selection.
+  pendingFolderCheck=()=>{
+    clearTimeout(pairTimer);
+    if(!request) request=check();
+    return request;
+  };
+  pairTimer=setTimeout(pendingFolderCheck,delay);
+}
 let previousAfter=null;
 function selectBefore(folder, message) {
   const before=el('before');
   before.value=folder;
   before.dispatchEvent(new Event('input',{bubbles:true}));
-  el('before-feedback').textContent=message;
+  el('before-action').textContent=message;
 }
 el('use-before').onclick=()=>{
   const before=el('before');
@@ -318,14 +387,14 @@ el('use-previous').onclick=async()=>{
   if(busy || job || el('before').value.trim() || el('previous-option').hidden) return;
   const after=el('after').value, revision=folderRevision;
   controls(true);
-  el('before-feedback').textContent='Opening the previous commit…';
+  el('before-action').textContent='Opening the previous commit…';
   try {
     const copy=await api('/api/projects/previous',{after});
     if(revision!==folderRevision) return;
     selectBefore(copy.folder,'Before is a temporary copy of Git commit '+copy.commit+'.');
     previousAfter=after;
   } catch(error) {
-    if(revision===folderRevision) el('before-feedback').textContent=error.message+' You can select a folder with Choose Before folder.';
+    if(revision===folderRevision) el('before-action').textContent=error.message+' You can select a folder with Choose Before folder.';
   } finally {
     controls(false);
     if(previousAfter===after) el('before').focus();
@@ -333,12 +402,13 @@ el('use-previous').onclick=async()=>{
   }
 };
 for(const side of Object.keys(sideNames)) {
-  const input=el(side), choose=el('choose-'+side), feedback=el(side+'-feedback');
+  const input=el(side), choose=el('choose-'+side), feedback=el(side+'-action');
   const recent=el('recent-'+side);
   let selection=0;
-  input.addEventListener('input',()=>{
+  input.addEventListener('input',event=>{
     selection++;
     folderRevision++;
+    singleFolderProblems[side]='';
     el('before-suggestion').hidden=true;
     el('previous-option').hidden=true;
     if(side==='before') previousAfter=null;
@@ -348,16 +418,29 @@ for(const side of Object.keys(sideNames)) {
     if(recent.value!==input.value) recent.value='';
     el('inspection-'+side).replaceChildren();
     feedback.textContent='';
+    // Picker selections dispatch a complete path. Debounce only manual text edits.
+    checkFolderPair(event instanceof InputEvent ? 200 : 0);
   });
   async function checkFolder(showFeedback) {
-    const folder=input.value, revision=folderRevision, current=selection;
+    const folder=input.value, current=selection;
+    if(hasFolderPair()) {
+      if(!showFeedback || !pendingFolderCheck) return;
+      // Recheck a recent folder on its own if its partner was cleared before the reply.
+      await pendingFolderCheck();
+      if(current!==selection || input.value!==folder || hasFolderPair()) return;
+    }
+    const revision=folderRevision;
     const offerBefore=side==='after' && !el('before').value.trim();
     if(!showFeedback && (!offerBefore || !folder.trim())) return;
-    if(showFeedback) feedback.textContent='Checking the selected folder…';
+    if(showFeedback) feedback.textContent=checkingFolder;
     try {
       const checked=await api('/api/projects/check',{[side]:folder});
-      if(current!==selection || input.value!==folder) return;
-      if(showFeedback) feedback.textContent=checked[side].problem || sideNames[side]+' folder selected.';
+      if(current!==selection || input.value!==folder || hasFolderPair()) return;
+      if(showFeedback) {
+        singleFolderProblems[side]=checked[side].problem || '';
+        el(side+'-problem').textContent=singleFolderProblems[side];
+        feedback.textContent=checked[side].problem ? '' : sideNames[side]+' folder selected.';
+      }
       const suggestion=checked.beforeSuggestion;
       if(!offerBefore || revision!==folderRevision || el('before').value.trim()) return;
       if(suggestion) {
@@ -367,7 +450,7 @@ for(const side of Object.keys(sideNames)) {
         el('before-suggestion').hidden=false;
       } else if(checked.hasGitCheckout) el('previous-option').hidden=false;
     } catch(error) {
-      if(showFeedback && current===selection) feedback.textContent=error.message;
+      if(showFeedback && current===selection && !hasFolderPair()) feedback.textContent=error.message;
     }
   }
   if(side==='after') {
@@ -396,7 +479,10 @@ for(const side of Object.keys(sideNames)) {
       const {folder}=await api('/api/projects/choose',{});
       if(folder) refreshRecentFolders();
       if(edited) return;
-      if(folder===null){feedback.textContent='Folder choice cancelled.';return;}
+      if(folder===null){
+        feedback.textContent='Folder choice cancelled.';
+        return;
+      }
       if(typeof folder!=='string' || !folder.trim()) throw new Error('The desktop dialog returned no usable folder.');
       input.value=folder;
       input.dispatchEvent(new Event('input',{bubbles:true}));
@@ -411,6 +497,7 @@ for(const side of Object.keys(sideNames)) {
     }
   };
 }
+el('manual').addEventListener('input',showSameCopyNotice);
 for(const id of ['manual','game','routes','specs','isolated']) {
   el(id).addEventListener('input',()=>{
     for(const side of Object.keys(sideNames)) el('inspection-'+side).replaceChildren();
@@ -457,7 +544,7 @@ el('verify').onclick=async()=>{
     for(const side of Object.keys(sideNames)) {
       if(!body[side].trim()) {
         problem(new Error('Choose both versions before starting verification.'));
-        el(side+'-feedback').textContent='Choose the '+sideNames[side]+' folder or enter its path.';
+        el(side+'-action').textContent='Choose the '+sideNames[side]+' folder or enter its path.';
         el(side).focus();
         return;
       }
@@ -467,7 +554,24 @@ el('verify').onclick=async()=>{
       if(!Number.isInteger(body.attempts)||body.attempts<1||body.attempts>10) throw new Error('Enter 1 to 10 fix attempts.');
       if(!Number.isFinite(body.usdCap)||body.usdCap<0) throw new Error('Enter a fixer spend cap of zero or more US dollars.');
     }
+    if(pendingFolderCheck){
+      const revision=folderRevision;
+      el('progress').textContent='Checking the selected folders…';
+      const result=await pendingFolderCheck();
+      if(result==='failed' && revision===folderRevision){
+        problem(new Error(el('folder-pair-feedback').textContent));
+        el('verify').focus();
+        return;
+      }
+      if(result==='same-copy' || revision!==folderRevision){
+        controls(false);
+        el('progress').textContent='Nothing has started. Review the selected folders before continuing.';
+        el('choose-before').focus();
+        return;
+      }
+    }
     if(body.projectConfig){
+      el('progress').textContent='Checking the rendering environment before starting…';
       const inspection=await api('/api/inspect',{...body,side:'before',folder:body.before});
       if(inspection.readinessSteps?.length){
         rendererAcknowledged=null;el('rendering').textContent='';
