@@ -179,6 +179,32 @@ class DoctorTest(Machine):
         self.set_engine(version="4.7.2.stable")
         self.assertEqual(self.by_id()["godot"].status, "ok")
 
+    def test_failed_version_command_cannot_identify_the_engine(self):
+        self.engine.write_text(
+            '#!/bin/sh\n'
+            'if [ "$1" = "--version" ]; then\n'
+            '  echo "4.7.2.stable"\n'
+            f'  echo "{SECRET}" >&2\n'
+            '  exit 7\n'
+            'fi\n'
+            f'echo "{LLVMPIPE}"\n',
+            encoding="utf-8",
+        )
+        for options in ((), ("--no-fetch",)):
+            with self.subTest(options=options):
+                code, out, err = self.run_doctor("--json", *options)
+                self.assertEqual((code, err), (doctor.EXIT_MISSING, ""))
+                doc = json.loads(out)
+                self.assertFalse(doc["ok"])
+                self.assertEqual(doctor.problems(doc), [])
+                checks = {check["id"]: check for check in doc["checks"]}
+                self.assertEqual(checks["godot"]["status"], "missing")
+                self.assertIn("--version", checks["godot"]["found"])
+                self.assertIn("exit 7", checks["godot"]["found"])
+                self.assertIn("EXPECTRAIL_GODOT", checks["godot"]["fix"])
+                self.assertEqual(checks["opengl"]["status"], "skipped")
+                self.assertNotIn(SECRET, out)
+
     def test_relative_engine_file_in_the_current_directory(self):
         selected = self.engine.rename(self.engine.with_name("selected engine"))
         with contextlib.chdir(selected.parent), mock.patch.dict(os.environ, EXPECTRAIL_GODOT="./selected engine"):

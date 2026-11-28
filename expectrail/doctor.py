@@ -131,12 +131,17 @@ def godot(fetch: bool = True) -> tuple[Check, Path | None]:
         said = [line for line in str(getattr(exc, "stderr", "") or "").splitlines() if line.startswith("get_godot: ")]
         return _missing("godot", what, f"Godot could not be found or downloaded ({type(exc).__name__})"
                         + (f": {_clip(said[-1][len('get_godot: '):], 240)}" if said else ""), refetch, run=True), None
+    run_fix = ("unset EXPECTRAIL_GODOT so the pinned engine is fetched, or point it at a Godot "
+               + pinned() + " binary this machine can run")
     try:
-        said = subprocess.run([str(path), "--version"], capture_output=True, text=True, timeout=60).stdout.strip()
+        result = subprocess.run([str(path), "--version"], capture_output=True, text=True, timeout=60)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return _missing("godot", what, f"the Godot binary at {path} could not be run ({type(exc).__name__})",
-                        "unset EXPECTRAIL_GODOT so the pinned engine is fetched, or point it at a Godot "
-                        + pinned() + " binary this machine can run", run=True), None
+                        run_fix, run=True), None
+    if result.returncode != 0:
+        return _missing("godot", what, f"Godot --version at {path} failed (exit {result.returncode})",
+                        run_fix, run=True), None
+    said = result.stdout.strip()
     want = pinned().replace("-", ".")
     version = said.splitlines()[-1] if said else ""
     if not (version == want or version.startswith(want + ".")):
