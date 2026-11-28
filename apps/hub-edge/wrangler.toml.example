@@ -1,0 +1,20 @@
+name = "expectrail-hub"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "hub.expectrail.tech", custom_domain = true }]
+
+[vars]
+EXPECTRAIL_HUB_ORIGIN = "https://hub.expectrail.tech"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "HubSessions"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["HubSessions"]
+
+[assets]
+directory = ".public"
